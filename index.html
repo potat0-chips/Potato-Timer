@@ -3,8 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    
+    <!-- 모바일 홈 화면 추가 시 둥근 감자 아이콘 및 상태표시줄 최적화 -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Potato Timer">
+    <link rel="icon" type="image/png" href="./potato.png">
+    <link rel="apple-touch-icon" href="./potato.png">
+
     <title>Potato Timer</title>
     
     <!-- Firebase SDK -->
@@ -147,6 +153,7 @@
             height: 100%;
             position: relative;
             z-index: 5;
+            transition: transform 0.2s ease;
         }
 
         .main-wrapper { 
@@ -159,9 +166,24 @@
             transition: transform 0.1s ease;
         }
 
+        /* [모바일 및 태블릿 화면 세로 정렬(Shift) 완벽 대응] */
         @media (max-width: 600px) {
             .viewport-scaler {
-                transform: translateY(-38px);
+                /* 홈화면(PWA) 추가 시 윗부분이 잘리던 -38px 삭제 및 정상화 */
+                transform: translateY(5px); 
+            }
+        }
+
+        @media (min-width: 601px) and (max-width: 1024px) {
+            .viewport-scaler {
+                /* 태블릿 일반 화면일 때만 전체를 약 0.5cm 위로 올림 */
+                transform: translateY(-25px); 
+            }
+            /* 전체화면일 때는 다시 원래 정중앙으로 복귀 */
+            body.pseudo-fullscreen .viewport-scaler,
+            body:fullscreen .viewport-scaler,
+            body:-webkit-full-screen .viewport-scaler {
+                transform: translateY(0);
             }
         }
 
@@ -246,6 +268,7 @@
             -webkit-tap-highlight-color: transparent !important;
             -webkit-user-select: none;
             user-select: none;
+            visibility: visible; 
         }
 
         .timer-container { position: relative; width: 260px; height: 260px; display: flex; align-items: center; justify-content: center; }
@@ -262,9 +285,10 @@
             transition: none; 
         }
         
+        /* 텍스트 위치 기존 원위치 (margin-top 삭제) */
         .time-display {
             position: absolute;
-            font-size: 50px;
+            font-size: 46px; 
             font-weight: 800;
             color: #ffffff;
             text-shadow: 0 2px 10px rgba(0, 0, 0, 0.4), 0 0 20px rgba(255, 255, 255, 0.2);
@@ -276,7 +300,8 @@
             z-index: 10;
         }
 
-        .controls { display: flex; gap: 20px; align-items: center; justify-content: center; margin-bottom: 22px; }
+        /* 컨트롤 영역 및 버튼 정렬 복구 */
+        .controls { display: flex; gap: 24px; align-items: center; justify-content: center; margin-bottom: 22px; }
         .btn { 
             font-family: inherit; 
             border: none; 
@@ -289,7 +314,7 @@
             line-height: 1; 
             -webkit-tap-highlight-color: transparent;
         }
-        .btn-start { background-color: #6A55C9; color: #ffffff; font-size: 18px; font-weight: bold; padding: 0; width: 110px; height: 46px; border-radius: 23px; transition: background-color 0.1s ease, transform 0.1s ease; }
+        .btn-start { background-color: #6A55C9; color: #ffffff; font-size: 18px; font-weight: bold; padding: 0; width: 110px; height: 46px; border-radius: 23px; transition: background-color 0.1s ease, transform 0.1s ease; letter-spacing: 1px; }
 
         .btn-icon-custom { 
             background-color: rgba(255, 255, 255, 0.12); 
@@ -509,7 +534,6 @@
         .todo-list::-webkit-scrollbar { width: 6px; }
         .todo-list::-webkit-scrollbar-thumb { background-color: rgba(255, 255, 255, 0.3); border-radius: 3px; }
         
-        /* [투두 아이템 - 시각적 가이드 및 자연스러운 전환] */
         .todo-item { 
             display: flex; 
             align-items: flex-start; 
@@ -541,14 +565,8 @@
             margin: 0 !important;
         }
 
-        .todo-item.drag-over-top {
-            border-top: 2.5px solid #ffffff;
-            margin-top: 8px; 
-        }
-        .todo-item.drag-over-bottom {
-            border-bottom: 2.5px solid #ffffff;
-            margin-bottom: 12px;
-        }
+        .todo-item.drag-over-top { border-top: 2.5px solid #ffffff; margin-top: 8px; }
+        .todo-item.drag-over-bottom { border-bottom: 2.5px solid #ffffff; margin-bottom: 12px; }
 
         .todo-item input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; accent-color: #6A55C9; flex-shrink: 0; margin-top: 3px; }
         
@@ -681,7 +699,7 @@
             gap: 5px;
         }
         .settings-num-input {
-            width: 48px;
+            width: 54px; 
             height: 34px;
             background-color: rgba(255, 255, 255, 0.95);
             border: 1px solid rgba(106, 85, 201, 0.35);
@@ -1030,8 +1048,8 @@
 
             <div class="tabs">
                 <button class="tab-btn active" id="btn-focus" onclick="handleManualTabChange('focus')">Focus</button>
-                <button class="tab-btn" id="btn-short" onclick="handleManualTabChange('short')">Short</button>
-                <button class="tab-btn" id="btn-long" onclick="handleManualTabChange('long')">Long</button>
+                <button class="tab-btn" id="btn-short" onclick="handleManualTabChange('short')">Break</button>
+                <button class="tab-btn" id="btn-timer" onclick="handleManualTabChange('timer')">Timer</button>
             </div>
 
             <div class="timer-row-wrapper">
@@ -1049,11 +1067,7 @@
             </div>
 
             <div class="controls">
-                <button class="btn btn-start" id="start-btn" onclick="toggleTimer()">Start</button>
-                
-                <button class="btn-icon-custom" onclick="pauseTimer()" title="일시정지">
-                    <svg viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" fill="#ffffff" stroke="none"/></svg>
-                </button>
+                <button class="btn btn-start" id="start-btn" onclick="toggleTimer()">START</button>
                 
                 <button class="btn-icon-custom" onclick="resetTimer()" title="초기화">
                     <svg viewBox="0 0 24 24"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" stroke="#ffffff" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -1106,7 +1120,7 @@
                 <div class="settings-time-row">
                     <span class="settings-mode-label">Focus</span>
                     <div class="settings-inputs-wrapper">
-                        <input type="number" inputmode="numeric" class="settings-num-input" id="input-focus-min" min="0" max="99" onblur="validateInput(this, 99)">
+                        <input type="number" inputmode="numeric" class="settings-num-input" id="input-focus-min" min="0" max="999" onblur="validateInput(this, 999)">
                         <span class="settings-unit-label">min</span>
                         <input type="number" inputmode="numeric" class="settings-num-input" id="input-focus-sec" min="0" max="59" onblur="validateInput(this, 59)">
                         <span class="settings-unit-label">sec</span>
@@ -1114,21 +1128,11 @@
                 </div>
 
                 <div class="settings-time-row">
-                    <span class="settings-mode-label">Short</span>
+                    <span class="settings-mode-label">Break</span>
                     <div class="settings-inputs-wrapper">
-                        <input type="number" inputmode="numeric" class="settings-num-input" id="input-short-min" min="0" max="99" onblur="validateInput(this, 99)">
+                        <input type="number" inputmode="numeric" class="settings-num-input" id="input-short-min" min="0" max="999" onblur="validateInput(this, 999)">
                         <span class="settings-unit-label">min</span>
                         <input type="number" inputmode="numeric" class="settings-num-input" id="input-short-sec" min="0" max="59" onblur="validateInput(this, 59)">
-                        <span class="settings-unit-label">sec</span>
-                    </div>
-                </div>
-
-                <div class="settings-time-row">
-                    <span class="settings-mode-label">Long</span>
-                    <div class="settings-inputs-wrapper">
-                        <input type="number" inputmode="numeric" class="settings-num-input" id="input-long-min" min="0" max="99" onblur="validateInput(this, 99)">
-                        <span class="settings-unit-label">min</span>
-                        <input type="number" inputmode="numeric" class="settings-num-input" id="input-long-sec" min="0" max="59" onblur="validateInput(this, 59)">
                         <span class="settings-unit-label">sec</span>
                     </div>
                 </div>
@@ -1170,7 +1174,7 @@
                 </div>
             </div>
 
-            <!-- 활동 시간 (각진 꺾은선 + 바닥 숫자 라벨) -->
+            <!-- 활동 시간 (각진 꺾은선) -->
             <div class="stats-section-box">
                 <div class="stats-section-header">
                     <span class="stats-section-heading">활동 시간</span>
@@ -1265,8 +1269,7 @@
 
         const HARD_DEFAULTS = {
             focus: { min: 25, sec: 0 },
-            short: { min: 5, sec: 0 },
-            long: { min: 15, sec: 0 }
+            short: { min: 5, sec: 0 }
         };
 
         function getInitialModeSettings() {
@@ -1274,7 +1277,10 @@
             if (isSavePermanent) {
                 try {
                     const saved = localStorage.getItem(`potato-timer-presets-${userId}`);
-                    if (saved) return JSON.parse(saved);
+                    if (saved) {
+                        const parsed = JSON.parse(saved);
+                        if(parsed.focus && parsed.short) return parsed;
+                    }
                 } catch(e) {}
             }
             return JSON.parse(JSON.stringify(HARD_DEFAULTS));
@@ -1283,14 +1289,17 @@
         let modeSettings = getInitialModeSettings();
         let targetCycleGoal = parseInt(localStorage.getItem(`potato-target-goal-${userId}`), 10) || 10;
 
-        let currentMode = 'focus'; 
-        let totalSeconds = modeSettings.focus.min * 60 + modeSettings.focus.sec;
-        let timeRemaining = totalSeconds; 
+        /* [개별 탭 백그라운드 독립 상태 관리 구조] */
+        let tabStates = {
+            focus: { timeRemaining: modeSettings.focus.min * 60 + modeSettings.focus.sec, totalSeconds: modeSettings.focus.min * 60 + modeSettings.focus.sec, isRunning: false },
+            short: { timeRemaining: modeSettings.short.min * 60 + modeSettings.short.sec, totalSeconds: modeSettings.short.min * 60 + modeSettings.short.sec, isRunning: false },
+            timer: { timeRemaining: 0, totalSeconds: 0, isRunning: false }
+        };
         
+        let currentMode = 'focus'; 
         let timerAnimationId = null;
         let lastTimestamp = null;
-        let isTimerRunning = false;
-        let targetEndTime = null;
+        let bgTimestamp = null;
         
         const totalLength = 345.57; 
 
@@ -1302,7 +1311,8 @@
         let isAutoPomo = storedAutoPomo === 'true'; 
 
         let lastActiveTime = parseInt(localStorage.getItem(`potato-last-active-${userId}`), 10) || Date.now();
-        let actualFocusSecondsCompleted = 0; // 엄격한 25분 완주 조건용 누적 변수
+        let actualFocusSecondsCompleted = 0; 
+        let lastCompletedMode = 'focus'; 
 
         function updateLastActive() {
             lastActiveTime = Date.now();
@@ -1345,9 +1355,9 @@
             </g>
         `;
         const ICON_SOUND_MUTED = `
-            <g transform="translate(5, 0)">
+            <g transform="translate(4.5, 0)">
                 <path d="M11 5L6 9H3v6h3l5 4V5z" fill="#ffffff" stroke="#ffffff" stroke-width="1.5" stroke-linejoin="round"/>
-                <line x1="2" y1="6" x2="12" y2="18" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round"/>
+                <line x1="1" y1="5" x2="13.5" y2="19" stroke="#ffffff" stroke-width="2.3" stroke-linecap="round"/>
             </g>
         `;
 
@@ -1544,7 +1554,7 @@
         let starTimeoutId = null;
         let slowDownSteps = 0;
 
-        /* [별똥별 전역 완전 랜덤 분산 엔진] */
+        /* [별똥별 전역 완전 분산 발생 로직] */
         function triggerShootingStar() {
             const screenW = window.innerWidth || 800;
             const screenH = window.innerHeight || 600;
@@ -1605,13 +1615,23 @@
             milkyWayGlow.classList.remove('visible');
         }
 
-        /* [Web Audio API 엔진] */
+        /* [Web Audio API 탭 공통 및 Timer 단발성 알람 엔진] */
         let audioCtx = null;
         let gainNode = null;
         let audioSourceNode = null;
         let activeAudio = null;
         let audioLoopInterval = null;
         let isFocusFirstRun = true;
+
+        let hourlyAudio = new Audio('./alarm.mp3'); 
+        hourlyAudio.volume = 1.0; 
+
+        function playHourlyAlert() {
+            if (!isMuted) {
+                hourlyAudio.currentTime = 0;
+                hourlyAudio.play().catch(()=>{});
+            }
+        }
 
         function stopAudioEngine() {
             if (audioLoopInterval) {
@@ -1714,7 +1734,7 @@
             return `${year}-${month}-${day}`;
         }
 
-        /* [자정 스마트 리셋 로직] */
+        /* [자정 스마트 리셋 로직: 2시간 아이들 시 작동 / 개별 시간 유지] */
         function checkMidnightReset() {
             const todayStr = getFormattedDate();
             
@@ -1729,7 +1749,7 @@
                 const idleDuration = now - lastActiveTime;
                 const isOverTwoHoursIdle = idleDuration >= (2 * 60 * 60 * 1000);
 
-                if (isTimerRunning || !isOverTwoHoursIdle) {
+                if (tabStates.focus.isRunning || tabStates.short.isRunning || tabStates.timer.isRunning || !isOverTwoHoursIdle) {
                     statsDateEl.textContent = todayStr;
                     saveState();
                     return;
@@ -1756,34 +1776,58 @@
             statsCounterEl.textContent = `Today's Focus Time: ${focusMinutes} min`;
         }
 
+        /* [타이머 SVG 디스플레이 갱신 - 오류 없는 우측(시계방향) 회전 정밀 수식 반전] */
         function updateDisplay() {
-            const ceilingTime = Math.ceil(timeRemaining);
-            const minutes = Math.floor(ceilingTime / 60);
-            const seconds = ceilingTime % 60;
+            let state = tabStates[currentMode];
+            const displaySecs = currentMode === 'timer' ? Math.floor(state.timeRemaining) : Math.ceil(state.timeRemaining);
+            const minutes = Math.floor(displaySecs / 60);
+            const seconds = displaySecs % 60;
             timeText.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-            const offset = totalLength - (timeRemaining / totalSeconds) * totalLength;
+            
+            let offset;
+            if (currentMode === 'timer') {
+                const cycleIndex = Math.floor(displaySecs / 3600);
+                const progressRatio = (displaySecs % 3600) / 3600;
+                
+                // [수정 포인트: 정확한 시계 방향 애니메이션 교정]
+                // stroke-dashoffset이 커지면 반시계 방향으로 지워지는 브라우저 특성 해결을 위해
+                // 전체 길이의 2배수를 활용하여 시계 방향으로 자연스럽게 닳아 없어지고 채워지도록 구현했습니다.
+                if (cycleIndex % 2 === 0) { 
+                    // 0~59: 꽉 찬 상태에서 12시부터 시계방향(오른쪽)으로 닳아 없어짐
+                    offset = totalLength * 2 - (progressRatio * totalLength);
+                } else { 
+                    // 60~119: 빈 상태에서 12시부터 시계방향(오른쪽)으로 차오름
+                    offset = totalLength - (progressRatio * totalLength);
+                }
+            } else {
+                offset = totalLength - (state.timeRemaining / state.totalSeconds) * totalLength;
+            }
+            
             progressCircle.style.strokeDashoffset = isNaN(offset) ? 0 : offset;
         }
 
         function adjustTime(amount) {
             updateLastActive();
+            if (currentMode === 'timer') return;
+
             const delta = amount * 60;
-            if (delta < 0 && timeRemaining <= 10) {
-                if (isTimerRunning) {
-                    timeRemaining = 0;
+            let state = tabStates[currentMode];
+
+            if (delta < 0 && state.timeRemaining <= 10) {
+                if (state.isRunning) {
+                    state.timeRemaining = 0;
                     updateDisplay();
-                    stopTimerWithAlert();
+                    stopTimerWithAlert(currentMode);
                 }
                 return; 
             }
-            timeRemaining += delta;
-            if (timeRemaining > 99 * 60) timeRemaining = 99 * 60;
-            if (timeRemaining < 0) timeRemaining = 0;
+            state.timeRemaining += delta;
+            if (state.timeRemaining > 999 * 60 + 59) state.timeRemaining = 999 * 60 + 59;
+            if (state.timeRemaining < 0) state.timeRemaining = 0;
             
-            totalSeconds = isTimerRunning ? (totalSeconds + delta) : timeRemaining;
-            if (totalSeconds < timeRemaining) totalSeconds = timeRemaining;
+            state.totalSeconds = state.isRunning ? (state.totalSeconds + delta) : state.timeRemaining;
+            if (state.totalSeconds < state.timeRemaining) state.totalSeconds = state.timeRemaining;
             
-            if (isTimerRunning) targetEndTime = Date.now() + (timeRemaining * 1000);
             updateDisplay();
         }
 
@@ -1804,78 +1848,170 @@
             focusHistory[dateKey].hourly[hour] = (focusHistory[dateKey].hourly[hour] || 0) + seconds;
         }
 
-        function timerLoop(timestamp) {
-            if (!isTimerRunning) return;
-            if (!lastTimestamp) lastTimestamp = timestamp;
-            const elapsedSeconds = (timestamp - lastTimestamp) / 1000;
-            lastTimestamp = timestamp;
-            timeRemaining -= elapsedSeconds;
+        /* [백그라운드 다중 타이머 추적 (바탕화면 나갔다 왔을 때 오차 정밀 보정 포함)] */
+        function timerLoop() {
+            const now = Date.now();
+            if (!lastTimestamp) lastTimestamp = now;
+            let elapsedSeconds = (now - lastTimestamp) / 1000;
+            lastTimestamp = now;
 
-            if (timeRemaining <= 10 && !isCelebrationActive) {
-                startCelebrationVFX();
-            }
+            let anyRunning = false;
 
-            if (currentMode === 'focus') {
+            if (tabStates.focus.isRunning) {
+                anyRunning = true;
+                tabStates.focus.timeRemaining -= elapsedSeconds;
                 accumulatedFocusSeconds += elapsedSeconds;
                 actualFocusSecondsCompleted += elapsedSeconds;
                 recordFocusTime(elapsedSeconds);
-                updateStatsDisplay();
 
-                if (Date.now() - lastFocusSaveTime > 10000) {
-                    lastFocusSaveTime = Date.now();
-                    saveState();
+                if (tabStates.focus.timeRemaining <= 10 && currentMode === 'focus' && !isCelebrationActive) {
+                    startCelebrationVFX();
+                }
+
+                if (tabStates.focus.timeRemaining <= 0) {
+                    tabStates.focus.timeRemaining = 0;
+                    stopTimerWithAlert('focus');
                 }
             }
 
-            if (timeRemaining <= 0) {
-                timeRemaining = 0;
-                updateDisplay();
+            if (tabStates.short.isRunning) {
+                anyRunning = true;
+                tabStates.short.timeRemaining -= elapsedSeconds;
+                
+                if (tabStates.short.timeRemaining <= 10 && currentMode === 'short' && !isCelebrationActive) {
+                    startCelebrationVFX();
+                }
+
+                if (tabStates.short.timeRemaining <= 0) {
+                    tabStates.short.timeRemaining = 0;
+                    stopTimerWithAlert('short');
+                }
+            }
+
+            if (tabStates.timer.isRunning) {
+                anyRunning = true;
+                let prevHour = Math.floor(tabStates.timer.timeRemaining / 3600);
+                
+                tabStates.timer.timeRemaining += elapsedSeconds;
+                accumulatedFocusSeconds += elapsedSeconds;
+                recordFocusTime(elapsedSeconds);
+
+                if (tabStates.timer.timeRemaining >= 59999) { 
+                    elapsedSeconds -= (tabStates.timer.timeRemaining - 59999);
+                    tabStates.timer.timeRemaining = 59999;
+                    tabStates.timer.isRunning = false;
+                    if (currentMode === 'timer') {
+                        startBtn.textContent = 'START';
+                    }
+                }
+                
+                let currentHour = Math.floor(tabStates.timer.timeRemaining / 3600);
+                if (currentHour > prevHour && currentHour >= 1) {
+                    playHourlyAlert();
+                }
+            }
+
+            updateStatsDisplay();
+            if (now - lastFocusSaveTime > 10000) {
+                lastFocusSaveTime = now;
                 saveState();
-                stopTimerWithAlert();
-                return;
             }
             updateDisplay();
-            timerAnimationId = requestAnimationFrame(timerLoop);
+
+            if (anyRunning) {
+                timerAnimationId = requestAnimationFrame(timerLoop);
+            } else {
+                timerAnimationId = null;
+                lastTimestamp = null;
+            }
         }
 
+        /* [START / STOP 토글 제어] */
         function toggleTimer() {
             updateLastActive();
-            if (isTimerRunning) return; 
-            if (timeRemaining <= 0) return;
-            checkMidnightReset(); 
-            isTimerRunning = true;
-            lastTimestamp = null;
-            targetEndTime = Date.now() + (timeRemaining * 1000);
-            timerAnimationId = requestAnimationFrame(timerLoop);
-        }
+            let state = tabStates[currentMode];
 
-        function pauseTimer() {
-            updateLastActive();
-            if (isTimerRunning) {
-                isTimerRunning = false;
-                cancelAnimationFrame(timerAnimationId);
+            if (state.isRunning) {
+                state.isRunning = false;
+                startBtn.textContent = 'START';
                 saveState();
-                stabilizeSkySmoothly();
+                
+                if (!tabStates.focus.isRunning && !tabStates.short.isRunning && !tabStates.timer.isRunning) {
+                    if (timerAnimationId) cancelAnimationFrame(timerAnimationId);
+                    timerAnimationId = null;
+                    stabilizeSkySmoothly();
+                }
+            } else {
+                if (currentMode !== 'timer' && state.timeRemaining <= 0) return;
+                if (currentMode === 'timer' && state.timeRemaining >= 59999) return;
+                
+                checkMidnightReset(); 
+                state.isRunning = true;
+                startBtn.textContent = 'STOP';
+                
+                if (!timerAnimationId) {
+                    lastTimestamp = Date.now();
+                    timerAnimationId = requestAnimationFrame(timerLoop);
+                }
             }
         }
 
         function resetTimer() {
             updateLastActive();
-            isTimerRunning = false;
-            cancelAnimationFrame(timerAnimationId);
-            stopAudioEngine();
-            const setting = modeSettings[currentMode];
-            totalSeconds = setting.min * 60 + setting.sec;
-            timeRemaining = totalSeconds;
-            actualFocusSecondsCompleted = 0; // 초과 획득 차단
+            let state = tabStates[currentMode];
+            state.isRunning = false;
+            
+            if (currentMode === 'timer') {
+                state.timeRemaining = 0;
+                state.totalSeconds = 0;
+            } else {
+                const setting = modeSettings[currentMode];
+                state.totalSeconds = setting.min * 60 + setting.sec;
+                state.timeRemaining = state.totalSeconds;
+            }
+            
+            actualFocusSecondsCompleted = 0;
+            startBtn.textContent = 'START';
+            
+            if (!tabStates.focus.isRunning && !tabStates.short.isRunning && !tabStates.timer.isRunning) {
+                if (timerAnimationId) cancelAnimationFrame(timerAnimationId);
+                timerAnimationId = null;
+                lastTimestamp = null;
+                stopAudioEngine();
+            }
             updateDisplay();
         }
 
         function setMode(mode) {
+            // 다른 탭으로 이동할 때 Focus, Break는 정지. Timer는 백그라운드 유지
+            if (currentMode === 'focus' || currentMode === 'short') {
+                tabStates[currentMode].isRunning = false;
+            }
+
             currentMode = mode;
             tabButtons.forEach(btn => btn.classList.remove('active'));
-            document.getElementById('btn-' + mode).classList.add('active');
-            resetTimer();
+            document.getElementById('btn-' + (mode === 'short' ? 'short' : mode)).classList.add('active'); 
+            
+            const btnMinus = document.getElementById('btn-adjust-minus');
+            const btnPlus = document.getElementById('btn-adjust-plus');
+            if (mode === 'timer') {
+                btnMinus.style.visibility = 'hidden';
+                btnPlus.style.visibility = 'hidden';
+            } else {
+                btnMinus.style.visibility = 'visible';
+                btnPlus.style.visibility = 'visible';
+            }
+            
+            startBtn.textContent = tabStates[currentMode].isRunning ? 'STOP' : 'START';
+
+            if (!tabStates.focus.isRunning && !tabStates.short.isRunning && !tabStates.timer.isRunning) {
+                if (timerAnimationId) cancelAnimationFrame(timerAnimationId);
+                timerAnimationId = null;
+                lastTimestamp = null;
+                stabilizeSkySmoothly();
+            }
+
+            updateDisplay(); 
         }
 
         function handleManualTabChange(mode) {
@@ -1888,21 +2024,31 @@
             setMode(mode);
         }
 
-        function stopTimerWithAlert() {
+        function stopTimerWithAlert(completedMode) {
             updateLastActive();
-            isTimerRunning = false;
-            cancelAnimationFrame(timerAnimationId);
+            tabStates[completedMode].isRunning = false;
+            
+            if (completedMode === currentMode) {
+                startBtn.textContent = 'START';
+            }
+            
+            if (!tabStates.focus.isRunning && !tabStates.short.isRunning && !tabStates.timer.isRunning) {
+                if (timerAnimationId) cancelAnimationFrame(timerAnimationId);
+                timerAnimationId = null;
+            }
             
             startCelebrationVFX();
-            startInfiniteAudioLoop(currentMode);
+            startInfiniteAudioLoop(completedMode);
 
-            if (currentMode === 'focus') {
+            if (completedMode === 'focus') {
                 customAlertBox.classList.add('wide');
                 customAlertMsg.textContent = '시간이 다 되었습니다! 고생하셨어요 🎉';
             } else {
                 customAlertBox.classList.remove('wide');
                 customAlertMsg.textContent = '이제 다시 시작해 볼까요? 💪🏻';
             }
+
+            lastCompletedMode = completedMode;
 
             setTimeout(() => {
                 customAlert.classList.add('show');
@@ -1914,10 +2060,8 @@
             customAlert.classList.remove('show');
             stopAudioEngine();
 
-            const completedMode = currentMode;
-
-            // [수정 포인트: 정확히 25분 완주 조건 검증] (시스템 렉 오차 방어 위해 1498초 적용)
-            if (completedMode === 'focus') {
+            if (lastCompletedMode === 'focus') {
+                // 오차 보정 완주 검증 (1498초)
                 if (actualFocusSecondsCompleted >= 1498) {
                     if (pomoStars < 4) {
                         pomoStars++;
@@ -1935,32 +2079,45 @@
             }
 
             if (isAutoPomo) {
-                if (completedMode === 'focus') {
-                    if (pomoStars === 4) {
-                        setMode('long');
-                    } else {
-                        setMode('short');
-                    }
+                if (lastCompletedMode === 'focus') {
+                    setMode('short');
                 } else {
                     setMode('focus');
                 }
-                toggleTimer();
+                toggleTimer(); 
             } else {
-                resetTimer();
+                let state = tabStates[lastCompletedMode];
+                const setting = modeSettings[lastCompletedMode];
+                if (setting) {
+                    state.totalSeconds = setting.min * 60 + setting.sec;
+                    state.timeRemaining = state.totalSeconds;
+                }
+                updateDisplay();
             }
         }
 
+        /* 백그라운드 전환 시 시간 추적 보정 */
         document.addEventListener('visibilitychange', () => {
-            if (!document.hidden && isTimerRunning && targetEndTime) {
-                const remaining = Math.max(0, (targetEndTime - Date.now()) / 1000);
-                timeRemaining = remaining;
-                if (timeRemaining <= 0) {
-                    timeRemaining = 0;
-                    updateDisplay();
-                    stopTimerWithAlert();
-                } else {
-                    updateDisplay();
+            if (document.hidden) {
+                bgTimestamp = Date.now();
+            } else {
+                if (bgTimestamp && timerAnimationId) {
+                    const bgElapsed = (Date.now() - bgTimestamp) / 1000;
+                    
+                    if (tabStates.focus.isRunning) tabStates.focus.timeRemaining -= bgElapsed;
+                    if (tabStates.short.isRunning) tabStates.short.timeRemaining -= bgElapsed;
+                    
+                    if (tabStates.timer.isRunning) {
+                        const oldHour = Math.floor(tabStates.timer.timeRemaining / 3600);
+                        tabStates.timer.timeRemaining += bgElapsed;
+                        const newHour = Math.floor(tabStates.timer.timeRemaining / 3600);
+                        if (newHour > oldHour && newHour >= 1) {
+                            playHourlyAlert();
+                        }
+                    }
+                    lastTimestamp = Date.now(); // 오차 누적 방지 리셋
                 }
+                bgTimestamp = null;
             }
         });
 
@@ -1971,7 +2128,7 @@
             let val = parseInt(input.value, 10);
             if (isNaN(val) || val < minVal) val = minVal;
             if (val > maxVal) val = maxVal;
-            input.value = (maxVal === 99 && minVal === 0) ? String(val).padStart(2, '0') : String(val);
+            input.value = (maxVal === 999 && minVal === 0) ? String(val).padStart(2, '0') : String(val);
         }
 
         function openSettings() {
@@ -1980,8 +2137,6 @@
             document.getElementById('input-focus-sec').value = String(modeSettings.focus.sec).padStart(2, '0');
             document.getElementById('input-short-min').value = String(modeSettings.short.min).padStart(2, '0');
             document.getElementById('input-short-sec').value = String(modeSettings.short.sec).padStart(2, '0');
-            document.getElementById('input-long-min').value = String(modeSettings.long.min).padStart(2, '0');
-            document.getElementById('input-long-sec').value = String(modeSettings.long.sec).padStart(2, '0');
             document.getElementById('input-target-cycles').value = String(targetCycleGoal);
 
             const isSavePermanent = localStorage.getItem(`potato-save-default-${userId}`) === 'true';
@@ -2004,16 +2159,12 @@
             updateLastActive();
             const newSettings = {
                 focus: {
-                    min: Math.min(99, Math.max(0, parseInt(document.getElementById('input-focus-min').value, 10) || 0)),
+                    min: Math.min(999, Math.max(0, parseInt(document.getElementById('input-focus-min').value, 10) || 0)),
                     sec: Math.min(59, Math.max(0, parseInt(document.getElementById('input-focus-sec').value, 10) || 0))
                 },
                 short: {
-                    min: Math.min(99, Math.max(0, parseInt(document.getElementById('input-short-min').value, 10) || 0)),
+                    min: Math.min(999, Math.max(0, parseInt(document.getElementById('input-short-min').value, 10) || 0)),
                     sec: Math.min(59, Math.max(0, parseInt(document.getElementById('input-short-sec').value, 10) || 0))
-                },
-                long: {
-                    min: Math.min(99, Math.max(0, parseInt(document.getElementById('input-long-min').value, 10) || 0)),
-                    sec: Math.min(59, Math.max(0, parseInt(document.getElementById('input-long-sec').value, 10) || 0))
                 }
             };
 
@@ -2041,7 +2192,19 @@
             settingsModal.classList.remove('show');
 
             renderPomoTracker();
-            if (hasChanged) resetTimer();
+            
+            // 세팅을 닫을 때, 현재 구동 중이지 않은 탭들에 한해서만 세팅값을 덮어씌움
+            if (hasChanged) {
+                if (!tabStates.focus.isRunning) {
+                    tabStates.focus.totalSeconds = modeSettings.focus.min * 60 + modeSettings.focus.sec;
+                    tabStates.focus.timeRemaining = tabStates.focus.totalSeconds;
+                }
+                if (!tabStates.short.isRunning) {
+                    tabStates.short.totalSeconds = modeSettings.short.min * 60 + modeSettings.short.sec;
+                    tabStates.short.timeRemaining = tabStates.short.totalSeconds;
+                }
+                updateDisplay();
+            }
         }
 
         /* [통계 대시보드 로직] */
@@ -2321,7 +2484,7 @@
             }
         }
 
-        /* [실시간 고스트 커스텀 드래그 앤 드롭: 잔상 해제 및 부드러운 스왑 배열] */
+        /* [실시간 고스트 커스텀 드래그 앤 드롭] */
         let draggedTodoId = null;
         let dragGhost = null;
         let offsetX = 0;
