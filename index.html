@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     
-    <!-- 모바일 홈 화면 추가 시 둥근 감자 아이콘 및 상태표시줄 최적화 -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Potato Timer">
@@ -34,14 +33,15 @@
             text-rendering: optimizeLegibility;
         }
 
+        /* [핵심] 최상위 오버스크롤 전파를 차단하여 브라우저 제스처로 인한 전체화면 강제 해제 방지 */
         html, body {
-            overflow: hidden;
+            overflow: hidden !important;
+            overscroll-behavior: none !important;
             width: 100%;
             height: 100%;
             height: 100dvh;
             margin: 0;
             padding: 0;
-            touch-action: manipulation;
         }
 
         body {
@@ -62,13 +62,15 @@
             position: relative;
         }
 
-        body.pseudo-fullscreen {
+        /* [가상 전체화면 모드 스타일 - OS 튕김 방지] */
+        html.pseudo-fullscreen, body.pseudo-fullscreen {
             position: fixed !important;
             top: 0 !important;
             left: 0 !important;
             width: 100vw !important;
             height: 100vh !important;
             height: 100dvh !important;
+            overflow: hidden !important;
             z-index: 999999 !important;
         }
 
@@ -144,7 +146,7 @@
             100% { transform: translate(var(--move-x), var(--move-y)) rotate(45deg) scaleX(0.1) translateZ(0); opacity: 0; }
         }
 
-        /* [PC 비율 기준 래퍼] */
+        /* [PC/태블릿 비율 래퍼 - 0.1cm 미세 상향 적용] */
         .viewport-scaler {
             display: flex;
             align-items: center;
@@ -153,6 +155,7 @@
             height: 100%;
             position: relative;
             z-index: 5;
+            transform: translateY(-4px); 
             transition: transform 0.2s ease;
         }
 
@@ -164,27 +167,6 @@
             width: 480px; 
             transform-origin: center center;
             transition: transform 0.1s ease;
-        }
-
-        /* [모바일 및 태블릿 화면 세로 정렬(Shift) 완벽 대응] */
-        @media (max-width: 600px) {
-            .viewport-scaler {
-                /* 홈화면(PWA) 추가 시 윗부분이 잘리던 -38px 삭제 및 정상화 */
-                transform: translateY(5px); 
-            }
-        }
-
-        @media (min-width: 601px) and (max-width: 1024px) {
-            .viewport-scaler {
-                /* 태블릿 일반 화면일 때만 전체를 약 0.5cm 위로 올림 */
-                transform: translateY(-25px); 
-            }
-            /* 전체화면일 때는 다시 원래 정중앙으로 복귀 */
-            body.pseudo-fullscreen .viewport-scaler,
-            body:fullscreen .viewport-scaler,
-            body:-webkit-full-screen .viewport-scaler {
-                transform: translateY(0);
-            }
         }
 
         .header-area { 
@@ -264,7 +246,6 @@
             padding: 0; 
             transition: transform 0.1s ease, opacity 0.1s; 
             outline: none; 
-            touch-action: manipulation;
             -webkit-tap-highlight-color: transparent !important;
             -webkit-user-select: none;
             user-select: none;
@@ -272,7 +253,13 @@
         }
 
         .timer-container { position: relative; width: 260px; height: 260px; display: flex; align-items: center; justify-content: center; }
-        .timer-svg { transform: rotate(-90deg) translateZ(0); width: 100%; height: 100%; }
+        
+        .timer-svg { 
+            transform: rotate(-90deg) translateZ(0); 
+            width: 100%; 
+            height: 100%; 
+        }
+        
         .circle-bg { fill: none; stroke: rgba(255, 255, 255, 0.15); stroke-width: 2; }
         
         .circle-progress {
@@ -285,7 +272,6 @@
             transition: none; 
         }
         
-        /* 텍스트 위치 기존 원위치 (margin-top 삭제) */
         .time-display {
             position: absolute;
             font-size: 46px; 
@@ -300,7 +286,6 @@
             z-index: 10;
         }
 
-        /* 컨트롤 영역 및 버튼 정렬 복구 */
         .controls { display: flex; gap: 24px; align-items: center; justify-content: center; margin-bottom: 22px; }
         .btn { 
             font-family: inherit; 
@@ -314,7 +299,24 @@
             line-height: 1; 
             -webkit-tap-highlight-color: transparent;
         }
-        .btn-start { background-color: #6A55C9; color: #ffffff; font-size: 18px; font-weight: bold; padding: 0; width: 110px; height: 46px; border-radius: 23px; transition: background-color 0.1s ease, transform 0.1s ease; letter-spacing: 1px; }
+
+        /* [START / STOP 글씨 정중앙 배치] */
+        .btn-start { 
+            background-color: #6A55C9; 
+            color: #ffffff; 
+            font-size: 18px; 
+            font-weight: bold; 
+            padding: 0; 
+            width: 110px; 
+            height: 46px; 
+            border-radius: 23px; 
+            transition: background-color 0.1s ease, transform 0.1s ease; 
+            letter-spacing: 0 !important; 
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
 
         .btn-icon-custom { 
             background-color: rgba(255, 255, 255, 0.12); 
@@ -328,7 +330,6 @@
         }
         .btn-icon-custom svg { width: 16px; height: 16px; fill: none; stroke: #ffffff; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
 
-        /* [버튼 누름(Active) 상태 명확한 피드백 부여 - 손 떼면 즉시 원복] */
         .btn-start:active { background-color: #5542a8 !important; transform: scale(0.95) translateZ(0) !important; filter: brightness(0.9); }
         .tab-btn:active { background-color: rgba(255, 255, 255, 0.9); transform: scale(0.95) translateZ(0); filter: brightness(0.9); }
         .tab-btn.active:active { background-color: #5542a8; }
@@ -339,9 +340,7 @@
         .todo-add-btn:active { background-color: #5542a8; transform: scale(0.95) translateZ(0); }
         .custom-alert-btn:active { background-color: #5542a8; transform: scale(0.95) translateZ(0); }
         .settings-close-btn:active { color: #ff4d4f !important; transform: scale(0.9); }
-        .todo-del-btn:active { color: #ff5b5b; transform: scale(0.9); }
 
-        /* [PC 전용 호버링 - 모바일 잔상 완전 격리] */
         @media (hover: hover) {
             .tab-btn:hover:not(.active) { background-color: rgba(255, 255, 255, 0.9); }
             .tab-btn.active:hover { background-color: #8E79E7; box-shadow: 0 4px 12px rgba(142, 121, 231, 0.6); }
@@ -350,8 +349,6 @@
             .btn-icon-custom:hover { background-color: rgba(255, 255, 255, 0.25); border-color: rgba(255, 255, 255, 0.5); transform: translateY(-2px) translateZ(0); }
             .todo-toggle-btn:hover { background-color: rgba(255, 255, 255, 0.35); }
             .todo-add-btn:hover { background-color: #8E79E7; }
-            .todo-drag-handle:hover { color: #ffffff; }
-            .todo-del-btn:hover { color: #ff5b5b; }
             .custom-alert-btn:hover { background-color: #8E79E7; }
             .settings-close-btn:hover { color: #111111; }
             .hourly-bar-col:hover .hourly-bar:not(.empty) { background: #8E79E7; }
@@ -359,7 +356,6 @@
             .top-action-btn:hover { background-color: rgba(255, 255, 255, 0.3); transform: scale(1.08) translateZ(0); }
         }
 
-        /* [뽀모도로 트래커 바] */
         .pomo-tracker-bar {
             display: grid;
             grid-template-columns: 1fr auto 1fr;
@@ -455,7 +451,7 @@
             transform: translateX(16px);
         }
 
-        /* [To-Do 버튼 & 서랍] */
+        /* [투두 버튼 본래 두께(padding 8px 24px) 및 바닥 밀착] */
         .todo-toggle-btn {
             background-color: rgba(255, 255, 255, 0.25); 
             border: 1px solid rgba(255, 255, 255, 0.3); 
@@ -499,13 +495,13 @@
             display: flex; 
             flex-direction: column; 
             z-index: 999 !important;
-            touch-action: pan-y !important;
+            overscroll-behavior: contain !important;
         }
         .todo-drawer.open { 
             bottom: 0px !important; 
         }
 
-        @media (min-width: 601px) and (max-width: 1024px) {
+        @media (min-width: 601px) {
             .todo-drawer {
                 width: 440px;
                 height: 300px;
@@ -525,20 +521,33 @@
             display: block;
             overflow-y: hidden;
             -webkit-tap-highlight-color: transparent;
-            touch-action: manipulation;
         }
         .todo-input::placeholder { line-height: 20px; color: #666666; vertical-align: middle; }
         .todo-add-btn { font-family: inherit; background-color: #6A55C9; color: white; border: none; height: 38px; padding: 0 16px; border-radius: 12px; font-size: 14px; font-weight: bold; cursor: pointer; transition: background 0.1s; -webkit-tap-highlight-color: transparent; }
         
-        .todo-list { list-style: none; padding: 0; margin: 0; flex: 1; overflow-y: auto; user-select: text; -webkit-user-select: text; touch-action: pan-y !important; position: relative;}
+        /* [투두 리스트 - 터치 스크롤 안정화] */
+        .todo-list { 
+            list-style: none; 
+            padding: 0; 
+            margin: 0; 
+            flex: 1; 
+            overflow-y: auto; 
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior: contain !important;
+            touch-action: pan-y !important;
+            user-select: text; 
+            -webkit-user-select: text; 
+            position: relative;
+        }
         .todo-list::-webkit-scrollbar { width: 6px; }
         .todo-list::-webkit-scrollbar-thumb { background-color: rgba(255, 255, 255, 0.3); border-radius: 3px; }
         
         .todo-item { 
             display: flex; 
-            align-items: flex-start; 
+            align-items: center; 
             background-color: rgba(255, 255, 255, 0.15); 
-            padding: 9px 12px; 
+            padding: 8px 12px; 
+            min-height: 44px;
             border-radius: 10px; 
             margin-bottom: 6px; 
             gap: 8px; 
@@ -555,34 +564,69 @@
         .is-dragging-ghost {
             position: fixed !important;
             pointer-events: none !important;
-            z-index: 99999 !important;
+            z-index: 999999 !important;
             opacity: 0.95;
-            background-color: rgba(106, 85, 201, 0.9) !important;
+            background-color: rgba(106, 85, 201, 0.95) !important;
             box-shadow: 0 10px 25px rgba(0,0,0,0.6);
             border-radius: 10px;
-            transform: scale(1.02);
             transition: none !important; 
             margin: 0 !important;
+            transform: none !important;
         }
 
         .todo-item.drag-over-top { border-top: 2.5px solid #ffffff; margin-top: 8px; }
         .todo-item.drag-over-bottom { border-bottom: 2.5px solid #ffffff; margin-bottom: 12px; }
 
-        .todo-item input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; accent-color: #6A55C9; flex-shrink: 0; margin-top: 3px; }
+        .todo-item input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; accent-color: #6A55C9; flex-shrink: 0; margin: 0; }
         
-        .todo-text { flex: 1; font-size: 14px; color: #ffffff; word-break: break-all; white-space: pre-wrap; text-align: left; font-weight: normal; line-height: 1.6; padding: 0 2px; }
+        .todo-text { flex: 1; font-size: 14px; color: #ffffff; word-break: break-all; white-space: pre-wrap; text-align: left; font-weight: normal; line-height: 20px; padding: 0 2px; margin: 0; }
         .todo-item.completed { background-color: rgba(255, 255, 255, 0.08); }
         .todo-item.completed .todo-text { text-decoration: line-through; opacity: 0.5; }
 
-        .todo-drag-handle {
-            cursor: grab; display: flex; align-items: center; justify-content: center;
-            padding: 3px 4px; color: rgba(255, 255, 255, 0.45); transition: color 0.15s; flex-shrink: 0; touch-action: none; margin-top: 1px;
+        /* [우측 투두 아이콘 2개 높낮이 오차 0% 완벽 일직선 수평 정렬] */
+        .todo-actions {
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: flex-end !important;
+            gap: 6px;
+            height: 24px;
+            flex-shrink: 0;
+            margin: auto 0 auto auto;
         }
-        .todo-drag-handle:active { cursor: grabbing; }
-        .todo-drag-handle svg { width: 14px; height: 14px; fill: currentColor; }
-        .todo-item.completed .todo-drag-handle { display: none; }
 
-        .todo-del-btn { background: none; border: none; color: rgba(255, 255, 255, 0.6); font-size: 18px; cursor: pointer; padding: 0 4px; transition: color 0.15s; flex-shrink: 0; line-height: 1; margin-top: 1px; -webkit-tap-highlight-color: transparent; }
+        .todo-drag-handle, .todo-del-btn {
+            width: 24px !important;
+            height: 24px !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            border: none !important;
+            background: transparent !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            line-height: 1 !important;
+            box-sizing: border-box !important;
+            box-shadow: none !important;
+            outline: none;
+            color: rgba(255, 255, 255, 0.45); 
+            cursor: pointer;
+            transition: color 0.15s, transform 0.1s; 
+            -webkit-tap-highlight-color: transparent; 
+        }
+        .todo-del-btn { color: rgba(255, 255, 255, 0.55); }
+        .todo-del-btn:hover { color: #ff5b5b; }
+        .todo-drag-handle { cursor: grab; }
+        .todo-drag-handle:hover { color: #ffffff; }
+        .todo-drag-handle:active { cursor: grabbing; transform: scale(0.9); }
+        
+        .todo-drag-handle svg, .todo-del-btn svg {
+            width: 16px !important; 
+            height: 16px !important; 
+            display: block !important;
+            margin: auto !important;
+        }
+
+        .todo-item.completed .todo-actions .todo-drag-handle { display: none; }
 
         /* [완료 모달] */
         .custom-alert-overlay {
@@ -927,7 +971,7 @@
             white-space: nowrap;
         }
 
-        /* [차트 호버/터치 툴팁 (Sticky 고정)] */
+        /* [차트 호버/터치 툴팁] */
         .chart-tooltip {
             position: absolute;
             background: rgba(15, 27, 49, 0.95);
@@ -978,16 +1022,16 @@
         /* [우측 상단 액션 버튼] */
         .top-action-btn {
             position: fixed;
-            top: 20px;
+            top: max(20px, calc(env(safe-area-inset-top, 0px) + 12px));
             width: 42px;
             height: 42px;
             border-radius: 50%;
             background-color: rgba(255, 255, 255, 0.15);
             border: 1px solid rgba(255, 255, 255, 0.25);
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
+            backdrop-filter: blur(8px); 
+            -webkit-backdrop-filter: blur(8px); 
             color: #ffffff;
-            cursor: pointer;
+            cursor: pointer; 
             display: flex; 
             align-items: center; 
             justify-content: center; 
@@ -1001,7 +1045,7 @@
             width: 22px !important; 
             height: 22px !important; 
             display: block; 
-            margin: auto;
+            margin: 0;
             flex-shrink: 0 !important;
         }
 
@@ -1087,7 +1131,7 @@
         </div>
     </div>
 
-    <!-- 투두 Drawer -->
+    <!-- 투두 Drawer (터치 버블링 전파 차단) -->
     <button class="todo-toggle-btn" id="todo-toggle-btn" onclick="toggleDrawer(event)">To-Do List 📋</button>
     
     <div class="todo-drawer" id="todo-drawer">
@@ -1206,11 +1250,11 @@
         </div>
     </div>
 
-    <!-- 차트 호버/터치 툴팁 (Sticky 고정) -->
+    <!-- 차트 호버/터치 툴팁 -->
     <div class="chart-tooltip" id="chart-tooltip"></div>
 
     <!-- 좌측 하단 전체화면 버튼 -->
-    <button class="bottom-action-btn fullscreen-btn" id="fullscreen-toggle-btn" onclick="toggleFullScreen()" title="전체화면 전환">
+    <button class="bottom-action-btn fullscreen-btn" id="fullscreen-toggle-btn" onclick="toggleFullScreen(event)" title="전체화면 전환">
         <svg id="fs-icon" viewBox="0 0 24 24">
             <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
         </svg>
@@ -1224,18 +1268,6 @@
     </button>
 
     <script>
-        /* 전역 더블클릭/더블탭 줌 차단 */
-        let lastTouchTimeGlobal = 0;
-        document.addEventListener('touchend', function(e) {
-            const now = Date.now();
-            if (now - lastTouchTimeGlobal <= 320) e.preventDefault();
-            lastTouchTimeGlobal = now;
-        }, { passive: false });
-
-        document.addEventListener('dblclick', function(e) {
-            e.preventDefault();
-        }, { passive: false });
-
         const firebaseConfig = {
             apiKey: "AIzaSyDUQR8UdbWhyBZHUqegvd6ZSjfXuGiNYpI",
             authDomain: "potato-timer-402f8.firebaseapp.com",
@@ -1256,16 +1288,28 @@
         const userId = urlParams.get('user') || 'default_local_user';
         const isCloudSyncActive = isFirebaseConfigured && urlParams.has('user');
 
-        const ONLINE_AUDIO_SOURCES = {
-            focus: [
-                './focus.mp3',
-                'https://cdn.freesound.org/previews/268/268822_4486188-lq.mp3'
-            ],
-            break: [
-                './break.mp3',
-                'https://cdn.freesound.org/previews/399/399934_5121236-lq.mp3'
-            ]
-        };
+        /* [오디오 객체 사전 생성 및 최초 터치 언락] */
+        const audioFocus = new Audio('./focus.mp3');
+        const audioBreak = new Audio('./break.mp3');
+        const audioAlarm = new Audio('./alarm.mp3');
+
+        audioFocus.preload = 'auto';
+        audioBreak.preload = 'auto';
+        audioAlarm.preload = 'auto';
+        audioAlarm.loop = false;
+
+        let isAudioUnlocked = false;
+        function unlockAudio() {
+            if (isAudioUnlocked) return;
+            isAudioUnlocked = true;
+            [audioFocus, audioBreak, audioAlarm].forEach(audio => {
+                audio.play().then(() => {
+                    audio.pause();
+                    audio.currentTime = 0;
+                }).catch(() => {});
+            });
+        }
+        document.addEventListener('pointerdown', unlockAudio, { once: true });
 
         const HARD_DEFAULTS = {
             focus: { min: 25, sec: 0 },
@@ -1289,7 +1333,6 @@
         let modeSettings = getInitialModeSettings();
         let targetCycleGoal = parseInt(localStorage.getItem(`potato-target-goal-${userId}`), 10) || 10;
 
-        /* [개별 탭 백그라운드 독립 상태 관리 구조] */
         let tabStates = {
             focus: { timeRemaining: modeSettings.focus.min * 60 + modeSettings.focus.sec, totalSeconds: modeSettings.focus.min * 60 + modeSettings.focus.sec, isRunning: false },
             short: { timeRemaining: modeSettings.short.min * 60 + modeSettings.short.sec, totalSeconds: modeSettings.short.min * 60 + modeSettings.short.sec, isRunning: false },
@@ -1303,7 +1346,6 @@
         
         const totalLength = 345.57; 
 
-        /* 뽀모도로 게이지 & 자동 순환 (기본값 OFF 보장) */
         let pomoStars = parseInt(localStorage.getItem(`potato-pomo-stars-${userId}`), 10) || 0;
         let pomoCycleCount = parseInt(localStorage.getItem(`potato-pomo-cycles-${userId}`), 10) || 0;
         
@@ -1325,6 +1367,7 @@
         const tabButtons = document.querySelectorAll('.tab-btn');
         const todoDrawer = document.getElementById('todo-drawer');
         const todoToggleBtn = document.getElementById('todo-toggle-btn');
+        const todoListEl = document.getElementById('todo-list');
         const starElement = document.getElementById('shooting-star-element');
         const ambientContainer = document.getElementById('ambient-container');
         const milkyWayGlow = document.getElementById('milky-way-glow');
@@ -1345,7 +1388,7 @@
 
         let isTooltipPinned = false;
 
-        /* [음소거 로직 - 아이콘 정밀 재조정] */
+        /* [음소거 로직] */
         let isMuted = localStorage.getItem(`potato-muted-${userId}`) === 'true';
 
         const ICON_SOUND_ON = `
@@ -1364,7 +1407,7 @@
         function updateMuteDisplay() {
             muteIcon.innerHTML = isMuted ? ICON_SOUND_MUTED : ICON_SOUND_ON;
             document.getElementById('mute-toggle-btn').title = isMuted ? "소리 켜기" : "소리 끄기 (음소거)";
-            if (activeAudio) activeAudio.muted = isMuted;
+            [audioFocus, audioBreak, audioAlarm].forEach(a => { if (a) a.muted = isMuted; });
         }
 
         function toggleMute() {
@@ -1554,7 +1597,7 @@
         let starTimeoutId = null;
         let slowDownSteps = 0;
 
-        /* [별똥별 전역 완전 분산 발생 로직] */
+        /* [별똥별 전역 분산] */
         function triggerShootingStar() {
             const screenW = window.innerWidth || 800;
             const screenH = window.innerHeight || 600;
@@ -1615,110 +1658,33 @@
             milkyWayGlow.classList.remove('visible');
         }
 
-        /* [Web Audio API 탭 공통 및 Timer 단발성 알람 엔진] */
-        let audioCtx = null;
-        let gainNode = null;
-        let audioSourceNode = null;
-        let activeAudio = null;
-        let audioLoopInterval = null;
-        let isFocusFirstRun = true;
-
-        let hourlyAudio = new Audio('./alarm.mp3'); 
-        hourlyAudio.volume = 1.0; 
-
-        function playHourlyAlert() {
-            if (!isMuted) {
-                hourlyAudio.currentTime = 0;
-                hourlyAudio.play().catch(()=>{});
-            }
-        }
+        /* [오디오 알람 제어] */
+        let activeAlertAudio = null;
 
         function stopAudioEngine() {
-            if (audioLoopInterval) {
-                clearInterval(audioLoopInterval);
-                audioLoopInterval = null;
-            }
-            if (activeAudio) {
-                activeAudio.pause();
-                activeAudio.currentTime = 0;
-                activeAudio = null;
+            if (activeAlertAudio) {
+                activeAlertAudio.pause();
+                activeAlertAudio.currentTime = 0;
+                activeAlertAudio = null;
             }
             stabilizeSkySmoothly();
         }
 
-        function createAudioInstance(mode) {
-            const sources = ONLINE_AUDIO_SOURCES[mode === 'focus' ? 'focus' : 'break'];
-            let srcIdx = 0;
-            const audio = new Audio(sources[0]);
-            audio.preload = 'auto';
-            audio.muted = isMuted;
-            audio.crossOrigin = "anonymous";
-            audio.onerror = () => {
-                srcIdx++;
-                if (srcIdx < sources.length) {
-                    audio.src = sources[srcIdx];
-                    audio.load();
-                }
-            };
-            return audio;
+        function playEndAlert(mode) {
+            if (isMuted) return;
+            stopAudioEngine();
+            activeAlertAudio = (mode === 'focus') ? audioFocus : audioBreak;
+            activeAlertAudio.currentTime = 0;
+            activeAlertAudio.loop = true;
+            activeAlertAudio.volume = 1.0;
+            activeAlertAudio.play().catch(() => {});
         }
 
-        function startInfiniteAudioLoop(mode) {
-            stopAudioEngine();
-            activeAudio = createAudioInstance(mode);
-            activeAudio.muted = isMuted;
-            isFocusFirstRun = true;
-
-            try {
-                if (!audioCtx) {
-                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                }
-                if (audioCtx.state === 'suspended') {
-                    audioCtx.resume();
-                }
-                audioSourceNode = audioCtx.createMediaElementSource(activeAudio);
-                gainNode = audioCtx.createGain();
-                gainNode.gain.value = (mode === 'focus') ? 2.5 : 1.3; 
-                audioSourceNode.connect(gainNode);
-                gainNode.connect(audioCtx.destination);
-            } catch(e) {}
-
-            const cycleDuration = 14.0;
-            let cycleStartTime = performance.now();
-
-            activeAudio.currentTime = 0;
-            activeAudio.volume = (mode === 'focus') ? 0.35 : 1.0;
-            activeAudio.play().catch(() => {});
-
-            audioLoopInterval = setInterval(() => {
-                if (!activeAudio) return;
-                const elapsedInCycle = (performance.now() - cycleStartTime) / 1000;
-
-                if (elapsedInCycle >= cycleDuration || activeAudio.currentTime >= cycleDuration) {
-                    cycleStartTime = performance.now();
-                    activeAudio.currentTime = 0;
-                    if (mode === 'focus') isFocusFirstRun = false;
-                    activeAudio.volume = 1.0;
-                    activeAudio.play().catch(() => {});
-                    return;
-                }
-
-                if (mode === 'focus') {
-                    if (isFocusFirstRun && elapsedInCycle <= 4.0) {
-                        const progress = elapsedInCycle / 4.0;
-                        activeAudio.volume = Math.min(1.0, 0.35 + progress * 0.65);
-                    } else {
-                        activeAudio.volume = 1.0;
-                    }
-                } else {
-                    if (elapsedInCycle >= 12.0) {
-                        const fadeRatio = (14.0 - elapsedInCycle) / 2.0;
-                        activeAudio.volume = Math.max(0.01, fadeRatio * 1.0);
-                    } else {
-                        activeAudio.volume = 1.0;
-                    }
-                }
-            }, 50);
+        function playHourlyAlert() {
+            if (!isMuted) {
+                audioAlarm.currentTime = 0;
+                audioAlarm.play().catch(() => {});
+            }
         }
 
         function getFormattedDate(d = new Date()) {
@@ -1734,11 +1700,13 @@
             return `${year}-${month}-${day}`;
         }
 
-        /* [자정 스마트 리셋 로직: 2시간 아이들 시 작동 / 개별 시간 유지] */
+        /* [자정 자동 갱신 - 새로고침 없이 즉각 날짜 갱신 및 완료 투두 삭제] */
         function checkMidnightReset() {
             const todayStr = getFormattedDate();
             
             if (lastSavedDate !== todayStr && lastSavedDate !== "") {
+                statsDateEl.textContent = todayStr;
+                
                 const prevTodoCount = todos.length;
                 todos = todos.filter(t => !t.completed);
                 if (todos.length !== prevTodoCount) {
@@ -1748,35 +1716,34 @@
                 const now = Date.now();
                 const idleDuration = now - lastActiveTime;
                 const isOverTwoHoursIdle = idleDuration >= (2 * 60 * 60 * 1000);
+                const isAnyRunning = tabStates.focus.isRunning || tabStates.short.isRunning || tabStates.timer.isRunning;
 
-                if (tabStates.focus.isRunning || tabStates.short.isRunning || tabStates.timer.isRunning || !isOverTwoHoursIdle) {
-                    statsDateEl.textContent = todayStr;
-                    saveState();
-                    return;
+                if (!isAnyRunning && isOverTwoHoursIdle) {
+                    accumulatedFocusSeconds = 0;
+                    pomoStars = 0;
+                    pomoCycleCount = 0;
+                    savePomoState();
+                    renderPomoTracker();
                 }
 
-                accumulatedFocusSeconds = 0;
-                pomoStars = 0;
-                pomoCycleCount = 0;
-                lastSavedDate = todayStr;
-                savePomoState();
-                renderPomoTracker();
-            } else {
                 lastSavedDate = todayStr;
                 saveState();
+                updateStatsDisplay();
+            } else if (lastSavedDate === "") {
+                lastSavedDate = todayStr;
+                statsDateEl.textContent = todayStr;
+                saveState();
             }
-            statsDateEl.textContent = todayStr;
-            updateStatsDisplay();
         }
 
-        setInterval(checkMidnightReset, 60000);
+        setInterval(checkMidnightReset, 5000);
 
         function updateStatsDisplay() {
             const focusMinutes = Math.floor(accumulatedFocusSeconds / 60);
             statsCounterEl.textContent = `Today's Focus Time: ${focusMinutes} min`;
         }
 
-        /* [타이머 SVG 디스플레이 갱신 - 오류 없는 우측(시계방향) 회전 정밀 수식 반전] */
+        /* [타이머 SVG 게이지 갱신 - 0~59분 시계방향 비워짐 / 60~119분 시계방향 채워짐] */
         function updateDisplay() {
             let state = tabStates[currentMode];
             const displaySecs = currentMode === 'timer' ? Math.floor(state.timeRemaining) : Math.ceil(state.timeRemaining);
@@ -1784,31 +1751,29 @@
             const seconds = displaySecs % 60;
             timeText.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
             
-            let offset;
             if (currentMode === 'timer') {
+                progressCircle.style.strokeDashoffset = '0';
                 const cycleIndex = Math.floor(displaySecs / 3600);
                 const progressRatio = (displaySecs % 3600) / 3600;
                 
-                // [수정 포인트: 정확한 시계 방향 애니메이션 교정]
-                // stroke-dashoffset이 커지면 반시계 방향으로 지워지는 브라우저 특성 해결을 위해
-                // 전체 길이의 2배수를 활용하여 시계 방향으로 자연스럽게 닳아 없어지고 채워지도록 구현했습니다.
                 if (cycleIndex % 2 === 0) { 
-                    // 0~59: 꽉 찬 상태에서 12시부터 시계방향(오른쪽)으로 닳아 없어짐
-                    offset = totalLength * 2 - (progressRatio * totalLength);
+                    const emptyLen = progressRatio * totalLength;
+                    const fillLen = totalLength - emptyLen;
+                    progressCircle.style.strokeDasharray = `0 ${emptyLen} ${fillLen} ${totalLength}`;
                 } else { 
-                    // 60~119: 빈 상태에서 12시부터 시계방향(오른쪽)으로 차오름
-                    offset = totalLength - (progressRatio * totalLength);
+                    const fillLen = progressRatio * totalLength;
+                    progressCircle.style.strokeDasharray = `${fillLen} ${totalLength}`;
                 }
             } else {
-                offset = totalLength - (state.timeRemaining / state.totalSeconds) * totalLength;
+                progressCircle.style.strokeDasharray = `${totalLength} ${totalLength}`;
+                const offset = totalLength - (state.timeRemaining / state.totalSeconds) * totalLength;
+                progressCircle.style.strokeDashoffset = isNaN(offset) ? 0 : offset;
             }
-            
-            progressCircle.style.strokeDashoffset = isNaN(offset) ? 0 : offset;
         }
 
         function adjustTime(amount) {
             updateLastActive();
-            if (currentMode === 'timer') return;
+            if (currentMode === 'timer') return; 
 
             const delta = amount * 60;
             let state = tabStates[currentMode];
@@ -1848,7 +1813,7 @@
             focusHistory[dateKey].hourly[hour] = (focusHistory[dateKey].hourly[hour] || 0) + seconds;
         }
 
-        /* [백그라운드 다중 타이머 추적 (바탕화면 나갔다 왔을 때 오차 정밀 보정 포함)] */
+        /* [백그라운드 다중 타이머 추적] */
         function timerLoop() {
             const now = Date.now();
             if (!lastTimestamp) lastTimestamp = now;
@@ -1926,7 +1891,6 @@
             }
         }
 
-        /* [START / STOP 토글 제어] */
         function toggleTimer() {
             updateLastActive();
             let state = tabStates[currentMode];
@@ -1970,7 +1934,7 @@
                 state.timeRemaining = state.totalSeconds;
             }
             
-            actualFocusSecondsCompleted = 0;
+            actualFocusSecondsCompleted = 0; 
             startBtn.textContent = 'START';
             
             if (!tabStates.focus.isRunning && !tabStates.short.isRunning && !tabStates.timer.isRunning) {
@@ -1983,7 +1947,6 @@
         }
 
         function setMode(mode) {
-            // 다른 탭으로 이동할 때 Focus, Break는 정지. Timer는 백그라운드 유지
             if (currentMode === 'focus' || currentMode === 'short') {
                 tabStates[currentMode].isRunning = false;
             }
@@ -2038,7 +2001,7 @@
             }
             
             startCelebrationVFX();
-            startInfiniteAudioLoop(completedMode);
+            playEndAlert(completedMode); 
 
             if (completedMode === 'focus') {
                 customAlertBox.classList.add('wide');
@@ -2061,7 +2024,6 @@
             stopAudioEngine();
 
             if (lastCompletedMode === 'focus') {
-                // 오차 보정 완주 검증 (1498초)
                 if (actualFocusSecondsCompleted >= 1498) {
                     if (pomoStars < 4) {
                         pomoStars++;
@@ -2096,7 +2058,7 @@
             }
         }
 
-        /* 백그라운드 전환 시 시간 추적 보정 */
+        /* [백그라운드 복귀 시 종료 판정 및 소리 재생 보정] */
         document.addEventListener('visibilitychange', () => {
             if (document.hidden) {
                 bgTimestamp = Date.now();
@@ -2104,18 +2066,35 @@
                 if (bgTimestamp && timerAnimationId) {
                     const bgElapsed = (Date.now() - bgTimestamp) / 1000;
                     
-                    if (tabStates.focus.isRunning) tabStates.focus.timeRemaining -= bgElapsed;
-                    if (tabStates.short.isRunning) tabStates.short.timeRemaining -= bgElapsed;
-                    
+                    if (tabStates.focus.isRunning) {
+                        tabStates.focus.timeRemaining -= bgElapsed;
+                        accumulatedFocusSeconds += bgElapsed;
+                        actualFocusSecondsCompleted += bgElapsed; 
+                        recordFocusTime(bgElapsed);
+                        if (tabStates.focus.timeRemaining <= 0) {
+                            tabStates.focus.timeRemaining = 0;
+                            stopTimerWithAlert('focus');
+                        }
+                    }
+                    if (tabStates.short.isRunning) {
+                        tabStates.short.timeRemaining -= bgElapsed;
+                        if (tabStates.short.timeRemaining <= 0) {
+                            tabStates.short.timeRemaining = 0;
+                            stopTimerWithAlert('short');
+                        }
+                    }
                     if (tabStates.timer.isRunning) {
                         const oldHour = Math.floor(tabStates.timer.timeRemaining / 3600);
                         tabStates.timer.timeRemaining += bgElapsed;
+                        accumulatedFocusSeconds += bgElapsed;
+                        recordFocusTime(bgElapsed);
+                        
                         const newHour = Math.floor(tabStates.timer.timeRemaining / 3600);
                         if (newHour > oldHour && newHour >= 1) {
                             playHourlyAlert();
                         }
                     }
-                    lastTimestamp = Date.now(); // 오차 누적 방지 리셋
+                    lastTimestamp = Date.now(); 
                 }
                 bgTimestamp = null;
             }
@@ -2193,7 +2172,6 @@
 
             renderPomoTracker();
             
-            // 세팅을 닫을 때, 현재 구동 중이지 않은 탭들에 한해서만 세팅값을 덮어씌움
             if (hasChanged) {
                 if (!tabStates.focus.isRunning) {
                     tabStates.focus.totalSeconds = modeSettings.focus.min * 60 + modeSettings.focus.sec;
@@ -2267,7 +2245,6 @@
             return `${min}분`;
         }
 
-        /* [모든 대시보드 지표를 오늘 포함 최근 30일 데이터 기반으로 통합 연산] */
         function renderStatsDashboard() {
             const today = new Date();
             const last30DaysKeys = [];
@@ -2296,10 +2273,7 @@
                 }
             });
 
-            // 1. 🔥 활동 일수
             document.getElementById('stats-active-days-val').textContent = `${activeDaysCount}일`;
-
-            // 2. ⌛ 하루 평균
             const avgSec = activeDaysCount > 0 ? (totalFocusSec30Days / activeDaysCount) : 0;
             const avgMin = Math.floor(avgSec / 60);
             if (avgMin >= 60) {
@@ -2311,7 +2285,6 @@
             }
 
             renderLineActivityChart();
-            // 3. 가장 잘 집중하는 시간대 (최근 30일치 데이터 한정)
             renderHourlyDistributionChart(hourlyTotals30Days);
         }
 
@@ -2492,7 +2465,14 @@
 
         function handlePointerDown(e, id, itemEl) {
             if (e.type.startsWith('mouse') && e.button !== 0) return;
+            e.stopPropagation();
+            if (e.cancelable) e.preventDefault();
             
+            const activeEl = document.activeElement;
+            if (activeEl && (activeEl.tagName === 'TEXTAREA' || activeEl.tagName === 'INPUT')) {
+                activeEl.blur();
+            }
+
             draggedTodoId = id;
             const rect = itemEl.getBoundingClientRect();
             const clientX = e.touches ? e.touches[0].clientX : e.clientX;
@@ -2521,6 +2501,7 @@
         function handlePointerMove(e) {
             if (!dragGhost) return;
             e.preventDefault(); 
+            e.stopPropagation();
 
             const clientX = e.touches ? e.touches[0].clientX : e.clientX;
             const clientY = e.touches ? e.touches[0].clientY : e.clientY;
@@ -2570,7 +2551,6 @@
             document.querySelectorAll('.todo-item').forEach(el => {
                 el.classList.remove('drag-over-top', 'drag-over-bottom', 'is-placeholder', 'is-dragging');
             });
-            if (document.activeElement) document.activeElement.blur();
 
             if (targetId && draggedTodoId) {
                 reorderTodosCustom(draggedTodoId, targetId, position);
@@ -2609,27 +2589,40 @@
             renderTodos();
         }
 
-        /* [To-Do 리스트] */
+        /* [To-Do 리스트 토글] */
         function toggleDrawer(event) {
             updateLastActive();
-            if (event) event.stopPropagation(); 
+            if (event) {
+                event.stopPropagation(); 
+            }
             todoDrawer.classList.toggle('open');
             todoToggleBtn.classList.toggle('drawer-open');
         }
 
+        /* [핵심: 투두 내부 터치/클릭이 바깥 document로 전파되어 전체화면을 건드리지 못하게 원천 봉쇄] */
+        ['click', 'touchstart', 'touchend', 'pointerdown'].forEach(evtName => {
+            todoDrawer.addEventListener(evtName, (e) => {
+                e.stopPropagation();
+            }, { passive: true });
+        });
+
+        /* 서랍 외부를 명확히 클릭했을 때만 투두 닫기 */
         document.addEventListener('click', (event) => {
-            const isClickInsideDrawer = todoDrawer.contains(event.target);
-            const isClickToggleBtn = todoToggleBtn.contains(event.target);
-            const isClickTabBtn = event.target.classList.contains('tab-btn');
-            const isControl = event.target.closest('.controls') || event.target.closest('.adjust-btn') || event.target.closest('.pomo-tracker-bar');
-            
-            if (todoDrawer.classList.contains('open') && !isClickInsideDrawer && !isClickToggleBtn && !isClickTabBtn && !isControl) {
+            if (event.target.closest('#todo-drawer') || 
+                event.target.closest('#todo-toggle-btn') || 
+                event.target.closest('#fullscreen-toggle-btn') || 
+                event.target.closest('.top-action-btn') || 
+                event.target.closest('.bottom-action-btn') ||
+                event.target.closest('.settings-modal-overlay') || 
+                event.target.closest('.custom-alert-overlay')) {
+                return;
+            }
+            if (todoDrawer && todoDrawer.classList.contains('open')) {
                 todoDrawer.classList.remove('open');
                 todoToggleBtn.classList.remove('drawer-open');
             }
         });
 
-        // textarea 높이 조절
         function autoResizeTextarea(textarea) {
             textarea.style.height = 'auto';
             textarea.style.height = Math.max(38, Math.min(textarea.scrollHeight, 80)) + 'px';
@@ -2681,12 +2674,15 @@
                 span.className = 'todo-text';
                 span.textContent = todo.text;
 
-                const dragHandle = document.createElement('div');
+                const dragHandle = document.createElement('button');
+                dragHandle.type = 'button';
                 dragHandle.className = 'todo-drag-handle';
                 dragHandle.title = '끌어서 순서 변경';
                 dragHandle.innerHTML = `
-                    <svg viewBox="0 0 24 24">
-                        <path d="M4 6h16v2H4V6zm0 5h16v2H4v-2zm0 5h16v2H4v-2z"/>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                        <line x1="4" y1="7" x2="20" y2="7"/>
+                        <line x1="4" y1="12" x2="20" y2="12"/>
+                        <line x1="4" y1="17" x2="20" y2="17"/>
                     </svg>
                 `;
 
@@ -2696,11 +2692,26 @@
                 }
 
                 const delBtn = document.createElement('button');
+                delBtn.type = 'button';
                 delBtn.className = 'todo-del-btn';
-                delBtn.textContent = '×';
+                delBtn.title = '삭제';
+                delBtn.innerHTML = `
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                        <line x1="6" y1="6" x2="18" y2="18"/>
+                        <line x1="18" y1="6" x2="6" y2="18"/>
+                    </svg>
+                `;
                 delBtn.onclick = (e) => deleteTodo(todo.id, e);
 
-                li.append(chk, span, dragHandle, delBtn);
+                const actionWrap = document.createElement('div');
+                actionWrap.className = 'todo-actions';
+                
+                if (!todo.completed) {
+                    actionWrap.appendChild(dragHandle);
+                }
+                actionWrap.appendChild(delBtn);
+
+                li.append(chk, span, actionWrap);
                 list.appendChild(li);
             });
         }
@@ -2722,7 +2733,9 @@
 
             input.value = '';
             input.style.height = '38px';
-            input.focus();
+            if (!isFullscreenActive) {
+                input.focus();
+            }
             
             setTimeout(() => {
                 input.scrollTop = 0;
@@ -2768,70 +2781,69 @@
             adjustLayoutScale();
         }
 
-        let isPseudoFullscreen = false;
-        const isEmbedded = window.self !== window.top;
+        /* [핵심: 오직 #fullscreen-toggle-btn 클릭으로만 작동/해제되는 안전 상태 머신] */
+        let isFullscreenActive = false;
 
-        function toggleFullScreen() {
-            updateLastActive();
-            window.scrollTo(0, 1);
-
-            if (isEmbedded) {
-                isPseudoFullscreen = !isPseudoFullscreen;
-                document.body.classList.toggle('pseudo-fullscreen', isPseudoFullscreen);
-                updateFullscreenIcon(isPseudoFullscreen);
-                return;
+        function toggleFullScreen(e) {
+            if (e) {
+                e.preventDefault();
+                e.stopPropagation();
             }
+            updateLastActive();
 
             const doc = document;
             const docEl = document.documentElement;
-            const isNativeFs = !!(doc.fullscreenElement || doc.webkitFullscreenElement || doc.mozFullScreenElement);
+            const isNative = !!(doc.fullscreenElement || doc.webkitFullscreenElement || doc.mozFullScreenElement || doc.msFullscreenElement);
 
-            if (isPseudoFullscreen) {
-                isPseudoFullscreen = false;
-                document.body.classList.remove('pseudo-fullscreen');
-                updateFullscreenIcon(false);
-                return;
-            }
+            if (!isFullscreenActive) {
+                // 전체화면 진입: 어떤 기기든 즉각 실행
+                isFullscreenActive = true;
+                updateFullscreenIcon(true);
 
-            if (!isNativeFs) {
-                const reqFs = docEl.requestFullscreen || docEl.webkitRequestFullscreen || docEl.mozRequestFullScreen;
+                const reqFs = docEl.requestFullscreen || docEl.webkitRequestFullscreen || docEl.mozRequestFullScreen || docEl.msRequestFullscreen;
                 if (reqFs) {
-                    reqFs.call(docEl).then(() => {
-                        updateFullscreenIcon(true);
-                        if (screen.orientation && screen.orientation.lock) {
-                            screen.orientation.lock('portrait').catch(() => {});
+                    try {
+                        const p = reqFs.call(docEl);
+                        if (p && p.catch) {
+                            p.catch(() => {
+                                document.body.classList.add('pseudo-fullscreen');
+                            });
                         }
-                    }).catch(() => {
-                        isPseudoFullscreen = true;
+                    } catch (err) {
                         document.body.classList.add('pseudo-fullscreen');
-                        updateFullscreenIcon(true);
-                    });
+                    }
                 } else {
-                    isPseudoFullscreen = true;
                     document.body.classList.add('pseudo-fullscreen');
-                    updateFullscreenIcon(true);
                 }
             } else {
-                const exitFs = doc.exitFullscreen || doc.webkitExitFullscreen || doc.mozCancelFullScreen;
-                if (exitFs) {
-                    exitFs.call(doc).then(() => {
-                        updateFullscreenIcon(false);
-                        if (screen.orientation && screen.orientation.unlock) {
-                            screen.orientation.unlock();
-                        }
-                    }).catch(() => {});
+                // 전체화면 해제: 오직 이 버튼을 눌렀을 때만 해제
+                isFullscreenActive = false;
+                updateFullscreenIcon(false);
+                document.body.classList.remove('pseudo-fullscreen');
+
+                if (isNative) {
+                    const exitFs = doc.exitFullscreen || doc.webkitExitFullscreen || doc.mozCancelFullScreen || doc.msExitFullscreen;
+                    if (exitFs) {
+                        try {
+                            const p = exitFs.call(doc);
+                            if (p && p.catch) p.catch(() => {});
+                        } catch (err) {}
+                    }
                 }
             }
         }
 
-        document.addEventListener('fullscreenchange', () => {
-            const isFs = !!document.fullscreenElement;
-            if (!isFs && !isPseudoFullscreen) updateFullscreenIcon(false);
-        });
-        document.addEventListener('webkitfullscreenchange', () => {
-            const isFs = !!document.webkitFullscreenElement;
-            if (!isFs && !isPseudoFullscreen) updateFullscreenIcon(false);
-        });
+        /* 브라우저가 키보드 호출 등으로 네이티브 전체화면을 임의로 풀더라도 사용자가 버튼을 안 눌렀다면 UI 전체화면 상태 강제 유지 */
+        function handleFsChange() {
+            const isNative = !!(document.fullscreenElement || document.webkitFullscreenElement);
+            if (!isNative && isFullscreenActive) {
+                document.body.classList.add('pseudo-fullscreen');
+                updateFullscreenIcon(true);
+            }
+        }
+
+        document.addEventListener('fullscreenchange', handleFsChange);
+        document.addEventListener('webkitfullscreenchange', handleFsChange);
 
         /* 초기 구동 */
         checkMidnightReset();
