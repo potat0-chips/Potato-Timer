@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     
+    <!-- Data URL 매니페스트 (홈 화면 추가 시 전체화면 standalone 실행) -->
+    <link rel="manifest" href="data:application/manifest+json;base64,ewogICJuYW1lIjogIlBvdGF0byBUaW1lciIsCiAgInNob3J0X25hbWUiOiAiUG90YXRvIiwKICAic3RhcnRfdXJsIjogIi4iLAogICJkaXNwbGF5IjogInN0YW5kYWxvbmUiLAogICJiYWNrZ3JvdW5kX2NvbG9yIjogIiMwYjE0MjQiLAogICJ0aGVtZV9jb2xvciI6ICIjMGIxNDI0IiwKICAiaWNvbnMiOiBbCiAgICB7CiAgICAgICJzcmMiOiAiLi9wb3RhdG8ucG5nIiwKICAgICAgInNpemVzIjogIjE5MngxOTIgNTEyeDUxMiIsCiAgICAgICJ0eXBlIjogImltYWdlL3BuZyIKICAgIH0KICBdCn0=">
+
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Potato Timer">
@@ -60,6 +63,7 @@
             position: relative;
         }
 
+        /* [수정] 높이를 vh/dvh로 계산하지 않고 화면 네 모서리에 고정 → 홈 화면 웹 앱 하단 남색 여백 제거 */
         html.pseudo-fullscreen, body.pseudo-fullscreen {
             position: fixed !important;
             top: 0 !important;
@@ -90,7 +94,7 @@
                 radial-gradient(ellipse 55% 25% at 55% 55%, rgba(68, 114, 255, 0.22), transparent 75%),
                 radial-gradient(circle at 50% 50%, rgba(142, 121, 231, 0.18), transparent 60%);
             transform: rotate(-32deg) translateZ(0);
-            filter: blur(12px);
+            filter: blur(12px); /* R4: reduced full-screen blur cost; gradients retained */
             opacity: 0;
             pointer-events: none;
             z-index: 1;
@@ -146,6 +150,7 @@
             100% { transform: translate(var(--move-x), var(--move-y)) rotate(45deg) scaleX(0.1) translateZ(0); opacity: 0; }
         }
 
+        /* [상단 여백 0.1cm 미세 상향] */
         .viewport-scaler {
             display: flex;
             align-items: center;
@@ -449,6 +454,7 @@
             transform: translateX(16px);
         }
 
+        /* [투두 버튼 본래 두께(padding 8px 24px) 및 바닥 밀착] */
         .todo-toggle-btn {
             background-color: rgba(255, 255, 255, 0.25); 
             border: 1px solid rgba(255, 255, 255, 0.3); 
@@ -522,6 +528,7 @@
         .todo-input::placeholder { line-height: 20px; color: #666666; vertical-align: middle; }
         .todo-add-btn { font-family: inherit; background-color: #6A55C9; color: white; border: none; height: 38px; padding: 0 16px; border-radius: 12px; font-size: 14px; font-weight: bold; cursor: pointer; transition: background 0.1s; -webkit-tap-highlight-color: transparent; }
         
+        /* [투두 리스트 스크롤 영역] */
         .todo-list { 
             list-style: none; 
             padding: 0; 
@@ -579,6 +586,7 @@
         .todo-item.completed { background-color: rgba(255, 255, 255, 0.08); }
         .todo-item.completed .todo-text { text-decoration: line-through; opacity: 0.5; }
 
+        /* [우측 투두 아이콘 2개 높낮이 오차 0% 완벽 일직선 수평 정렬] */
         .todo-actions {
             display: inline-flex !important;
             align-items: center !important;
@@ -626,18 +634,32 @@
         /* [완료 모달] */
         .custom-alert-overlay {
             position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(6, 11, 23, 0.72);
-            display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.45s cubic-bezier(0.25, 1, 0.5, 1); z-index: 2000;
+            display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; z-index: 5000;
         }
         .custom-alert-overlay.show { opacity: 1; pointer-events: auto; }
         .custom-alert-box {
             background-color: rgba(15, 27, 49, 0.98); border: 1px solid rgba(255, 255, 255, 0.2); padding: 36px 24px; border-radius: 20px;
             display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; box-shadow: 0 15px 35px rgba(0,0,0,0.6);
-            max-width: 90%; width: 320px; transform: scale(0.92) translateY(12px); transition: transform 0.45s cubic-bezier(0.25, 1, 0.5, 1), width 0.3s ease;
+            max-width: 90%; width: 320px; transform: scale(0.92) translateY(12px); transition: transform 0.3s ease, width 0.3s ease;
         }
         .custom-alert-box.wide { width: 360px; padding: 36px 28px; }
         .custom-alert-overlay.show .custom-alert-box { transform: scale(1) translateY(0); }
         .custom-alert-text { font-size: 16px; font-weight: bold; margin: 0 0 26px 0; line-height: 1.4; white-space: nowrap; width: 100%; display: flex; align-items: center; justify-content: center; text-align: center; letter-spacing: -0.2px; }
-        .custom-alert-btn { background-color: #6A55C9; color: white; border: none; padding: 11px 36px; font-size: 14px; font-weight: bold; border-radius: 16px; cursor: pointer; transition: background 0.1s; -webkit-tap-highlight-color: transparent; }
+        .custom-alert-btn { 
+            background-color: #6A55C9; 
+            color: white; 
+            border: none; 
+            padding: 12px 38px; 
+            font-size: 15px; 
+            font-weight: bold; 
+            border-radius: 16px; 
+            cursor: pointer; 
+            transition: background 0.1s; 
+            -webkit-tap-highlight-color: transparent; 
+            touch-action: manipulation;
+            position: relative;
+            z-index: 5001;
+        }
 
         /* [환경설정 팝업 모달] */
         .settings-modal-overlay {
@@ -1014,7 +1036,7 @@
         .fullscreen-btn { left: 20px; }
         .stats-btn { right: 20px; }
 
-        /* [우측 상단 액션 버튼] */
+        /* [우측 상단 액션 버튼 - 정렬 및 규격 복원] */
         .top-action-btn {
             position: fixed;
             top: max(20px, calc(env(safe-area-inset-top, 0px) + 12px));
@@ -1056,8 +1078,9 @@
             .settings-btn { right: 32px; }
             .mute-btn { right: 84px; }
         }
+        /* [수정] 설정 아이콘 비율 고정 */
         .settings-btn svg { width: 22px !important; height: 22px !important; aspect-ratio: 1 / 1; flex: 0 0 22px; }
-
+        /* [수정] 홈 화면(standalone) 웹 앱: 하단 Safe Area 및 To-Do 하단 여백 */
         html.standalone, html.standalone body { height: 100vh; min-height: 100vh; min-height: -webkit-fill-available; }
         html.standalone .todo-drawer {
             height: calc(290px + env(safe-area-inset-bottom, 0px));
@@ -1071,11 +1094,12 @@
         }
         html.standalone .todo-toggle-btn.drawer-open { bottom: calc(290px + env(safe-area-inset-bottom, 0px)) !important; }
         .todo-drag-handle { touch-action: none; }
+        /* [수정] 모바일/태블릿: 빠른 연타·더블탭으로 확대되지 않게 (버튼 동작은 그대로) */
         html, body, button, input, textarea, div, span { touch-action: manipulation; }
         .todo-drag-handle { touch-action: none; }
         .todo-drawer, .todo-list { overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
 
-        #custom-alert .custom-alert-btn { position: relative; z-index: 3; touch-action: manipulation; min-height: 44px; }
+        #custom-alert .custom-alert-btn { position: relative; z-index: 5001; touch-action: manipulation; min-height: 44px; }
     </style>
 </head>
 <body>
@@ -1088,7 +1112,7 @@
         <svg id="mute-icon" viewBox="0 0 24 24"></svg>
     </button>
 
-    <!-- 우측 상단 설정 버튼 -->
+    <!-- [수정 1] 우측 상단 설정 버튼 (완벽 정중앙 배치 복원) -->
     <button class="top-action-btn settings-btn" id="settings-toggle-btn" onclick="openSettings()" title="설정">
         <svg viewBox="0 0 24 24" width="22" height="22" preserveAspectRatio="xMidYMid meet" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="3"></circle>
@@ -1099,7 +1123,7 @@
     <div class="viewport-scaler">
         <div class="main-wrapper" id="main-content-box">
             <div class="header-area">
-                <div class="stats-date" id="stats-date-string">Monday Nov 2, 2026</div>
+                <div class="stats-date" id="stats-date-string">&nbsp;</div>
                 <h1 class="app-title">
                     <img src="./potato.png" alt="Potato" class="potato-study-img">
                     Potato Timer
@@ -1272,9 +1296,7 @@
 
     <!-- 좌측 하단 전체화면 버튼 -->
     <button class="bottom-action-btn fullscreen-btn" id="fullscreen-toggle-btn" onclick="toggleFullScreen(event)" title="전체화면 전환">
-        <svg id="fs-icon" viewBox="0 0 24 24">
-            <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
-        </svg>
+        <svg id="fs-icon" viewBox="0 0 24 24"></svg>
     </button>
 
     <!-- 우측 하단 통계 대시보드 버튼 -->
@@ -1313,6 +1335,17 @@
         let soundGeneration = 0;
         let soundRequest = null;
         let fadeTimer = null;
+        let isAudioUnlocked = false;
+
+        function unlockAudioEngine() {
+            if (isAudioUnlocked) return;
+            alarmPlayer.play().then(() => {
+                alarmPlayer.pause();
+                alarmPlayer.currentTime = 0;
+                isAudioUnlocked = true;
+            }).catch(() => {});
+        }
+
         function stopAllSound() {
             soundGeneration++;
             soundRequest = null;
@@ -1323,6 +1356,7 @@
             try { alarmPlayer.currentTime = 0; } catch (e) {}
             alarmPlayer.volume = 1;
         }
+
         function fadeVolume(target, ms, generation) {
             clearInterval(fadeTimer);
             const start = alarmPlayer.volume;
@@ -1334,7 +1368,8 @@
                 if (p >= 1) { clearInterval(fadeTimer); fadeTimer = null; }
             }, 50);
         }
-        function playSound(key, loop, volume) {
+
+        function playSound(key, loop, volume, fadeInDuration = 0) {
             if (key === 'alarm' && soundRequest && soundRequest.loop) return;
             stopAllSound();
             if (isMuted) return;
@@ -1346,7 +1381,7 @@
             alarmPlayer.src = AUDIO_FILES[key];
             alarmPlayer.muted = false;
             alarmPlayer.loop = !!loop;
-            alarmPlayer.volume = loop ? 0 : volume;
+            alarmPlayer.volume = fadeInDuration > 0 ? 0 : (loop ? 0 : volume);
             try {
                 const p = alarmPlayer.play();
                 if (p && p.catch) p.catch(() => {
@@ -1355,9 +1390,14 @@
             } catch (e) {
                 if (generation === soundGeneration) soundRequest = null;
             }
-            if (loop) fadeVolume(volume, 2000, generation);
+            if (fadeInDuration > 0) {
+                fadeVolume(volume, fadeInDuration, generation);
+            } else if (loop) {
+                fadeVolume(volume, 2000, generation);
+            }
         }
 
+        /* [수정] 홈 화면 웹 앱(standalone) 감지 */
         try {
             if (window.navigator.standalone === true || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)) {
                 document.documentElement.classList.add('standalone');
@@ -1441,6 +1481,7 @@
 
         let isTooltipPinned = false;
 
+        /* [음소거 로직] */
         let isMuted = localStorage.getItem(`potato-muted-${userId}`) === 'true';
 
         const ICON_SOUND_ON = `
@@ -1470,6 +1511,7 @@
             updateMuteDisplay();
         }
 
+        /* [뽀모도로 트래커] */
         function renderPomoTracker() {
             pomoStarsBox.innerHTML = '';
             for (let i = 0; i < 4; i++) {
@@ -1522,6 +1564,7 @@
             saveState();
         }
 
+        /* [시간 조절 핸들러] */
         function setupAdjustButton(btnId, deltaAmount) {
             const btn = document.getElementById(btnId);
             let holdTimer = null;
@@ -1689,8 +1732,8 @@
 
         let isCelebrationActive = false;
         let starTimeoutId = null;
-        let slowDownSteps = 0;
 
+        /* [별똥별 - 과도한 재귀 스케줄링 완화로 프레임 드랍 차단] */
         function triggerShootingStar() {
             const screenW = window.innerWidth || 800;
             const screenH = window.innerHeight || 600;
@@ -1719,18 +1762,7 @@
                 starElement.style.animation = 'none';
                 starElement.style.display = 'none';
 
-                let nextDelay;
-                if (isCelebrationActive) {
-                    nextDelay = Math.floor(Math.random() * 55) + 35;
-                } else if (slowDownSteps > 0) {
-                    if (slowDownSteps === 3) nextDelay = Math.floor(Math.random() * 300) + 400;
-                    else if (slowDownSteps === 2) nextDelay = Math.floor(Math.random() * 600) + 1200;
-                    else nextDelay = Math.floor(Math.random() * 1000) + 3000;
-                    slowDownSteps--;
-                } else {
-                    nextDelay = Math.floor(Math.random() * 6000) + 8000;
-                }
-
+                let nextDelay = isCelebrationActive ? (Math.floor(Math.random() * 800) + 700) : (Math.floor(Math.random() * 6000) + 8000);
                 starTimeoutId = setTimeout(triggerShootingStar, nextDelay);
             }, duration * 1000 + 40);
         }
@@ -1738,19 +1770,17 @@
         function startCelebrationVFX() {
             if (isCelebrationActive) return;
             isCelebrationActive = true;
-            slowDownSteps = 0;
             milkyWayGlow.classList.add('visible');
             clearTimeout(starTimeoutId);
             triggerShootingStar();
         }
 
         function stabilizeSkySmoothly() {
-            if (!isCelebrationActive && slowDownSteps === 0) return;
             isCelebrationActive = false;
-            slowDownSteps = 3;
             milkyWayGlow.classList.remove('visible');
         }
 
+        /* [오디오 알람 제어 - 페이드아웃 1.5초 보장] */
         function stopAudioEngine() {
             if (soundRequest && soundRequest.loop && !isMuted) {
                 const generation = soundGeneration;
@@ -1761,7 +1791,13 @@
             }
             try { stabilizeSkySmoothly(); } catch (e) {}
         }
-        function playEndAlert(mode) { playSound(mode === 'focus' ? 'focus' : 'short', true, 1); }
+        function playEndAlert(mode) { 
+            if (mode === 'focus') {
+                playSound('focus', true, 1, 4000); 
+            } else {
+                playSound('short', true, 1);
+            }
+        }
         function playHourlyAlert() { playSound('alarm', false, 0.65); }
 
         function getFormattedDate(d = new Date()) {
@@ -1985,6 +2021,7 @@
 
         function toggleTimer() {
             updateLastActive();
+            unlockAudioEngine();
             let state = tabStates[currentMode];
 
             if (state.isRunning) {
@@ -2107,25 +2144,13 @@
             }
 
             lastCompletedMode = completedMode;
-
             showCompletionDialog();
-            setTimeout(() => {
-                if (customAlert.classList.contains('show')) {
-                    try { startCelebrationVFX(); } catch (e) { console.error(e); }
-                }
-            }, 100);
+            startCelebrationVFX();
         }
 
         function showCompletionDialog() {
             customAlert.classList.add('show');
         }
-        const confirmBtn = document.getElementById('completion-confirm');
-        function acknowledgeCompletion(e) {
-            if (e) { e.preventDefault(); e.stopPropagation(); }
-            closeCustomAlert();
-        }
-        confirmBtn.addEventListener('pointerup', acknowledgeCompletion);
-        confirmBtn.addEventListener('click', acknowledgeCompletion);
 
         function closeCustomAlert() {
             if (!customAlert.classList.contains('show')) return;
@@ -2222,13 +2247,14 @@
             pauseFocusBreakForBackground();
         });
 
+        /* [환경설정 모달 - min과 sec 완전히 동일한 00 포맷팅 유지] */
         let settingsSnapshot = null;
 
         function validateInput(input, maxVal, minVal = 0) {
             let val = parseInt(input.value, 10);
             if (isNaN(val) || val < minVal) val = minVal;
             if (val > maxVal) val = maxVal;
-            input.value = (maxVal === 999 && minVal === 0) ? String(val).padStart(2, '0') : String(val);
+            input.value = String(val).padStart(2, '0');
         }
 
         function openSettings() {
@@ -2306,6 +2332,7 @@
             }
         }
 
+        /* [통계 대시보드 로직] */
         let currentChartRange = 7;
 
         function openStats() {
@@ -2577,6 +2604,7 @@
             }
         }
 
+        /* [수정 3] 순수하고 안정적인 실시간 고스트 커스텀 드래그 앤 드롭 복원 */
         let draggedTodoId = null;
         let dragGhost = null;
         let offsetX = 0;
@@ -2712,6 +2740,7 @@
             renderTodos();
         }
 
+        /* [To-Do 리스트 토글] */
         function toggleDrawer(event) {
             updateLastActive();
             if (event) {
@@ -2721,12 +2750,14 @@
             todoToggleBtn.classList.toggle('drawer-open');
         }
 
+        /* [수정 3] 투두 내부의 모든 터치/클릭 이벤트 격리 (외부로 새어나가지 않음) */
         ['click', 'touchstart', 'touchend', 'pointerdown'].forEach(evtName => {
             todoDrawer.addEventListener(evtName, (e) => {
                 e.stopPropagation();
             }, { passive: true });
         });
 
+        /* 외부 클릭 판정 시에만 서랍 닫기 */
         document.addEventListener('click', (event) => {
             const path = event.composedPath ? event.composedPath() : [];
             const isInsideDrawer = path.includes(todoDrawer) || todoDrawer.contains(event.target);
@@ -2881,12 +2912,12 @@
             renderTodos();
         }
 
-        const ICON_ENTER_FULLSCREEN = '<path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" stroke-linecap="round" stroke-linejoin="round"/>';
+        /* [아이콘 SVG 정의 - 통일된 코너 프레임 스타일] */
+        const ICON_ENTER_FULLSCREEN = `
+            <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+        `;
         const ICON_EXIT_FULLSCREEN = `
-            <path d="M4 10h3.5a1.5 1.5 0 0 0 1.5-1.5V5" stroke-linecap="round" stroke-linejoin="round"/>
-            <path d="M20 10h-3.5a1.5 1.5 0 0 1-1.5-1.5V5" stroke-linecap="round" stroke-linejoin="round"/>
-            <path d="M4 14h3.5a1.5 1.5 0 0 1 1.5 1.5V19" stroke-linecap="round" stroke-linejoin="round"/>
-            <path d="M20 14h-3.5a1.5 1.5 0 0 0-1.5 1.5V19" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M3 8h3a2 2 0 0 0 2-2V3m13 5h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
         `;
 
         function updateFullscreenIcon(isFs) {
@@ -2895,6 +2926,7 @@
             adjustLayoutScale();
         }
 
+        // R7: Safari browser button does nothing. Other apps and Home Screen use page fullscreen only.
         const isStandaloneApp = document.documentElement.classList.contains('standalone');
         const isTouchDevice = (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) || (navigator.maxTouchPoints || 0) > 1;
         const isSafariBrowser = !isStandaloneApp && /Safari/i.test(navigator.userAgent) && !/CriOS|FxiOS|EdgiOS|OPiOS|Chrome|Chromium|Firefox|Edg\//i.test(navigator.userAgent);
@@ -2915,8 +2947,11 @@
             isFullscreenMode = true;
             applyPseudoFullscreen(true);
             updateFullscreenIcon(true);
+        } else {
+            updateFullscreenIcon(false);
         }
 
+        /* [수정] 확대/축소 방지 (핀치, 더블탭). 버튼 연타는 그대로 동작 */
         ['gesturestart', 'gesturechange', 'gestureend'].forEach(evt => {
             document.addEventListener(evt, (e) => e.preventDefault(), { passive: false });
         });
@@ -2927,6 +2962,7 @@
             if (isTouchDevice) e.preventDefault();
         }, { passive: false });
 
+        /* [초기 구동] */
         if (!activeDayKey) activeDayKey = getDateKey(new Date(lastActiveTime));
         lastSavedDate = getFormattedDate(keyToDate(activeDayKey));
         statsDateEl.textContent = lastSavedDate;
