@@ -10,8 +10,8 @@
     <link rel="icon" type="image/png" href="./potato.png">
     <link rel="apple-touch-icon" href="./potato.png">
 
-    <title>Potato Timer · R4</title>
-    <meta name="potato-build" content="R4-20261109">
+    <title>Potato Timer · R5</title>
+    <meta name="potato-build" content="R5-20261109">
     
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -1327,18 +1327,18 @@
         audioAlarm.loop = false;
         audioAlarm.volume = 0.65; // [수정 5] 알람 소리 기존 대비 약 2/3 크기로 조절
 
-        // R4: prime once per media element. Pending operations cannot stop a real alarm.
+        // R5: only one alarm may own playback. Never play actual songs to unlock audio.
         const AUDIO_FILES = { focus: './focus.mp3', short: './break.mp3', alarm: './alarm.mp3' };
         const audioByKey = { focus: audioFocus, short: audioBreak, alarm: audioAlarm };
         const AudioCtxClass = window.AudioContext || window.webkitAudioContext;
         let audioCtx = null;
-        const audioBuffers = {};
-        const bufferJobs = {};
         let soundGeneration = 0;
+        let soundRequest = null;
         let webAudioHandle = null;
         let webGain = null;
+        const bufferJobs = {};
         function audioProblem(key, err) {
-            console.warn('[Potato R4 audio]', key, err);
+            console.warn('[Potato R5 audio]', key, err);
             const btn = document.getElementById('mute-toggle-btn');
             if (btn) btn.title = '오디오 재생 실패: ' + key + ' — ' + (err && err.message || err);
         }
@@ -1346,13 +1346,13 @@
             if (!AudioCtxClass) return null;
             if (!audioCtx) {
                 try { audioCtx = new AudioCtxClass(); } catch (e) { return null; }
-                Object.keys(AUDIO_FILES).forEach(key => {
-                    bufferJobs[key] = fetch(AUDIO_FILES[key]).then(r => {
-                        if (!r.ok) throw new Error('음원 HTTP ' + r.status + ': ' + AUDIO_FILES[key]);
+                Object.entries(AUDIO_FILES).forEach(([key, url]) => {
+                    bufferJobs[key] = fetch(url).then(r => {
+                        if (!r.ok) throw new Error('음원 HTTP ' + r.status + ': ' + url);
                         return r.arrayBuffer();
                     }).then(data => new Promise((resolve, reject) => {
                         audioCtx.decodeAudioData(data, resolve, reject);
-                    })).then(buf => { audioBuffers[key] = buf; return buf; });
+                    }));
                     bufferJobs[key].catch(err => audioProblem(key, err));
                 });
             }
@@ -1360,59 +1360,72 @@
         }
         function unlockAudio() {
             const ctx = ensureAudioCtx();
-            if (ctx && ctx.state !== 'running') {
+            if (!ctx) return;
+            // The only priming sound is a zero-valued buffer, never focus/break/alarm.mp3.
+            try {
                 const p = ctx.resume();
                 if (p && p.catch) p.catch(err => audioProblem('unlock', err));
-            }
-            Object.values(audioByKey).forEach(el => {
-                if (el.__primed || el.__priming || el.__alarming) return;
-                el.__priming = true;
-                const gen = soundGeneration;
-                const vol = el.volume;
-                el.volume = 0;
-                let p;
-                try { p = el.play(); } catch (e) { el.__priming = false; el.volume = vol; return; }
-                Promise.resolve(p).then(() => {
-                    el.__primed = true;
-                    if (gen === soundGeneration && !el.__alarming) { el.pause(); el.currentTime = 0; }
-                }).catch(() => {}).finally(() => {
-                    el.__priming = false;
-                    if (!el.__alarming) el.volume = vol;
-                });
-            });
+                if (!ctx.__silentPrimed) {
+                    const src = ctx.createBufferSource();
+                    src.buffer = ctx.createBuffer(1, 1, ctx.sampleRate);
+                    src.connect(ctx.destination);
+                    src.start();
+                    ctx.__silentPrimed = true;
+                }
+            } catch (e) { audioProblem('unlock', e); }
         }
         ['pointerdown', 'touchend', 'click', 'keydown'].forEach(evt => {
             document.addEventListener(evt, unlockAudio, { capture: true, passive: true });
         });
         function stopWebAudio() {
+            // Invalidates every outstanding decode/resume/play callback before stopping sound.
             soundGeneration++;
-            if (webAudioHandle) { try { webAudioHandle.stop(); } catch (e) {} }
+            soundRequest = null;
+            if (webAudioHandle) {
+                try { webAudioHandle.stop(); } catch (e) {}
+                try { webAudioHandle.disconnect(); } catch (e) {}
+            }
             webAudioHandle = null;
+            if (webGain) { try { webGain.disconnect(); } catch (e) {} }
             webGain = null;
-            Object.values(audioByKey).forEach(el => { el.__alarming = false; });
+            Object.values(audioByKey).forEach(el => {
+                el.pause();
+                el.loop = false;
+                try { el.currentTime = 0; } catch (e) {}
+            });
         }
         function playSound(key, loop, volume) {
+            // Do not let a one-shot Timer notification replace a Focus/Break completion alarm.
+            if (key === 'alarm' && soundRequest && soundRequest.loop) return;
+            stopWebAudio();
             if (isMuted) return;
-            const generation = ++soundGeneration;
+            const generation = soundGeneration;
+            soundRequest = { key, loop, volume };
+            const valid = () => generation === soundGeneration && !isMuted && soundRequest;
             const el = audioByKey[key];
-            const ctx = ensureAudioCtx();
-            function htmlFallback(err) {
-                if (generation !== soundGeneration || isMuted) return;
-                el.__alarming = true;
+            let fallbackStarted = false;
+            function htmlFallback() {
+                if (!valid() || fallbackStarted) return;
+                fallbackStarted = true;
                 el.muted = false;
                 el.volume = volume;
                 el.loop = !!loop;
                 try {
                     el.currentTime = 0;
                     const p = el.play();
-                    if (p && p.catch) p.catch(e => audioProblem(key, e));
+                    if (p && p.then) p.then(() => {
+                        // A slow play() promise must not resurrect an acknowledged alarm.
+                        if (generation !== soundGeneration && !(soundRequest && soundRequest.key === key)) el.pause();
+                    }).catch(e => { if (valid()) audioProblem(key, e); });
                 } catch (e) { audioProblem(key, e); }
             }
+            const ctx = ensureAudioCtx();
             if (!ctx || !bufferJobs[key]) { htmlFallback(); return; }
-            Promise.all([ctx.resume(), bufferJobs[key]]).then(([, buffer]) => {
-                if (generation !== soundGeneration || isMuted) return;
+            let resume;
+            try { resume = ctx.resume(); } catch (e) { htmlFallback(); return; }
+            Promise.all([resume, bufferJobs[key]]).then(([, buffer]) => {
+                if (!valid()) return;
                 if (ctx.state !== 'running') { htmlFallback(); return; }
-                if (webAudioHandle) { try { webAudioHandle.stop(); } catch (e) {} }
                 const src = ctx.createBufferSource();
                 const gain = ctx.createGain();
                 src.buffer = buffer;
@@ -1422,8 +1435,16 @@
                 gain.connect(ctx.destination);
                 webAudioHandle = src;
                 webGain = gain;
+                src.onended = () => {
+                    if (generation === soundGeneration && !loop) {
+                        soundRequest = null;
+                        webAudioHandle = null;
+                        webGain = null;
+                    }
+                    try { src.disconnect(); gain.disconnect(); } catch (e) {}
+                };
                 src.start();
-            }).catch(htmlFallback);
+            }).catch(() => { if (valid()) htmlFallback(); });
         }
         /* [수정] 홈 화면 웹 앱(standalone) 감지 */
         try {
@@ -1526,7 +1547,7 @@
         `;
 
         function updateMuteDisplay() {
-            if (typeof webGain !== 'undefined' && webGain) webGain.gain.value = isMuted ? 0 : (activeAlertAudio ? 1 : 0.65);
+            if (isMuted) stopWebAudio();
             muteIcon.innerHTML = isMuted ? ICON_SOUND_MUTED : ICON_SOUND_ON;
             document.getElementById('mute-toggle-btn').title = isMuted ? "소리 켜기" : "소리 끄기 (음소거)";
             [audioFocus, audioBreak, audioAlarm].forEach(a => { if (a) a.muted = isMuted; });
@@ -1831,11 +1852,7 @@
 
         function stopAudioEngine() {
             stopWebAudio();
-            if (activeAlertAudio) {
-                activeAlertAudio.pause();
-                activeAlertAudio.currentTime = 0;
-                activeAlertAudio = null;
-            }
+            activeAlertAudio = null;
             stabilizeSkySmoothly();
         }
 
@@ -3041,6 +3058,9 @@
         function handleFsChange() {
             applyPseudoFullscreen(isFullscreenMode);
             updateFullscreenIcon(isFullscreenMode);
+            if (isFullscreenMode && !isStandaloneApp && !document.fullscreenElement && !document.webkitFullscreenElement) {
+                document.getElementById('fullscreen-toggle-btn').title = '페이지 확장 해제 (Safari 전체화면은 종료됨)';
+            }
         }
         document.addEventListener('fullscreenchange', handleFsChange);
         document.addEventListener('webkitfullscreenchange', handleFsChange);
@@ -3073,8 +3093,8 @@
         initCloudSync();
         adjustLayoutScale();
         updateMuteDisplay();
-        document.getElementById('fullscreen-toggle-btn').dataset.build = 'R4';
-        document.getElementById('mute-toggle-btn').dataset.build = 'R4';
+        document.getElementById('fullscreen-toggle-btn').dataset.build = 'R5';
+        document.getElementById('mute-toggle-btn').dataset.build = 'R5';
         renderPomoTracker();
         setTimeout(triggerShootingStar, 1500);
     </script>
