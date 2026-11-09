@@ -10,7 +10,8 @@
     <link rel="icon" type="image/png" href="./potato.png">
     <link rel="apple-touch-icon" href="./potato.png">
 
-    <title>Potato Timer</title>
+    <title>Potato Timer · R4</title>
+    <meta name="potato-build" content="R4-20261109">
     
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -90,7 +91,7 @@
                 radial-gradient(ellipse 55% 25% at 55% 55%, rgba(68, 114, 255, 0.22), transparent 75%),
                 radial-gradient(circle at 50% 50%, rgba(142, 121, 231, 0.18), transparent 60%);
             transform: rotate(-32deg) translateZ(0);
-            filter: blur(45px);
+            filter: blur(12px); /* R4: reduced full-screen blur cost; gradients retained */
             opacity: 0;
             pointer-events: none;
             z-index: 1;
@@ -1326,85 +1327,103 @@
         audioAlarm.loop = false;
         audioAlarm.volume = 0.65; // [수정 5] 알람 소리 기존 대비 약 2/3 크기로 조절
 
-        /* [수정] 오디오 잠금 해제: 브라우저(PC·태블릿)는 소리 재생을 막는 경우가 있어 WebAudio를 보조로 함께 준비 */
+        // R4: prime once per media element. Pending operations cannot stop a real alarm.
         const AUDIO_FILES = { focus: './focus.mp3', short: './break.mp3', alarm: './alarm.mp3' };
         const audioByKey = { focus: audioFocus, short: audioBreak, alarm: audioAlarm };
         const AudioCtxClass = window.AudioContext || window.webkitAudioContext;
         let audioCtx = null;
         const audioBuffers = {};
-        let isAudioUnlocked = false;
-
+        const bufferJobs = {};
+        let soundGeneration = 0;
+        let webAudioHandle = null;
+        let webGain = null;
+        function audioProblem(key, err) {
+            console.warn('[Potato R4 audio]', key, err);
+            const btn = document.getElementById('mute-toggle-btn');
+            if (btn) btn.title = '오디오 재생 실패: ' + key + ' — ' + (err && err.message || err);
+        }
         function ensureAudioCtx() {
             if (!AudioCtxClass) return null;
             if (!audioCtx) {
-                try { audioCtx = new AudioCtxClass(); } catch (e) { audioCtx = null; return null; }
+                try { audioCtx = new AudioCtxClass(); } catch (e) { return null; }
                 Object.keys(AUDIO_FILES).forEach(key => {
-                    fetch(AUDIO_FILES[key]).then(r => r.arrayBuffer()).then(buf => {
-                        const done = (decoded) => { audioBuffers[key] = decoded; };
-                        const p = audioCtx.decodeAudioData(buf, done, () => {});
-                        if (p && p.then) p.then(done).catch(() => {});
-                    }).catch(() => {});
+                    bufferJobs[key] = fetch(AUDIO_FILES[key]).then(r => {
+                        if (!r.ok) throw new Error('음원 HTTP ' + r.status + ': ' + AUDIO_FILES[key]);
+                        return r.arrayBuffer();
+                    }).then(data => new Promise((resolve, reject) => {
+                        audioCtx.decodeAudioData(data, resolve, reject);
+                    })).then(buf => { audioBuffers[key] = buf; return buf; });
+                    bufferJobs[key].catch(err => audioProblem(key, err));
                 });
             }
             return audioCtx;
         }
-
         function unlockAudio() {
             const ctx = ensureAudioCtx();
-            if (ctx && ctx.state !== 'running') { try { ctx.resume(); } catch (e) {} }
-            if (isAudioUnlocked) return;
-            [audioFocus, audioBreak, audioAlarm].forEach(audio => {
-                audio.muted = true;
+            if (ctx && ctx.state !== 'running') {
+                const p = ctx.resume();
+                if (p && p.catch) p.catch(err => audioProblem('unlock', err));
+            }
+            Object.values(audioByKey).forEach(el => {
+                if (el.__primed || el.__priming || el.__alarming) return;
+                el.__priming = true;
+                const gen = soundGeneration;
+                const vol = el.volume;
+                el.volume = 0;
                 let p;
-                try { p = audio.play(); } catch (e) { audio.muted = isMuted; return; }
-                if (p && p.then) {
-                    p.then(() => {
-                        audio.pause();
-                        audio.currentTime = 0;
-                        audio.muted = isMuted;
-                        isAudioUnlocked = true;
-                    }).catch(() => { audio.muted = isMuted; });
-                } else {
-                    audio.muted = isMuted;
-                }
+                try { p = el.play(); } catch (e) { el.__priming = false; el.volume = vol; return; }
+                Promise.resolve(p).then(() => {
+                    el.__primed = true;
+                    if (gen === soundGeneration && !el.__alarming) { el.pause(); el.currentTime = 0; }
+                }).catch(() => {}).finally(() => {
+                    el.__priming = false;
+                    if (!el.__alarming) el.volume = vol;
+                });
             });
         }
-        ['pointerdown', 'touchend', 'click', 'keydown'].forEach(evt => document.addEventListener(evt, unlockAudio, { passive: true }));
-
-        /* HTMLAudio 재생이 거부되거나 소리가 안 날 때 WebAudio로 대신 재생 */
-        let webAudioHandle = null;
+        ['pointerdown', 'touchend', 'click', 'keydown'].forEach(evt => {
+            document.addEventListener(evt, unlockAudio, { capture: true, passive: true });
+        });
         function stopWebAudio() {
-            if (webAudioHandle) { try { webAudioHandle.stop(); } catch (e) {} webAudioHandle = null; }
+            soundGeneration++;
+            if (webAudioHandle) { try { webAudioHandle.stop(); } catch (e) {} }
+            webAudioHandle = null;
+            webGain = null;
+            Object.values(audioByKey).forEach(el => { el.__alarming = false; });
         }
-        function playViaWebAudio(key, loop, volume) {
+        function playSound(key, loop, volume) {
+            if (isMuted) return;
+            const generation = ++soundGeneration;
+            const el = audioByKey[key];
             const ctx = ensureAudioCtx();
-            if (!ctx || !audioBuffers[key]) return false;
-            try {
-                if (ctx.state !== 'running') ctx.resume();
+            function htmlFallback(err) {
+                if (generation !== soundGeneration || isMuted) return;
+                el.__alarming = true;
+                el.muted = false;
+                el.volume = volume;
+                el.loop = !!loop;
+                try {
+                    el.currentTime = 0;
+                    const p = el.play();
+                    if (p && p.catch) p.catch(e => audioProblem(key, e));
+                } catch (e) { audioProblem(key, e); }
+            }
+            if (!ctx || !bufferJobs[key]) { htmlFallback(); return; }
+            Promise.all([ctx.resume(), bufferJobs[key]]).then(([, buffer]) => {
+                if (generation !== soundGeneration || isMuted) return;
+                if (ctx.state !== 'running') { htmlFallback(); return; }
+                if (webAudioHandle) { try { webAudioHandle.stop(); } catch (e) {} }
                 const src = ctx.createBufferSource();
                 const gain = ctx.createGain();
-                src.buffer = audioBuffers[key];
+                src.buffer = buffer;
                 src.loop = !!loop;
                 gain.gain.value = volume;
                 src.connect(gain);
                 gain.connect(ctx.destination);
-                if (loop) { stopWebAudio(); webAudioHandle = src; }
-                src.start(0);
-                return true;
-            } catch (e) { return false; }
-        }
-        function playSound(key, loop, volume) {
-            const el = audioByKey[key];
-            let usedFallback = false;
-            const fallback = () => { if (!usedFallback) { usedFallback = true; playViaWebAudio(key, loop, volume); } };
-            try {
-                el.muted = false;
-                el.currentTime = 0;
-                el.loop = !!loop;
-                el.volume = volume;
-                const p = el.play();
-                if (p && p.catch) p.catch(fallback);
-            } catch (e) { fallback(); }
+                webAudioHandle = src;
+                webGain = gain;
+                src.start();
+            }).catch(htmlFallback);
         }
         /* [수정] 홈 화면 웹 앱(standalone) 감지 */
         try {
@@ -1507,6 +1526,7 @@
         `;
 
         function updateMuteDisplay() {
+            if (typeof webGain !== 'undefined' && webGain) webGain.gain.value = isMuted ? 0 : (activeAlertAudio ? 1 : 0.65);
             muteIcon.innerHTML = isMuted ? ICON_SOUND_MUTED : ICON_SOUND_ON;
             document.getElementById('mute-toggle-btn').title = isMuted ? "소리 켜기" : "소리 끄기 (음소거)";
             [audioFocus, audioBreak, audioAlarm].forEach(a => { if (a) a.muted = isMuted; });
@@ -1892,7 +1912,8 @@
 
         function updateStatsDisplay() {
             const focusMinutes = Math.floor(accumulatedFocusSeconds / 60);
-            statsCounterEl.textContent = `Today's Focus Time: ${focusMinutes} min`;
+            const label = `Today's Focus Time: ${focusMinutes} min`;
+            if (statsCounterEl.textContent !== label) statsCounterEl.textContent = label;
         }
 
         /* [타이머 SVG 게이지 갱신 - 0~59분 시계방향 비워짐 / 60~119분 시계방향 채워짐] */
@@ -2019,13 +2040,10 @@
 
             if (tabStates.focus.isRunning) {
                 anyRunning = true;
-                tabStates.focus.timeRemaining -= elapsedSeconds;
-                addFocusSeconds(elapsedSeconds, now);
-                actualFocusSecondsCompleted += elapsedSeconds;
-
-                if (tabStates.focus.timeRemaining <= 10 && currentMode === 'focus' && !isCelebrationActive) {
-                    startCelebrationVFX();
-                }
+                const consumed = Math.min(Math.max(0, elapsedSeconds), tabStates.focus.timeRemaining);
+                tabStates.focus.timeRemaining = Math.max(0, tabStates.focus.timeRemaining - consumed);
+                addFocusSeconds(consumed, now);
+                actualFocusSecondsCompleted += consumed;
 
                 if (tabStates.focus.timeRemaining <= 0) {
                     tabStates.focus.timeRemaining = 0;
@@ -2036,10 +2054,6 @@
             if (tabStates.short.isRunning) {
                 anyRunning = true;
                 tabStates.short.timeRemaining -= elapsedSeconds;
-                
-                if (tabStates.short.timeRemaining <= 10 && currentMode === 'short' && !isCelebrationActive) {
-                    startCelebrationVFX();
-                }
 
                 if (tabStates.short.timeRemaining <= 0) {
                     tabStates.short.timeRemaining = 0;
@@ -2058,7 +2072,7 @@
             }
             updateDisplay();
 
-            if (anyRunning) {
+            if (Object.values(tabStates).some(st => st.isRunning)) {
                 timerAnimationId = setTimeout(timerLoop, TICK_MS);
             } else {
                 timerAnimationId = null;
@@ -2178,7 +2192,7 @@
                 timerAnimationId = null;
             }
             
-            try { startCelebrationVFX(); } catch (e) { console.error(e); }
+            updateDisplay();
             try { playEndAlert(completedMode); } catch (e) { console.error(e); }
 
             if (completedMode === 'focus') {
@@ -2191,9 +2205,12 @@
 
             lastCompletedMode = completedMode;
 
+            customAlert.classList.add('show');
             setTimeout(() => {
-                customAlert.classList.add('show');
-            }, 350);
+                if (customAlert.classList.contains('show')) {
+                    try { startCelebrationVFX(); } catch (e) { console.error(e); }
+                }
+            }, 100);
         }
 
         function closeCustomAlert() {
@@ -2995,7 +3012,7 @@
             applyPseudoFullscreen(isFullscreenMode);
 
             if (isFullscreenMode) {
-                // 네이티브 전체화면: 마우스 기반 PC에서만 시도
+                // Request native fullscreen only from the fullscreen button, including tablets.
                 if (!isStandaloneApp) {
                     const reqFs = docEl.requestFullscreen || docEl.webkitRequestFullscreen || docEl.mozRequestFullScreen || docEl.msRequestFullscreen;
                     if (reqFs) {
@@ -3019,21 +3036,11 @@
             }
         }
 
-        /* 브라우저/OS가 네이티브 전체화면을 강제로 끝낸 경우(iPad의 시스템 제스처, ESC 등)는 막을 수 없으므로
-           화면 상태와 버튼 아이콘을 실제 상태에 맞춰 둔다 → 다시 누르면 바로 전체화면 진입 */
-        let nativeFsWasActive = false;
+        // OS may exit native fullscreen. Keep the user's page-layout choice;
+        // do not re-request native fullscreen from scrolling or typing events.
         function handleFsChange() {
-            const active = !!(document.fullscreenElement || document.webkitFullscreenElement);
-            if (active) {
-                nativeFsWasActive = true;
-            } else if (nativeFsWasActive) {
-                nativeFsWasActive = false;
-                if (isFullscreenMode && !isStandaloneApp) {
-                    isFullscreenMode = false;
-                    applyPseudoFullscreen(false);
-                    updateFullscreenIcon(false);
-                }
-            }
+            applyPseudoFullscreen(isFullscreenMode);
+            updateFullscreenIcon(isFullscreenMode);
         }
         document.addEventListener('fullscreenchange', handleFsChange);
         document.addEventListener('webkitfullscreenchange', handleFsChange);
@@ -3066,6 +3073,8 @@
         initCloudSync();
         adjustLayoutScale();
         updateMuteDisplay();
+        document.getElementById('fullscreen-toggle-btn').dataset.build = 'R4';
+        document.getElementById('mute-toggle-btn').dataset.build = 'R4';
         renderPomoTracker();
         setTimeout(triggerShootingStar, 1500);
     </script>
