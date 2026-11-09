@@ -10,8 +10,8 @@
     <link rel="icon" type="image/png" href="./potato.png">
     <link rel="apple-touch-icon" href="./potato.png">
 
-    <title>Potato Timer · R7</title>
-    <meta name="potato-build" content="R7-20261109">
+    <title>Potato Timer · R8</title>
+    <meta name="potato-build" content="R8-20261109">
     
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -1190,7 +1190,7 @@
                     <div class="settings-inputs-wrapper">
                         <input type="number" inputmode="numeric" class="settings-num-input" id="input-focus-min" min="0" max="999" onblur="validateInput(this, 999)">
                         <span class="settings-unit-label">min</span>
-                        <input type="number" inputmode="numeric" class="settings-num-input" id="input-focus-sec" min="0" max="59" onblur="validateInput(this, 59)">
+                        <input type="number" inputmode="numeric" class="settings-num-input" id="input-focus-sec" min="0" max="59" oninput="validateInput(this, 59)" onblur="validateInput(this, 59)">
                         <span class="settings-unit-label">sec</span>
                     </div>
                 </div>
@@ -1200,7 +1200,7 @@
                     <div class="settings-inputs-wrapper">
                         <input type="number" inputmode="numeric" class="settings-num-input" id="input-short-min" min="0" max="999" onblur="validateInput(this, 999)">
                         <span class="settings-unit-label">min</span>
-                        <input type="number" inputmode="numeric" class="settings-num-input" id="input-short-sec" min="0" max="59" onblur="validateInput(this, 59)">
+                        <input type="number" inputmode="numeric" class="settings-num-input" id="input-short-sec" min="0" max="59" oninput="validateInput(this, 59)" onblur="validateInput(this, 59)">
                         <span class="settings-unit-label">sec</span>
                     </div>
                 </div>
@@ -1769,13 +1769,7 @@
 
         /* [오디오 알람 제어] */
         function stopAudioEngine() {
-            if (soundRequest && soundRequest.loop && !isMuted) {
-                const generation = soundGeneration;
-                fadeVolume(0, 1500, generation);
-                setTimeout(() => { if (generation === soundGeneration) stopAllSound(); }, 1500);
-            } else {
-                stopAllSound();
-            }
+            stopAllSound();
             try { stabilizeSkySmoothly(); } catch (e) {}
         }
         function playEndAlert(mode) { playSound(mode === 'focus' ? 'focus' : 'short', true, 1); }
@@ -2236,6 +2230,10 @@
                     lastTimestamp = Date.now();
                     if (tabStates.timer.isRunning) {
                         advanceGeneralTimer(bgElapsed, Date.now());
+                        if (!isSafariBrowser) {
+                            const crossed = Math.floor(tabStates.timer.timeRemaining / 3600) - Math.floor((tabStates.timer.timeRemaining - bgElapsed) / 3600);
+                            for (let i = 0; i < crossed; i++) playHourlyAlert();
+                        }
                     }
                     updateDisplay();
                     updateStatsDisplay();
@@ -2256,7 +2254,7 @@
             let val = parseInt(input.value, 10);
             if (isNaN(val) || val < minVal) val = minVal;
             if (val > maxVal) val = maxVal;
-            input.value = (maxVal === 999 && minVal === 0) ? String(val).padStart(2, '0') : String(val);
+            input.value = (maxVal === 59 || (maxVal === 999 && minVal === 0)) ? String(val).padStart(2, '0') : String(val);
         }
 
         function openSettings() {
@@ -2925,7 +2923,7 @@
 
         function updateFullscreenIcon(isFs) {
             fsIcon.innerHTML = isFs ? ICON_EXIT_FULLSCREEN : ICON_ENTER_FULLSCREEN;
-            document.getElementById('fullscreen-toggle-btn').title = isFs ? "전체화면 종료" : "전체화면 전환";
+            document.getElementById('fullscreen-toggle-btn').title = isFs ? "전체화면 종료" : "전체화면";
             adjustLayoutScale();
         }
 
