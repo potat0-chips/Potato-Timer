@@ -4,17 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     
-    <!-- Data URL 매니페스트 (이름: Potato Timer / 홈 화면 standalone 실행) -->
-    <link rel="manifest" href="data:application/manifest+json;base64,eyJuYW1lIjoiUG90YXRvIFRpbWVyIiwic2hvcnRfbmFtZSI6IlBvdGF0byBUaW1lciIsInN0YXJ0X3VybCI6Ii4iLCJkaXNwbGF5Ijoic3RhbmRhbG9uZSIsImJhY2tncm91bmRfY29sb3IiOiIjMGIxNDI0IiwidGhlbWVfY29sb3IiOiIjMGIxNDI0IiwiaWNvbnMiOlt7InNyYyI6Ii4vcG90YXRvLnBuZyIsInNpemVzIjoiMTkyeDE5MiA1MTJ4NTEyIiwidHlwZSI6ImltYWdlL3BuZyJ9XX0=">
-
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Potato Timer">
     <link rel="icon" type="image/png" href="./potato.png">
     <link rel="apple-touch-icon" href="./potato.png">
 
-    <title>Potato Timer · R7</title>
-    <meta name="potato-build" content="R7-20261109">
+    <title>Potato Timer · R10</title>
+    <meta name="potato-build" content="R10-20261109">
     
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -70,10 +67,11 @@
             left: 0 !important;
             right: 0 !important;
             bottom: 0 !important;
-            width: 100% !important;
-            height: 100% !important;
+            width: auto !important;
+            height: auto !important;
             min-height: 0 !important;
             overflow: hidden !important;
+            z-index: 999999 !important;
         }
 
         button, input, textarea, div, span, p {
@@ -93,7 +91,7 @@
                 radial-gradient(ellipse 55% 25% at 55% 55%, rgba(68, 114, 255, 0.22), transparent 75%),
                 radial-gradient(circle at 50% 50%, rgba(142, 121, 231, 0.18), transparent 60%);
             transform: rotate(-32deg) translateZ(0);
-            filter: blur(12px);
+            filter: blur(12px); /* R4: reduced full-screen blur cost; gradients retained */
             opacity: 0;
             pointer-events: none;
             z-index: 1;
@@ -633,32 +631,18 @@
         /* [완료 모달] */
         .custom-alert-overlay {
             position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(6, 11, 23, 0.72);
-            display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; z-index: 5000;
+            display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.45s cubic-bezier(0.25, 1, 0.5, 1); z-index: 2000;
         }
         .custom-alert-overlay.show { opacity: 1; pointer-events: auto; }
         .custom-alert-box {
             background-color: rgba(15, 27, 49, 0.98); border: 1px solid rgba(255, 255, 255, 0.2); padding: 36px 24px; border-radius: 20px;
             display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; box-shadow: 0 15px 35px rgba(0,0,0,0.6);
-            max-width: 90%; width: 320px; transform: scale(0.92) translateY(12px); transition: transform 0.3s ease, width 0.3s ease;
+            max-width: 90%; width: 320px; transform: scale(0.92) translateY(12px); transition: transform 0.45s cubic-bezier(0.25, 1, 0.5, 1), width 0.3s ease;
         }
         .custom-alert-box.wide { width: 360px; padding: 36px 28px; }
         .custom-alert-overlay.show .custom-alert-box { transform: scale(1) translateY(0); }
         .custom-alert-text { font-size: 16px; font-weight: bold; margin: 0 0 26px 0; line-height: 1.4; white-space: nowrap; width: 100%; display: flex; align-items: center; justify-content: center; text-align: center; letter-spacing: -0.2px; }
-        .custom-alert-btn { 
-            background-color: #6A55C9; 
-            color: white; 
-            border: none; 
-            padding: 12px 38px; 
-            font-size: 15px; 
-            font-weight: bold; 
-            border-radius: 16px; 
-            cursor: pointer; 
-            transition: background 0.1s; 
-            -webkit-tap-highlight-color: transparent; 
-            touch-action: manipulation;
-            position: relative;
-            z-index: 5001;
-        }
+        .custom-alert-btn { background-color: #6A55C9; color: white; border: none; padding: 11px 36px; font-size: 14px; font-weight: bold; border-radius: 16px; cursor: pointer; transition: background 0.1s; -webkit-tap-highlight-color: transparent; }
 
         /* [환경설정 팝업 모달] */
         .settings-modal-overlay {
@@ -1077,25 +1061,19 @@
             .settings-btn { right: 32px; }
             .mute-btn { right: 84px; }
         }
+        /* [수정] 설정 아이콘 비율 고정 */
         .settings-btn svg { width: 22px !important; height: 22px !important; aspect-ratio: 1 / 1; flex: 0 0 22px; }
-        
-        html.standalone, html.standalone body { height: 100vh; min-height: 100vh; min-height: -webkit-fill-available; }
-        html.standalone .todo-drawer {
-            height: calc(290px + env(safe-area-inset-bottom, 0px));
-            padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
-            bottom: calc(-320px - env(safe-area-inset-bottom, 0px)) !important;
+        @media (min-width: 601px) {
+            html.standalone .todo-drawer.open { bottom: 0px !important; }
+            html.standalone .todo-toggle-btn.drawer-open { bottom: 300px !important; }
         }
-        html.standalone .todo-drawer.open { bottom: 0px !important; }
-        html.standalone .todo-drawer::after {
-            content: ''; position: absolute; left: -1px; right: -1px; top: 100%; height: 240px;
-            background: rgba(11, 20, 36, 0.96); pointer-events: none;
-        }
-        html.standalone .todo-toggle-btn.drawer-open { bottom: calc(290px + env(safe-area-inset-bottom, 0px)) !important; }
         .todo-drag-handle { touch-action: none; }
+        /* [수정] 모바일/태블릿: 빠른 연타·더블탭으로 확대되지 않게 (버튼 동작은 그대로) */
         html, body, button, input, textarea, div, span { touch-action: manipulation; }
+        .todo-drag-handle { touch-action: none; }
         .todo-drawer, .todo-list { overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
 
-        #custom-alert .custom-alert-btn { position: relative; z-index: 5001; touch-action: manipulation; min-height: 44px; }
+        #custom-alert .custom-alert-btn { position: relative; z-index: 3; touch-action: manipulation; min-height: 44px; }
     </style>
 </head>
 <body>
@@ -1119,7 +1097,7 @@
     <div class="viewport-scaler">
         <div class="main-wrapper" id="main-content-box">
             <div class="header-area">
-                <div class="stats-date" id="stats-date-string">&nbsp;</div>
+                <div class="stats-date" id="stats-date-string">Monday Nov 2, 2026</div>
                 <h1 class="app-title">
                     <img src="./potato.png" alt="Potato" class="potato-study-img">
                     Potato Timer
@@ -1292,7 +1270,9 @@
 
     <!-- 좌측 하단 전체화면 버튼 -->
     <button class="bottom-action-btn fullscreen-btn" id="fullscreen-toggle-btn" onclick="toggleFullScreen(event)" title="전체화면 전환">
-        <svg id="fs-icon" viewBox="0 0 24 24"></svg>
+        <svg id="fs-icon" viewBox="0 0 24 24">
+            <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
+        </svg>
     </button>
 
     <!-- 우측 하단 통계 대시보드 버튼 -->
@@ -1314,193 +1294,78 @@
 
         let db = null;
         const isFirebaseConfigured = firebaseConfig.apiKey !== "YOUR_API_KEY";
-        if (isFirebaseConfigured && window.firebase) {
-            try { firebase.initializeApp(firebaseConfig); db = firebase.firestore(); }
-            catch (e) { console.warn('Firebase 초기화 실패: 로컬 모드 유지', e); }
-        }
+        try {
+            if (isFirebaseConfigured && window.firebase) {
+                firebase.initializeApp(firebaseConfig); db = firebase.firestore();
+            }
+        } catch (e) { console.warn('Firebase 초기화 실패: 로컬 모드 유지', e); db = null; }
 
         const urlParams = new URLSearchParams(window.location.search);
         const userId = urlParams.get('user') || 'default_local_user';
         const isCloudSyncActive = !!db && urlParams.has('user');
 
-        /* [iOS 사파리 대응 Web Audio API & 다중 오디오 인스턴스] */
+        // R7: three original files, one playing at a time. Focus/Break loop; Timer plays once.
         const AUDIO_FILES = { focus: './focus.mp3', short: './break.mp3', alarm: './alarm.mp3' };
-        
-        // .src를 동적으로 교체하지 않는 3개 전용 오디오 인스턴스 (사파리 재생 차단 방지)
-        const audioElements = {
-            focus: new Audio(AUDIO_FILES.focus),
-            short: new Audio(AUDIO_FILES.short),
-            alarm: new Audio(AUDIO_FILES.alarm)
-        };
-        Object.values(audioElements).forEach(aud => {
-            aud.preload = 'auto';
-            aud.playsInline = true;
-            aud.setAttribute('playsinline', '');
-        });
-
-        let audioCtx = null;
-        let gainNode = null;
-        let webAudioConnected = false;
-        let isAudioUnlocked = false;
-        let activeAudioKey = null;
-        let activeFadeInterval = null;
-
-        function getAudioContext() {
-            if (!audioCtx) {
-                const AC = window.AudioContext || window.webkitAudioContext;
-                if (AC) {
-                    audioCtx = new AC();
-                    gainNode = audioCtx.createGain();
-                    gainNode.connect(audioCtx.destination);
-                }
-            }
-            return audioCtx;
-        }
-
-        function unlockAudioEngine() {
-            if (isAudioUnlocked) return;
-            const ctx = getAudioContext();
-            if (ctx && ctx.state === 'suspended') {
-                ctx.resume();
-            }
-
-            Object.values(audioElements).forEach(aud => {
-                if (ctx && gainNode && !aud.__connected) {
-                    try {
-                        const source = ctx.createMediaElementSource(aud);
-                        source.connect(gainNode);
-                        aud.__connected = true;
-                        webAudioConnected = true;
-                    } catch (e) {}
-                }
-                const p = aud.play();
-                if (p && p.then) {
-                    p.then(() => {
-                        aud.pause();
-                        aud.currentTime = 0;
-                    }).catch(() => {});
-                }
-            });
-            isAudioUnlocked = true;
-        }
-
+        const alarmPlayer = new Audio();
+        alarmPlayer.preload = 'auto';
+        alarmPlayer.playsInline = true;
+        alarmPlayer.setAttribute('playsinline', '');
+        let soundGeneration = 0;
+        let soundRequest = null;
+        let fadeTimer = null;
         function stopAllSound() {
-            clearInterval(activeFadeInterval);
-            activeFadeInterval = null;
-            Object.keys(audioElements).forEach(k => {
-                const aud = audioElements[k];
-                try { aud.pause(); } catch (e) {}
-                aud.loop = false;
-                try { aud.currentTime = 0; } catch (e) {}
-                aud.volume = 1;
-            });
-            if (audioCtx && gainNode) {
-                try {
-                    gainNode.gain.cancelScheduledValues(audioCtx.currentTime);
-                    gainNode.gain.setValueAtTime(1, audioCtx.currentTime);
-                } catch (e) {}
-            }
-            activeAudioKey = null;
+            soundGeneration++;
+            soundRequest = null;
+            clearInterval(fadeTimer);
+            fadeTimer = null;
+            try { alarmPlayer.pause(); } catch (e) {}
+            alarmPlayer.loop = false;
+            try { alarmPlayer.currentTime = 0; } catch (e) {}
+            alarmPlayer.volume = 1;
         }
-
-        function setVolume(vol) {
-            if (audioCtx && gainNode && webAudioConnected) {
-                try {
-                    gainNode.gain.setValueAtTime(vol, audioCtx.currentTime);
-                } catch (e) {}
-            }
-            if (activeAudioKey && audioElements[activeAudioKey]) {
-                audioElements[activeAudioKey].volume = vol;
-            }
+        function fadeVolume(target, ms, generation) {
+            clearInterval(fadeTimer);
+            const start = alarmPlayer.volume;
+            const t0 = Date.now();
+            fadeTimer = setInterval(() => {
+                if (generation !== soundGeneration) { clearInterval(fadeTimer); fadeTimer = null; return; }
+                const p = Math.min(1, (Date.now() - t0) / ms);
+                alarmPlayer.volume = start + (target - start) * p;
+                if (p >= 1) { clearInterval(fadeTimer); fadeTimer = null; }
+            }, 50);
         }
-
-        function playSound(key, loop, volume, fadeInDuration = 0) {
-            if (isMuted) return;
-            if (key === 'alarm' && activeAudioKey && audioElements[activeAudioKey].loop) return;
-
+        function playSound(key, loop, volume) {
+            if (key === 'alarm' && soundRequest && soundRequest.loop) return;
             stopAllSound();
-            unlockAudioEngine();
-
-            const aud = audioElements[key];
-            if (!aud) return;
-
-            activeAudioKey = key;
-            aud.loop = !!loop;
-
-            if (fadeInDuration > 0) {
-                setVolume(0);
-                if (audioCtx && gainNode && webAudioConnected) {
-                    const now = audioCtx.currentTime;
-                    gainNode.gain.cancelScheduledValues(now);
-                    gainNode.gain.setValueAtTime(0, now);
-                    gainNode.gain.linearRampToValueAtTime(volume, now + (fadeInDuration / 1000));
-                }
-                const startTime = Date.now();
-                activeFadeInterval = setInterval(() => {
-                    const elapsed = Date.now() - startTime;
-                    const progress = Math.min(1, elapsed / fadeInDuration);
-                    aud.volume = progress * volume;
-                    if (progress >= 1) {
-                        clearInterval(activeFadeInterval);
-                        activeFadeInterval = null;
-                    }
-                }, 50);
-            } else {
-                setVolume(volume);
-            }
-
+            if (isMuted) return;
+            const generation = soundGeneration;
+            soundRequest = { key, loop: !!loop };
+            alarmPlayer.onended = () => {
+                if (generation === soundGeneration && !loop) soundRequest = null;
+            };
+            alarmPlayer.src = AUDIO_FILES[key];
+            alarmPlayer.muted = false;
+            alarmPlayer.loop = !!loop;
+            const fadeIn = key === 'focus';
+            alarmPlayer.volume = fadeIn ? 0 : volume;
             try {
-                const p = aud.play();
-                if (p && p.catch) p.catch(() => {});
-            } catch (e) {}
-        }
-
-        function stopAudioEngine() {
-            if (activeAudioKey && !isMuted) {
-                const aud = audioElements[activeAudioKey];
-                const fadeMs = 1500;
-                
-                if (audioCtx && gainNode && webAudioConnected) {
-                    const now = audioCtx.currentTime;
-                    gainNode.gain.cancelScheduledValues(now);
-                    gainNode.gain.setValueAtTime(gainNode.gain.value, now);
-                    gainNode.gain.linearRampToValueAtTime(0, now + (fadeMs / 1000));
-                }
-                
-                const startVol = aud.volume;
-                const startTime = Date.now();
-                clearInterval(activeFadeInterval);
-                activeFadeInterval = setInterval(() => {
-                    const elapsed = Date.now() - startTime;
-                    const progress = Math.min(1, elapsed / fadeMs);
-                    aud.volume = Math.max(0, startVol * (1 - progress));
-                    if (progress >= 1) {
-                        clearInterval(activeFadeInterval);
-                        activeFadeInterval = null;
-                        stopAllSound();
-                    }
-                }, 50);
-            } else {
-                stopAllSound();
+                const p = alarmPlayer.play();
+                if (p && p.catch) p.catch(() => {
+                    if (generation === soundGeneration) soundRequest = null;
+                });
+            } catch (e) {
+                if (generation === soundGeneration) soundRequest = null;
             }
-            try { stabilizeSkySmoothly(); } catch (e) {}
+            if (fadeIn) fadeVolume(volume, 4000, generation);
         }
 
-        function playEndAlert(mode) { 
-            if (mode === 'focus') {
-                playSound('focus', true, 1, 4000); // 포커스 종료 4초 페이드인
-            } else {
-                playSound('short', true, 1, 0);     // 브레이크 즉시 재생
+        /* [수정] 홈 화면 웹 앱(standalone) 감지 — 버튼 처리보다 먼저 */
+        try {
+            const standaloneMedia = window.matchMedia && window.matchMedia('(display-mode: standalone)').matches;
+            if (window.navigator.standalone === true || standaloneMedia) {
+                document.documentElement.classList.add('standalone');
             }
-        }
-        function playHourlyAlert() { playSound('alarm', false, 0.65, 0); }
-
-        /* [홈 화면(standalone) PWA 정밀 감지] */
-        const isStandaloneApp = (window.navigator.standalone === true) || 
-                                (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
-        if (isStandaloneApp) {
-            document.documentElement.classList.add('standalone');
-        }
+        } catch (e) {}
 
         const HARD_DEFAULTS = {
             focus: { min: 25, sec: 0 },
@@ -1508,7 +1373,7 @@
         };
 
         function getInitialModeSettings() {
-            const isSavePermanent = localStorage.getItem(`potato-save-default-${userId}`) === 'true';
+            let isSavePermanent = false; try { isSavePermanent = localStorage.getItem(`potato-save-default-${userId}`) === 'true'; } catch (e) {}
             if (isSavePermanent) {
                 try {
                     const saved = localStorage.getItem(`potato-timer-presets-${userId}`);
@@ -1522,7 +1387,7 @@
         }
 
         let modeSettings = getInitialModeSettings();
-        let targetCycleGoal = parseInt(localStorage.getItem(`potato-target-goal-${userId}`), 10) || 10;
+        let targetCycleGoal = 10; try { targetCycleGoal = parseInt(localStorage.getItem(`potato-target-goal-${userId}`), 10) || 10; } catch (e) {}
 
         let tabStates = {
             focus: { timeRemaining: modeSettings.focus.min * 60 + modeSettings.focus.sec, totalSeconds: modeSettings.focus.min * 60 + modeSettings.focus.sec, isRunning: false },
@@ -1537,19 +1402,19 @@
         
         const totalLength = 345.57; 
 
-        let pomoStars = parseInt(localStorage.getItem(`potato-pomo-stars-${userId}`), 10) || 0;
-        let pomoCycleCount = parseInt(localStorage.getItem(`potato-pomo-cycles-${userId}`), 10) || 0;
+        let pomoStars = 0; try { pomoStars = parseInt(localStorage.getItem(`potato-pomo-stars-${userId}`), 10) || 0; } catch (e) {}
+        let pomoCycleCount = 0; try { pomoCycleCount = parseInt(localStorage.getItem(`potato-pomo-cycles-${userId}`), 10) || 0; } catch (e) {}
         
-        let storedAutoPomo = localStorage.getItem(`potato-auto-pomo-${userId}`);
+        let storedAutoPomo = null; try { storedAutoPomo = localStorage.getItem(`potato-auto-pomo-${userId}`); } catch (e) {}
         let isAutoPomo = storedAutoPomo === 'true'; 
 
-        let lastActiveTime = parseInt(localStorage.getItem(`potato-last-active-${userId}`), 10) || Date.now();
+        let lastActiveTime = Date.now(); try { lastActiveTime = parseInt(localStorage.getItem(`potato-last-active-${userId}`), 10) || Date.now(); } catch (e) {}
         let actualFocusSecondsCompleted = 0; 
         let lastCompletedMode = 'focus'; 
 
         function updateLastActive() {
             lastActiveTime = Date.now();
-            localStorage.setItem(`potato-last-active-${userId}`, lastActiveTime.toString());
+            try { localStorage.setItem(`potato-last-active-${userId}`, lastActiveTime.toString()); } catch (e) {}
         }
 
         const timeText = document.getElementById('time-text');
@@ -1580,7 +1445,7 @@
         let isTooltipPinned = false;
 
         /* [음소거 로직] */
-        let isMuted = localStorage.getItem(`potato-muted-${userId}`) === 'true';
+        let isMuted = false; try { isMuted = localStorage.getItem(`potato-muted-${userId}`) === 'true'; } catch (e) {}
 
         const ICON_SOUND_ON = `
             <g transform="translate(1, 0)">
@@ -1599,7 +1464,7 @@
             if (isMuted) stopAllSound();
             muteIcon.innerHTML = isMuted ? ICON_SOUND_MUTED : ICON_SOUND_ON;
             document.getElementById('mute-toggle-btn').title = isMuted ? "소리 켜기" : "소리 끄기 (음소거)";
-            Object.values(audioElements).forEach(aud => aud.muted = isMuted);
+            alarmPlayer.muted = isMuted;
         }
 
         function toggleMute() {
@@ -1763,14 +1628,17 @@
 
             db.collection("users").doc(userId).onSnapshot((doc) => {
                 if (!doc.exists) return;
+                // 내 기기의 아직 서버에 확정되지 않은 저장은 무시
                 if (doc.metadata.hasPendingWrites) return;
                 const data = doc.data();
                 const ts = (data.updatedAtServer && data.updatedAtServer.toMillis) ? data.updatedAtServer.toMillis() : 0;
                 if (ts) {
+                    // 서버 저장 시각 기준: 이미 반영한 것보다 오래된 저장본은 적용하지 않음
                     if (ts <= lastServerTs) return;
                     lastServerTs = ts;
                     localStorage.setItem(`potato-server-ts-${userId}`, String(ts));
                 }
+                // 내가 저장한 데이터가 되돌아온 경우 다시 적용하지 않음 (진행 중인 시간이 뒤로 가는 것 방지)
                 if (data.writerId === CLIENT_ID) return;
 
                 isSyncingFromCloud = true;
@@ -1819,7 +1687,7 @@
             }, (err) => console.error("Firestore Listen Error:", err));
         }
 
-        for (let i = 0; i < 80; i++) {
+                for (let i = 0; i < 80; i++) {
             const star = document.createElement('div');
             star.className = 'ambient-star';
             star.style.left = `${Math.random() * 100}%`;
@@ -1830,8 +1698,9 @@
 
         let isCelebrationActive = false;
         let starTimeoutId = null;
+        let slowDownSteps = 0;
 
-        /* [별똥별 - 과도한 재귀 스케줄링 완화로 GPU 프레임 드랍 차단] */
+        /* [별똥별 전역 분산] */
         function triggerShootingStar() {
             const screenW = window.innerWidth || 800;
             const screenH = window.innerHeight || 600;
@@ -1860,7 +1729,18 @@
                 starElement.style.animation = 'none';
                 starElement.style.display = 'none';
 
-                let nextDelay = isCelebrationActive ? (Math.floor(Math.random() * 800) + 600) : (Math.floor(Math.random() * 6000) + 8000);
+                let nextDelay;
+                if (isCelebrationActive) {
+                    nextDelay = Math.floor(Math.random() * 55) + 35;
+                } else if (slowDownSteps > 0) {
+                    if (slowDownSteps === 3) nextDelay = Math.floor(Math.random() * 300) + 400;
+                    else if (slowDownSteps === 2) nextDelay = Math.floor(Math.random() * 600) + 1200;
+                    else nextDelay = Math.floor(Math.random() * 1000) + 3000;
+                    slowDownSteps--;
+                } else {
+                    nextDelay = Math.floor(Math.random() * 6000) + 8000;
+                }
+
                 starTimeoutId = setTimeout(triggerShootingStar, nextDelay);
             }, duration * 1000 + 40);
         }
@@ -1868,15 +1748,32 @@
         function startCelebrationVFX() {
             if (isCelebrationActive) return;
             isCelebrationActive = true;
+            slowDownSteps = 0;
             milkyWayGlow.classList.add('visible');
             clearTimeout(starTimeoutId);
             triggerShootingStar();
         }
 
         function stabilizeSkySmoothly() {
+            if (!isCelebrationActive && slowDownSteps === 0) return;
             isCelebrationActive = false;
+            slowDownSteps = 3;
             milkyWayGlow.classList.remove('visible');
         }
+
+        /* [오디오 알람 제어] */
+        function stopAudioEngine() {
+            if (soundRequest && soundRequest.loop && !isMuted) {
+                const generation = soundGeneration;
+                fadeVolume(0, 1500, generation);
+                setTimeout(() => { if (generation === soundGeneration) stopAllSound(); }, 1500);
+            } else {
+                stopAllSound();
+            }
+            try { stabilizeSkySmoothly(); } catch (e) {}
+        }
+        function playEndAlert(mode) { playSound(mode === 'focus' ? 'focus' : 'short', true, 1); }
+        function playHourlyAlert() { playSound('alarm', false, 0.65); }
 
         function getFormattedDate(d = new Date()) {
             const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -1891,6 +1788,9 @@
             return `${year}-${month}-${day}`;
         }
 
+        /* [수정] 날짜 기준 통일: activeDayKey 하나로 상단 날짜 / 집중 시간 / 통계 / 완료 투두 삭제를 관리
+           - 자정이 지나도 활동 중이면 전날로 계속 처리, 마지막 활동 후 2시간 + 모든 타이머 정지 시 새 날짜로 전환
+           - 오전 5시 이후에도 아직 전환 전이면 실행 중이어도 강제 전환 */
         function keyToDate(key) {
             const p = String(key).split('-').map(Number);
             return new Date(p[0], (p[1] || 1) - 1, p[2] || 1);
@@ -1924,15 +1824,12 @@
         }
         setInterval(checkDayRollover, 1000);
 
+        /* 사이트 어디에서든 발생한 사용자 조작은 활동으로 간주 (통계 대시보드 포함) */
         let lastActivityMark = 0;
         ['pointerdown', 'keydown', 'touchstart', 'wheel', 'scroll'].forEach(evt => {
             document.addEventListener(evt, () => {
                 const t = Date.now();
-                if (t - lastActivityMark > 1000) { 
-                    lastActivityMark = t; 
-                    updateLastActive();
-                    unlockAudioEngine(); // 사용자 첫 터치 시 사파리 오디오 잠금 해제
-                }
+                if (t - lastActivityMark > 1000) { lastActivityMark = t; updateLastActive(); }
             }, { capture: true, passive: true });
         });
 
@@ -1942,6 +1839,7 @@
             if (statsCounterEl.textContent !== label) statsCounterEl.textContent = label;
         }
 
+        /* [타이머 SVG 게이지 갱신 - 0~59분 시계방향 비워짐 / 60~119분 시계방향 채워짐] */
         function updateDisplay() {
             let state = tabStates[currentMode];
             const displaySecs = currentMode === 'timer' ? Math.floor(state.timeRemaining) : Math.ceil(state.timeRemaining);
@@ -2014,6 +1912,7 @@
             focusHistory[dateKey].hourly[hour] = (focusHistory[dateKey].hourly[hour] || 0) + seconds;
         }
 
+        /* [수정] 집중 시간 가산: 오전 5시 경계를 지나는 구간은 5시 전(전날)/후(새 날짜)로 분리 */
         function addFocusSeconds(seconds, endMs) {
             if (!(seconds > 0)) return;
             endMs = endMs || Date.now();
@@ -2035,6 +1934,7 @@
             }
         }
 
+        /* [수정] 일반 Timer 전진 (루프/백그라운드 복귀 공용). 별 지급 없음, 집중 시간 통계에는 합산 */
         function advanceGeneralTimer(elapsed, endMs) {
             const st = tabStates.timer;
             const prevHour = Math.floor(st.timeRemaining / 3600);
@@ -2050,6 +1950,8 @@
             if (curHour > prevHour && curHour >= 1) playHourlyAlert();
         }
 
+        /* [백그라운드 다중 타이머 추적 및 60분 단위 알람 재생] */
+        /* [수정] 시간 계산은 화면 그리기(rAF)와 분리: 렌더링이 버벅여도 종료 시점이 밀리지 않음 */
         const TICK_MS = 50;
         function timerLoop() {
             const now = Date.now();
@@ -2103,7 +2005,6 @@
 
         function toggleTimer() {
             updateLastActive();
-            unlockAudioEngine();
             let state = tabStates[currentMode];
 
             if (state.isRunning) {
@@ -2202,7 +2103,7 @@
         }
 
         function stopTimerWithAlert(completedMode) {
-            try { updateLastActive(); } catch (e) {}
+            try { updateLastActive(); } catch (e) { console.warn('completion-activity', e); }
             tabStates[completedMode].isRunning = false;
             
             if (completedMode === currentMode) {
@@ -2226,56 +2127,68 @@
             }
 
             lastCompletedMode = completedMode;
+
             showCompletionDialog();
-            startCelebrationVFX();
+            setTimeout(() => {
+                if (customAlert.classList.contains('show')) {
+                    try { startCelebrationVFX(); } catch (e) { console.error(e); }
+                }
+            }, 100);
         }
 
         function showCompletionDialog() {
             customAlert.classList.add('show');
         }
+        const confirmBtn = document.getElementById('completion-confirm');
+        function acknowledgeCompletion(e) {
+            if (e) { e.preventDefault(); e.stopPropagation(); }
+            closeCustomAlert();
+        }
+        confirmBtn.addEventListener('pointerup', acknowledgeCompletion);
+        confirmBtn.addEventListener('click', acknowledgeCompletion);
 
         function closeCustomAlert() {
             if (!customAlert.classList.contains('show')) return;
             customAlert.classList.remove('show');
-            stopAudioEngine(); // 1.5초 부드러운 페이드아웃 실행
-            try { updateLastActive(); } catch (e) {}
-
+            try { stopAudioEngine(); } catch (e) {}
+            try { updateLastActive(); } catch (e) { console.warn('activity-save', e); }
             try {
-                if (lastCompletedMode === 'focus') {
-                    const starTarget = (focusSessionTarget !== null) ? focusSessionTarget : (modeSettings.focus.min * 60 + modeSettings.focus.sec);
-                    if (actualFocusSecondsCompleted >= Math.max(1, starTarget - 2)) {
-                        if (pomoStars < 4) {
-                            pomoStars++;
-                        } else {
-                            pomoStars = 1;
-                        }
 
-                        if (pomoStars === 4) {
-                            pomoCycleCount++;
-                        }
-                        savePomoState();
-                        renderPomoTracker();
-                    }
-                    actualFocusSecondsCompleted = 0; 
-                    focusSessionTarget = null;
-                }
-
-                if (isAutoPomo) {
-                    if (lastCompletedMode === 'focus') {
-                        setMode('short');
+            if (lastCompletedMode === 'focus') {
+                const starTarget = (focusSessionTarget !== null) ? focusSessionTarget : (modeSettings.focus.min * 60 + modeSettings.focus.sec);
+                if (actualFocusSecondsCompleted >= Math.max(1, starTarget - 2)) {
+                    if (pomoStars < 4) {
+                        pomoStars++;
                     } else {
-                        setMode('focus');
+                        pomoStars = 1;
                     }
-                    toggleTimer(); 
-                } else {
-                    let state = tabStates[lastCompletedMode];
-                    const setting = modeSettings[lastCompletedMode];
-                    if (setting) {
-                        state.totalSeconds = setting.min * 60 + setting.sec;
-                        state.timeRemaining = state.totalSeconds;
+
+                    if (pomoStars === 4) {
+                        pomoCycleCount++;
                     }
-                    updateDisplay();
+                    savePomoState();
+                    renderPomoTracker();
                 }
+                actualFocusSecondsCompleted = 0; 
+                focusSessionTarget = null;
+            }
+
+            if (isAutoPomo) {
+                if (lastCompletedMode === 'focus') {
+                    setMode('short');
+                } else {
+                    setMode('focus');
+                }
+                toggleTimer(); 
+            } else {
+                let state = tabStates[lastCompletedMode];
+                const setting = modeSettings[lastCompletedMode];
+                if (setting) {
+                    state.totalSeconds = setting.min * 60 + setting.sec;
+                    state.timeRemaining = state.totalSeconds;
+                }
+                updateDisplay();
+            }
             } catch (e) { console.warn('completion-bookkeeping', e); }
         }
 
@@ -2305,6 +2218,7 @@
             saveState();
         }
 
+        /* [수정] Focus/Break는 백그라운드 진입 즉시 정지하고 복귀해도 재개하지 않음. 일반 Timer만 경과 시간 반영 */
         document.addEventListener('visibilitychange', () => {
             if (document.hidden) {
                 bgTimestamp = Date.now();
@@ -2316,6 +2230,10 @@
                     lastTimestamp = Date.now();
                     if (tabStates.timer.isRunning) {
                         advanceGeneralTimer(bgElapsed, Date.now());
+                        if (!isSafariBrowser) {
+                            const crossed = Math.floor(tabStates.timer.timeRemaining / 3600) - Math.floor((tabStates.timer.timeRemaining - bgElapsed) / 3600);
+                            for (let i = 0; i < crossed; i++) playHourlyAlert();
+                        }
                     }
                     updateDisplay();
                     updateStatsDisplay();
@@ -2329,14 +2247,14 @@
             pauseFocusBreakForBackground();
         });
 
-        /* [환경설정 모달 - min/sec 일관된 두 자리 포맷팅] */
+        /* [환경설정 모달] */
         let settingsSnapshot = null;
 
         function validateInput(input, maxVal, minVal = 0) {
             let val = parseInt(input.value, 10);
             if (isNaN(val) || val < minVal) val = minVal;
             if (val > maxVal) val = maxVal;
-            input.value = String(val).padStart(2, '0');
+            input.value = (maxVal === 999 && minVal === 0) ? String(val).padStart(2, '0') : String(val);
         }
 
         function openSettings() {
@@ -2686,11 +2604,12 @@
             }
         }
 
-        /* [투두 드래그 앤 드롭] */
+        /* [수정 3] 순수하고 안정적인 실시간 고스트 커스텀 드래그 앤 드롭 복원 */
         let draggedTodoId = null;
         let dragGhost = null;
         let offsetX = 0;
         let offsetY = 0;
+
         let dragPointerId = null;
 
         function handlePointerDown(e, id, itemEl) {
@@ -2797,12 +2716,12 @@
             document.removeEventListener('pointercancel', handlePointerUp);
         }
 
-        function reorderTodosCustom(sourceId, targetId, position) {
+                function reorderTodosCustom(sourceId, targetId, position) {
             updateLastActive();
             const uncompleted = todos.filter(t => !t.completed).sort((a, b) => a.order - b.order);
-            const completed = todos.filter(t => t.completed);
-
             const sourceIdx = uncompleted.findIndex(t => t.id === sourceId);
+            const targetIdx = uncompleted.findIndex(t => t.id === targetId);
+
             if (sourceIdx === -1 || targetIdx === -1) return;
 
             const [movedItem] = uncompleted.splice(sourceIdx, 1);
@@ -2831,12 +2750,14 @@
             todoToggleBtn.classList.toggle('drawer-open');
         }
 
+        /* [수정 3] 투두 내부의 모든 터치/클릭 이벤트 격리 (외부로 새어나가지 않음) */
         ['click', 'touchstart', 'touchend', 'pointerdown'].forEach(evtName => {
             todoDrawer.addEventListener(evtName, (e) => {
                 e.stopPropagation();
             }, { passive: true });
         });
 
+        /* 외부 클릭 판정 시에만 서랍 닫기 */
         document.addEventListener('click', (event) => {
             const path = event.composedPath ? event.composedPath() : [];
             const isInsideDrawer = path.includes(todoDrawer) || todoDrawer.contains(event.target);
@@ -2991,51 +2912,51 @@
             renderTodos();
         }
 
-        /* [아이콘 SVG 정의 - 통일된 코너 프레임 스타일] */
-        const ICON_ENTER_FULLSCREEN = `
-            <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-        `;
+        /* [아이콘 SVG 정의] */
+        const ICON_ENTER_FULLSCREEN = '<path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" stroke-linecap="round" stroke-linejoin="round"/>';
         const ICON_EXIT_FULLSCREEN = `
-            <path d="M3 8h3a2 2 0 0 0 2-2V3m13 5h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M4 10h3.5a1.5 1.5 0 0 0 1.5-1.5V5" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M20 10h-3.5a1.5 1.5 0 0 1-1.5-1.5V5" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M4 14h3.5a1.5 1.5 0 0 1 1.5 1.5V19" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M20 14h-3.5a1.5 1.5 0 0 0-1.5 1.5V19" stroke-linecap="round" stroke-linejoin="round"/>
         `;
 
         function updateFullscreenIcon(isFs) {
             fsIcon.innerHTML = isFs ? ICON_EXIT_FULLSCREEN : ICON_ENTER_FULLSCREEN;
-            document.getElementById('fullscreen-toggle-btn').title = isFs ? "전체화면 종료" : "전체화면 전환";
+            document.getElementById('fullscreen-toggle-btn').title = isFs ? "전체화면 종료" : "전체화면";
             adjustLayoutScale();
         }
 
+        // R7: Safari browser button does nothing. Other apps and Home Screen use page fullscreen only.
+        const isStandaloneApp = document.documentElement.classList.contains('standalone');
         const isTouchDevice = (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) || (navigator.maxTouchPoints || 0) > 1;
         const isSafariBrowser = !isStandaloneApp && /Safari/i.test(navigator.userAgent) && !/CriOS|FxiOS|EdgiOS|OPiOS|Chrome|Chromium|Firefox|Edg\//i.test(navigator.userAgent);
-        
         let isFullscreenMode = false;
-
         function applyPseudoFullscreen(on) {
             document.documentElement.classList.toggle('pseudo-fullscreen', on);
             document.body.classList.toggle('pseudo-fullscreen', on);
         }
-
         function toggleFullScreen(e) {
             if (e) { e.preventDefault(); e.stopPropagation(); }
-            if (isSafariBrowser) return; // 사파리 브라우저는 전체화면 API 미지원으로 동작 방지
+            if (isSafariBrowser) return;
             try { updateLastActive(); } catch (err) {}
             isFullscreenMode = !isFullscreenMode;
             applyPseudoFullscreen(isFullscreenMode);
             updateFullscreenIcon(isFullscreenMode);
         }
-
-        /* [홈 화면(standalone) 실행 시 기본값을 전체화면으로 즉시 확정] */
         if (isStandaloneApp) {
             isFullscreenMode = true;
             applyPseudoFullscreen(true);
             updateFullscreenIcon(true);
-        } else {
-            isFullscreenMode = false;
-            applyPseudoFullscreen(false);
-            updateFullscreenIcon(false);
         }
+        window.addEventListener('pageshow', () => {
+            if (!isStandaloneApp) return;
+            isFullscreenMode = true;
+            applyPseudoFullscreen(true);
+            updateFullscreenIcon(true);
+        });
 
-        /* [확대/축소 방지] */
+        /* [수정] 확대/축소 방지 (핀치, 더블탭). 버튼 연타는 그대로 동작 */
         ['gesturestart', 'gesturechange', 'gestureend'].forEach(evt => {
             document.addEventListener(evt, (e) => e.preventDefault(), { passive: false });
         });
@@ -3056,7 +2977,7 @@
         initCloudSync();
         adjustLayoutScale();
         updateMuteDisplay();
-        renderPomoTracker();
+                        renderPomoTracker();
         setTimeout(triggerShootingStar, 1500);
     </script>
 </body>
