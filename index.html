@@ -90,7 +90,7 @@
                 radial-gradient(ellipse 55% 25% at 55% 55%, rgba(68, 114, 255, 0.22), transparent 75%),
                 radial-gradient(circle at 50% 50%, rgba(142, 121, 231, 0.18), transparent 60%);
             transform: rotate(-32deg) translateZ(0);
-            filter: blur(12px); /* R4: reduced full-screen blur cost; gradients retained */
+            filter: blur(12px);
             opacity: 0;
             pointer-events: none;
             z-index: 1;
@@ -450,7 +450,7 @@
             transform: translateX(16px);
         }
 
-        /* [투두 버튼 본래 두께(padding 8px 24px) 및 바닥 밀착] */
+        /* [투두 버튼] */
         .todo-toggle-btn {
             background-color: rgba(255, 255, 255, 0.25); 
             border: 1px solid rgba(255, 255, 255, 0.3); 
@@ -524,7 +524,6 @@
         .todo-input::placeholder { line-height: 20px; color: #666666; vertical-align: middle; }
         .todo-add-btn { font-family: inherit; background-color: #6A55C9; color: white; border: none; height: 38px; padding: 0 16px; border-radius: 12px; font-size: 14px; font-weight: bold; cursor: pointer; transition: background 0.1s; -webkit-tap-highlight-color: transparent; }
         
-        /* [투두 리스트 스크롤 영역] */
         .todo-list { 
             list-style: none; 
             padding: 0; 
@@ -582,7 +581,6 @@
         .todo-item.completed { background-color: rgba(255, 255, 255, 0.08); }
         .todo-item.completed .todo-text { text-decoration: line-through; opacity: 0.5; }
 
-        /* [우측 투두 아이콘 2개 높낮이 오차 0% 완벽 일직선 수평 정렬] */
         .todo-actions {
             display: inline-flex !important;
             align-items: center !important;
@@ -627,21 +625,37 @@
 
         .todo-item.completed .todo-actions .todo-drag-handle { display: none; }
 
-        /* [완료 모달] */
+        /* [완료 모달 - 즉각 터치 보장] */
         .custom-alert-overlay {
             position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(6, 11, 23, 0.72);
-            display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.45s cubic-bezier(0.25, 1, 0.5, 1); z-index: 2000;
+            display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; z-index: 5000;
         }
         .custom-alert-overlay.show { opacity: 1; pointer-events: auto; }
         .custom-alert-box {
             background-color: rgba(15, 27, 49, 0.98); border: 1px solid rgba(255, 255, 255, 0.2); padding: 36px 24px; border-radius: 20px;
             display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; box-shadow: 0 15px 35px rgba(0,0,0,0.6);
-            max-width: 90%; width: 320px; transform: scale(0.92) translateY(12px); transition: transform 0.45s cubic-bezier(0.25, 1, 0.5, 1), width 0.3s ease;
+            max-width: 90%; width: 320px; transform: scale(0.92) translateY(12px); transition: transform 0.3s ease, width 0.3s ease;
         }
         .custom-alert-box.wide { width: 360px; padding: 36px 28px; }
         .custom-alert-overlay.show .custom-alert-box { transform: scale(1) translateY(0); }
         .custom-alert-text { font-size: 16px; font-weight: bold; margin: 0 0 26px 0; line-height: 1.4; white-space: nowrap; width: 100%; display: flex; align-items: center; justify-content: center; text-align: center; letter-spacing: -0.2px; }
-        .custom-alert-btn { background-color: #6A55C9; color: white; border: none; padding: 11px 36px; font-size: 14px; font-weight: bold; border-radius: 16px; cursor: pointer; transition: background 0.1s; -webkit-tap-highlight-color: transparent; }
+        .custom-alert-btn { 
+            background-color: #6A55C9; 
+            color: white; 
+            border: none; 
+            padding: 12px 38px; 
+            font-size: 15px; 
+            font-weight: bold; 
+            border-radius: 16px; 
+            cursor: pointer; 
+            transition: background 0.1s; 
+            -webkit-tap-highlight-color: transparent; 
+            touch-action: manipulation;
+            user-select: none;
+            -webkit-user-select: none;
+            position: relative;
+            z-index: 5001;
+        }
 
         /* [환경설정 팝업 모달] */
         .settings-modal-overlay {
@@ -1018,7 +1032,7 @@
         .fullscreen-btn { left: 20px; }
         .stats-btn { right: 20px; }
 
-        /* [우측 상단 액션 버튼 - 정렬 및 규격 복원] */
+        /* [우측 상단 액션 버튼] */
         .top-action-btn {
             position: fixed;
             top: max(20px, calc(env(safe-area-inset-top, 0px) + 12px));
@@ -1060,9 +1074,9 @@
             .settings-btn { right: 32px; }
             .mute-btn { right: 84px; }
         }
-        /* [수정] 설정 아이콘 비율 고정 */
         .settings-btn svg { width: 22px !important; height: 22px !important; aspect-ratio: 1 / 1; flex: 0 0 22px; }
-        /* [수정] 홈 화면(standalone) 웹 앱: 하단 Safe Area 및 To-Do 하단 여백 */
+        
+        /* [홈 화면(standalone) 웹 앱] */
         html.standalone, html.standalone body { height: 100vh; min-height: 100vh; min-height: -webkit-fill-available; }
         html.standalone .todo-drawer {
             height: calc(290px + env(safe-area-inset-bottom, 0px));
@@ -1076,12 +1090,8 @@
         }
         html.standalone .todo-toggle-btn.drawer-open { bottom: calc(290px + env(safe-area-inset-bottom, 0px)) !important; }
         .todo-drag-handle { touch-action: none; }
-        /* [수정] 모바일/태블릿: 빠른 연타·더블탭으로 확대되지 않게 (버튼 동작은 그대로) */
         html, body, button, input, textarea, div, span { touch-action: manipulation; }
-        .todo-drag-handle { touch-action: none; }
         .todo-drawer, .todo-list { overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
-
-        #custom-alert .custom-alert-btn { position: relative; z-index: 3; touch-action: manipulation; min-height: 44px; }
     </style>
 </head>
 <body>
@@ -1094,7 +1104,7 @@
         <svg id="mute-icon" viewBox="0 0 24 24"></svg>
     </button>
 
-    <!-- [수정 1] 우측 상단 설정 버튼 (완벽 정중앙 배치 복원) -->
+    <!-- 우측 상단 설정 버튼 -->
     <button class="top-action-btn settings-btn" id="settings-toggle-btn" onclick="openSettings()" title="설정">
         <svg viewBox="0 0 24 24" width="22" height="22" preserveAspectRatio="xMidYMid meet" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="3"></circle>
@@ -1169,7 +1179,7 @@
     <div class="custom-alert-overlay" id="custom-alert">
         <div class="custom-alert-box" id="custom-alert-box">
             <div class="custom-alert-text" id="custom-alert-msg">시간이 다 되었습니다! 고생하셨어요 🎉</div>
-            <button class="custom-alert-btn" id="completion-confirm" type="button" onclick="closeCustomAlert()">확인</button>
+            <button class="custom-alert-btn" id="completion-confirm" type="button">확인</button>
         </div>
     </div>
 
@@ -1309,7 +1319,7 @@
         const userId = urlParams.get('user') || 'default_local_user';
         const isCloudSyncActive = !!db && urlParams.has('user');
 
-        // R7: three original files, one playing at a time. Focus/Break loop; Timer plays once.
+        // 오디오 제어
         const AUDIO_FILES = { focus: './focus.mp3', short: './break.mp3', alarm: './alarm.mp3' };
         const alarmPlayer = new Audio();
         alarmPlayer.preload = 'auto';
@@ -1380,12 +1390,11 @@
             }
         }
 
-        /* [수정] 홈 화면 웹 앱(standalone) 감지 */
-        try {
-            if (window.navigator.standalone === true || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)) {
-                document.documentElement.classList.add('standalone');
-            }
-        } catch (e) {}
+        // Standalone PWA 감지
+        const isStandaloneApp = (window.navigator.standalone === true) || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+        if (isStandaloneApp) {
+            document.documentElement.classList.add('standalone');
+        }
 
         const HARD_DEFAULTS = {
             focus: { min: 25, sec: 0 },
@@ -1547,7 +1556,7 @@
             saveState();
         }
 
-        /* [시간 조절 핸들러] */
+        /* [시간 조절] */
         function setupAdjustButton(btnId, deltaAmount) {
             const btn = document.getElementById(btnId);
             let holdTimer = null;
@@ -1648,17 +1657,14 @@
 
             db.collection("users").doc(userId).onSnapshot((doc) => {
                 if (!doc.exists) return;
-                // 내 기기의 아직 서버에 확정되지 않은 저장은 무시
                 if (doc.metadata.hasPendingWrites) return;
                 const data = doc.data();
                 const ts = (data.updatedAtServer && data.updatedAtServer.toMillis) ? data.updatedAtServer.toMillis() : 0;
                 if (ts) {
-                    // 서버 저장 시각 기준: 이미 반영한 것보다 오래된 저장본은 적용하지 않음
                     if (ts <= lastServerTs) return;
                     lastServerTs = ts;
                     localStorage.setItem(`potato-server-ts-${userId}`, String(ts));
                 }
-                // 내가 저장한 데이터가 되돌아온 경우 다시 적용하지 않음 (진행 중인 시간이 뒤로 가는 것 방지)
                 if (data.writerId === CLIENT_ID) return;
 
                 isSyncingFromCloud = true;
@@ -1718,16 +1724,13 @@
 
         let isCelebrationActive = false;
         let starTimeoutId = null;
-        let slowDownSteps = 0;
 
-        /* [별똥별 전역 분산] */
         function triggerShootingStar() {
             const screenW = window.innerWidth || 800;
             const screenH = window.innerHeight || 600;
             
             const startX = Math.floor(Math.random() * screenW); 
             const startY = Math.floor(Math.random() * (screenH * 0.8)); 
-            
             const rotateAngle = Math.floor(Math.random() * 20) + 35; 
             const diagonalMove = Math.floor(Math.random() * 300) + 200; 
             const starLen = Math.floor(Math.random() * 45) + 60; 
@@ -1749,18 +1752,7 @@
                 starElement.style.animation = 'none';
                 starElement.style.display = 'none';
 
-                let nextDelay;
-                if (isCelebrationActive) {
-                    nextDelay = Math.floor(Math.random() * 55) + 35;
-                } else if (slowDownSteps > 0) {
-                    if (slowDownSteps === 3) nextDelay = Math.floor(Math.random() * 300) + 400;
-                    else if (slowDownSteps === 2) nextDelay = Math.floor(Math.random() * 600) + 1200;
-                    else nextDelay = Math.floor(Math.random() * 1000) + 3000;
-                    slowDownSteps--;
-                } else {
-                    nextDelay = Math.floor(Math.random() * 6000) + 8000;
-                }
-
+                let nextDelay = isCelebrationActive ? (Math.floor(Math.random() * 800) + 600) : (Math.floor(Math.random() * 6000) + 8000);
                 starTimeoutId = setTimeout(triggerShootingStar, nextDelay);
             }, duration * 1000 + 40);
         }
@@ -1768,20 +1760,17 @@
         function startCelebrationVFX() {
             if (isCelebrationActive) return;
             isCelebrationActive = true;
-            slowDownSteps = 0;
             milkyWayGlow.classList.add('visible');
             clearTimeout(starTimeoutId);
             triggerShootingStar();
         }
 
         function stabilizeSkySmoothly() {
-            if (!isCelebrationActive && slowDownSteps === 0) return;
             isCelebrationActive = false;
-            slowDownSteps = 3;
             milkyWayGlow.classList.remove('visible');
         }
 
-        /* [오디오 알람 제어] */
+        /* [오디오 알람 제어 - 페이드아웃 1.5초 보장] */
         function stopAudioEngine() {
             if (soundRequest && soundRequest.loop && !isMuted) {
                 const generation = soundGeneration;
@@ -1792,9 +1781,10 @@
             }
             try { stabilizeSkySmoothly(); } catch (e) {}
         }
+
         function playEndAlert(mode) { 
             if (mode === 'focus') {
-                playSound('focus', true, 1, 4000); 
+                playSound('focus', true, 1, 4000); // 포커스 종료 시 4초 페이드인
             } else {
                 playSound('short', true, 1);
             }
@@ -1814,9 +1804,6 @@
             return `${year}-${month}-${day}`;
         }
 
-        /* [수정] 날짜 기준 통일: activeDayKey 하나로 상단 날짜 / 집중 시간 / 통계 / 완료 투두 삭제를 관리
-           - 자정이 지나도 활동 중이면 전날로 계속 처리, 마지막 활동 후 2시간 + 모든 타이머 정지 시 새 날짜로 전환
-           - 오전 5시 이후에도 아직 전환 전이면 실행 중이어도 강제 전환 */
         function keyToDate(key) {
             const p = String(key).split('-').map(Number);
             return new Date(p[0], (p[1] || 1) - 1, p[2] || 1);
@@ -1850,7 +1837,6 @@
         }
         setInterval(checkDayRollover, 1000);
 
-        /* 사이트 어디에서든 발생한 사용자 조작은 활동으로 간주 (통계 대시보드 포함) */
         let lastActivityMark = 0;
         ['pointerdown', 'keydown', 'touchstart', 'wheel', 'scroll'].forEach(evt => {
             document.addEventListener(evt, () => {
@@ -1865,7 +1851,6 @@
             if (statsCounterEl.textContent !== label) statsCounterEl.textContent = label;
         }
 
-        /* [타이머 SVG 게이지 갱신 - 0~59분 시계방향 비워짐 / 60~119분 시계방향 채워짐] */
         function updateDisplay() {
             let state = tabStates[currentMode];
             const displaySecs = currentMode === 'timer' ? Math.floor(state.timeRemaining) : Math.ceil(state.timeRemaining);
@@ -1938,7 +1923,6 @@
             focusHistory[dateKey].hourly[hour] = (focusHistory[dateKey].hourly[hour] || 0) + seconds;
         }
 
-        /* [수정] 집중 시간 가산: 오전 5시 경계를 지나는 구간은 5시 전(전날)/후(새 날짜)로 분리 */
         function addFocusSeconds(seconds, endMs) {
             if (!(seconds > 0)) return;
             endMs = endMs || Date.now();
@@ -1960,7 +1944,6 @@
             }
         }
 
-        /* [수정] 일반 Timer 전진 (루프/백그라운드 복귀 공용). 별 지급 없음, 집중 시간 통계에는 합산 */
         function advanceGeneralTimer(elapsed, endMs) {
             const st = tabStates.timer;
             const prevHour = Math.floor(st.timeRemaining / 3600);
@@ -1976,8 +1959,6 @@
             if (curHour > prevHour && curHour >= 1) playHourlyAlert();
         }
 
-        /* [백그라운드 다중 타이머 추적 및 60분 단위 알람 재생] */
-        /* [수정] 시간 계산은 화면 그리기(rAF)와 분리: 렌더링이 버벅여도 종료 시점이 밀리지 않음 */
         const TICK_MS = 50;
         function timerLoop() {
             const now = Date.now();
@@ -1985,10 +1966,7 @@
             let elapsedSeconds = (now - lastTimestamp) / 1000;
             lastTimestamp = now;
 
-            let anyRunning = false;
-
             if (tabStates.focus.isRunning) {
-                anyRunning = true;
                 const consumed = Math.min(Math.max(0, elapsedSeconds), tabStates.focus.timeRemaining);
                 tabStates.focus.timeRemaining = Math.max(0, tabStates.focus.timeRemaining - consumed);
                 addFocusSeconds(consumed, now);
@@ -2001,7 +1979,6 @@
             }
 
             if (tabStates.short.isRunning) {
-                anyRunning = true;
                 tabStates.short.timeRemaining -= elapsedSeconds;
 
                 if (tabStates.short.timeRemaining <= 0) {
@@ -2011,7 +1988,6 @@
             }
 
             if (tabStates.timer.isRunning) {
-                anyRunning = true;
                 advanceGeneralTimer(elapsedSeconds, now);
             }
             updateStatsDisplay();
@@ -2130,7 +2106,7 @@
         }
 
         function stopTimerWithAlert(completedMode) {
-            try { updateLastActive(); } catch (e) { console.warn('completion-activity', e); }
+            try { updateLastActive(); } catch (e) {}
             tabStates[completedMode].isRunning = false;
             
             if (completedMode === currentMode) {
@@ -2154,68 +2130,64 @@
             }
 
             lastCompletedMode = completedMode;
-
             showCompletionDialog();
-            setTimeout(() => {
-                if (customAlert.classList.contains('show')) {
-                    try { startCelebrationVFX(); } catch (e) { console.error(e); }
-                }
-            }, 100);
+            startCelebrationVFX();
         }
 
         function showCompletionDialog() {
             customAlert.classList.add('show');
         }
+
+        // [확인 버튼 클릭 시 즉각 반응 보장]
         const confirmBtn = document.getElementById('completion-confirm');
-        function acknowledgeCompletion(e) {
-            if (e) { e.preventDefault(); e.stopPropagation(); }
+        confirmBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
             closeCustomAlert();
-        }
-        confirmBtn.addEventListener('pointerup', acknowledgeCompletion);
-        confirmBtn.addEventListener('click', acknowledgeCompletion);
+        });
 
         function closeCustomAlert() {
             if (!customAlert.classList.contains('show')) return;
             customAlert.classList.remove('show');
             try { stopAudioEngine(); } catch (e) {}
-            try { updateLastActive(); } catch (e) { console.warn('activity-save', e); }
+            try { updateLastActive(); } catch (e) {}
+
             try {
-
-            if (lastCompletedMode === 'focus') {
-                const starTarget = (focusSessionTarget !== null) ? focusSessionTarget : (modeSettings.focus.min * 60 + modeSettings.focus.sec);
-                if (actualFocusSecondsCompleted >= Math.max(1, starTarget - 2)) {
-                    if (pomoStars < 4) {
-                        pomoStars++;
-                    } else {
-                        pomoStars = 1;
-                    }
-
-                    if (pomoStars === 4) {
-                        pomoCycleCount++;
-                    }
-                    savePomoState();
-                    renderPomoTracker();
-                }
-                actualFocusSecondsCompleted = 0; 
-                focusSessionTarget = null;
-            }
-
-            if (isAutoPomo) {
                 if (lastCompletedMode === 'focus') {
-                    setMode('short');
+                    const starTarget = (focusSessionTarget !== null) ? focusSessionTarget : (modeSettings.focus.min * 60 + modeSettings.focus.sec);
+                    if (actualFocusSecondsCompleted >= Math.max(1, starTarget - 2)) {
+                        if (pomoStars < 4) {
+                            pomoStars++;
+                        } else {
+                            pomoStars = 1;
+                        }
+
+                        if (pomoStars === 4) {
+                            pomoCycleCount++;
+                        }
+                        savePomoState();
+                        renderPomoTracker();
+                    }
+                    actualFocusSecondsCompleted = 0; 
+                    focusSessionTarget = null;
+                }
+
+                if (isAutoPomo) {
+                    if (lastCompletedMode === 'focus') {
+                        setMode('short');
+                    } else {
+                        setMode('focus');
+                    }
+                    toggleTimer(); 
                 } else {
-                    setMode('focus');
+                    let state = tabStates[lastCompletedMode];
+                    const setting = modeSettings[lastCompletedMode];
+                    if (setting) {
+                        state.totalSeconds = setting.min * 60 + setting.sec;
+                        state.timeRemaining = state.totalSeconds;
+                    }
+                    updateDisplay();
                 }
-                toggleTimer(); 
-            } else {
-                let state = tabStates[lastCompletedMode];
-                const setting = modeSettings[lastCompletedMode];
-                if (setting) {
-                    state.totalSeconds = setting.min * 60 + setting.sec;
-                    state.timeRemaining = state.totalSeconds;
-                }
-                updateDisplay();
-            }
             } catch (e) { console.warn('completion-bookkeeping', e); }
         }
 
@@ -2245,7 +2217,6 @@
             saveState();
         }
 
-        /* [수정] Focus/Break는 백그라운드 진입 즉시 정지하고 복귀해도 재개하지 않음. 일반 Timer만 경과 시간 반영 */
         document.addEventListener('visibilitychange', () => {
             if (document.hidden) {
                 bgTimestamp = Date.now();
@@ -2355,7 +2326,7 @@
             }
         }
 
-        /* [통계 대시보드 로직] */
+        /* [통계 대시보드] */
         let currentChartRange = 7;
 
         function openStats() {
@@ -2628,12 +2599,11 @@
             }
         }
 
-        /* [수정 3] 순수하고 안정적인 실시간 고스트 커스텀 드래그 앤 드롭 복원 */
+        /* [투두 드래그 앤 드롭] */
         let draggedTodoId = null;
         let dragGhost = null;
         let offsetX = 0;
         let offsetY = 0;
-
         let dragPointerId = null;
 
         function handlePointerDown(e, id, itemEl) {
@@ -2776,14 +2746,12 @@
             todoToggleBtn.classList.toggle('drawer-open');
         }
 
-        /* [수정 3] 투두 내부의 모든 터치/클릭 이벤트 격리 (외부로 새어나가지 않음) */
         ['click', 'touchstart', 'touchend', 'pointerdown'].forEach(evtName => {
             todoDrawer.addEventListener(evtName, (e) => {
                 e.stopPropagation();
             }, { passive: true });
         });
 
-        /* 외부 클릭 판정 시에만 서랍 닫기 */
         document.addEventListener('click', (event) => {
             const path = event.composedPath ? event.composedPath() : [];
             const isInsideDrawer = path.includes(todoDrawer) || todoDrawer.contains(event.target);
@@ -2807,9 +2775,7 @@
 
         function handleTodoKeyDown(e) {
             if (e.isComposing) return;
-            
             const isMobile = window.innerWidth <= 600; 
-            
             if (e.key === 'Enter') {
                 if (isMobile) {
                     setTimeout(() => autoResizeTextarea(e.target), 0);
@@ -2947,35 +2913,42 @@
         `;
 
         function updateFullscreenIcon(isFs) {
+            // isFs가 true(전체화면 상태)이면 축소 아이콘(EXIT), false이면 확대 아이콘(ENTER)
             fsIcon.innerHTML = isFs ? ICON_EXIT_FULLSCREEN : ICON_ENTER_FULLSCREEN;
             document.getElementById('fullscreen-toggle-btn').title = isFs ? "전체화면 종료" : "전체화면 전환";
             adjustLayoutScale();
         }
 
-        // R7: Safari browser button does nothing. Other apps and Home Screen use page fullscreen only.
-        const isStandaloneApp = document.documentElement.classList.contains('standalone');
         const isTouchDevice = (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) || (navigator.maxTouchPoints || 0) > 1;
         const isSafariBrowser = !isStandaloneApp && /Safari/i.test(navigator.userAgent) && !/CriOS|FxiOS|EdgiOS|OPiOS|Chrome|Chromium|Firefox|Edg\//i.test(navigator.userAgent);
-        let isFullscreenMode = false;
+        
+        // 홈 화면 추가(Standalone) 시 초기 상태를 전체화면으로 기본 설정
+        let isFullscreenMode = isStandaloneApp;
+
         function applyPseudoFullscreen(on) {
             document.documentElement.classList.toggle('pseudo-fullscreen', on);
             document.body.classList.toggle('pseudo-fullscreen', on);
         }
+
         function toggleFullScreen(e) {
             if (e) { e.preventDefault(); e.stopPropagation(); }
-            if (isSafariBrowser) return;
+            if (isSafariBrowser) return; // Safari 브라우저는 전체화면 API 미지원으로 무반응
             try { updateLastActive(); } catch (err) {}
             isFullscreenMode = !isFullscreenMode;
             applyPseudoFullscreen(isFullscreenMode);
             updateFullscreenIcon(isFullscreenMode);
         }
+
+        // 초기 구동 시 Standalone 모드 즉시 적용
         if (isStandaloneApp) {
             isFullscreenMode = true;
             applyPseudoFullscreen(true);
             updateFullscreenIcon(true);
+        } else {
+            updateFullscreenIcon(false);
         }
 
-        /* [수정] 확대/축소 방지 (핀치, 더블탭). 버튼 연타는 그대로 동작 */
+        /* [확대/축소 방지] */
         ['gesturestart', 'gesturechange', 'gestureend'].forEach(evt => {
             document.addEventListener(evt, (e) => e.preventDefault(), { passive: false });
         });
@@ -2987,17 +2960,4 @@
         }, { passive: false });
 
         /* [초기 구동] */
-        if (!activeDayKey) activeDayKey = getDateKey(new Date(lastActiveTime));
-        lastSavedDate = getFormattedDate(keyToDate(activeDayKey));
-        statsDateEl.textContent = lastSavedDate;
-        checkDayRollover();
-        updateDisplay();
-        renderTodos();
-        initCloudSync();
-        adjustLayoutScale();
-        updateMuteDisplay();
-        renderPomoTracker();
-        setTimeout(triggerShootingStar, 1500);
-    </script>
-</body>
-</html>
+        if (!active
