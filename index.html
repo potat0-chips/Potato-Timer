@@ -96,6 +96,7 @@
             z-index: 1;
             mix-blend-mode: screen;
             transition: opacity 3s cubic-bezier(0.25, 1, 0.5, 1);
+            will-change: opacity;
         }
         .milky-way-nebula.visible {
             opacity: 1;
@@ -1325,8 +1326,32 @@
         audioAlarm.loop = false;
         audioAlarm.volume = 0.65; // [수정 5] 알람 소리 기존 대비 약 2/3 크기로 조절
 
+        /* [수정] 오디오 잠금 해제: 브라우저(PC·태블릿)는 소리 재생을 막는 경우가 있어 WebAudio를 보조로 함께 준비 */
+        const AUDIO_FILES = { focus: './focus.mp3', short: './break.mp3', alarm: './alarm.mp3' };
+        const audioByKey = { focus: audioFocus, short: audioBreak, alarm: audioAlarm };
+        const AudioCtxClass = window.AudioContext || window.webkitAudioContext;
+        let audioCtx = null;
+        const audioBuffers = {};
         let isAudioUnlocked = false;
+
+        function ensureAudioCtx() {
+            if (!AudioCtxClass) return null;
+            if (!audioCtx) {
+                try { audioCtx = new AudioCtxClass(); } catch (e) { audioCtx = null; return null; }
+                Object.keys(AUDIO_FILES).forEach(key => {
+                    fetch(AUDIO_FILES[key]).then(r => r.arrayBuffer()).then(buf => {
+                        const done = (decoded) => { audioBuffers[key] = decoded; };
+                        const p = audioCtx.decodeAudioData(buf, done, () => {});
+                        if (p && p.then) p.then(done).catch(() => {});
+                    }).catch(() => {});
+                });
+            }
+            return audioCtx;
+        }
+
         function unlockAudio() {
+            const ctx = ensureAudioCtx();
+            if (ctx && ctx.state !== 'running') { try { ctx.resume(); } catch (e) {} }
             if (isAudioUnlocked) return;
             [audioFocus, audioBreak, audioAlarm].forEach(audio => {
                 audio.muted = true;
@@ -1338,16 +1363,49 @@
                         audio.currentTime = 0;
                         audio.muted = isMuted;
                         isAudioUnlocked = true;
-                    }).catch(() => {
-                        audio.muted = isMuted;
-                    });
+                    }).catch(() => { audio.muted = isMuted; });
                 } else {
                     audio.muted = isMuted;
                 }
             });
         }
-        /* [수정] 첫 터치 한 번에 실패해도 성공할 때까지 계속 시도 */
         ['pointerdown', 'touchend', 'click', 'keydown'].forEach(evt => document.addEventListener(evt, unlockAudio, { passive: true }));
+
+        /* HTMLAudio 재생이 거부되거나 소리가 안 날 때 WebAudio로 대신 재생 */
+        let webAudioHandle = null;
+        function stopWebAudio() {
+            if (webAudioHandle) { try { webAudioHandle.stop(); } catch (e) {} webAudioHandle = null; }
+        }
+        function playViaWebAudio(key, loop, volume) {
+            const ctx = ensureAudioCtx();
+            if (!ctx || !audioBuffers[key]) return false;
+            try {
+                if (ctx.state !== 'running') ctx.resume();
+                const src = ctx.createBufferSource();
+                const gain = ctx.createGain();
+                src.buffer = audioBuffers[key];
+                src.loop = !!loop;
+                gain.gain.value = volume;
+                src.connect(gain);
+                gain.connect(ctx.destination);
+                if (loop) { stopWebAudio(); webAudioHandle = src; }
+                src.start(0);
+                return true;
+            } catch (e) { return false; }
+        }
+        function playSound(key, loop, volume) {
+            const el = audioByKey[key];
+            let usedFallback = false;
+            const fallback = () => { if (!usedFallback) { usedFallback = true; playViaWebAudio(key, loop, volume); } };
+            try {
+                el.muted = false;
+                el.currentTime = 0;
+                el.loop = !!loop;
+                el.volume = volume;
+                const p = el.play();
+                if (p && p.catch) p.catch(fallback);
+            } catch (e) { fallback(); }
+        }
         /* [수정] 홈 화면 웹 앱(standalone) 감지 */
         try {
             if (window.navigator.standalone === true || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)) {
@@ -1752,6 +1810,7 @@
         let activeAlertAudio = null;
 
         function stopAudioEngine() {
+            stopWebAudio();
             if (activeAlertAudio) {
                 activeAlertAudio.pause();
                 activeAlertAudio.currentTime = 0;
@@ -1764,24 +1823,12 @@
             if (isMuted) return;
             stopAudioEngine();
             activeAlertAudio = (mode === 'focus') ? audioFocus : audioBreak;
-            try {
-                activeAlertAudio.muted = false;
-                activeAlertAudio.currentTime = 0;
-                activeAlertAudio.loop = true;
-                activeAlertAudio.volume = 1.0;
-                const p = activeAlertAudio.play();
-                if (p && p.catch) p.catch(() => {});
-            } catch (e) {}
+            playSound(mode === 'focus' ? 'focus' : 'short', true, 1.0);
         }
 
         function playHourlyAlert() {
             if (!isMuted) {
-                try {
-                    audioAlarm.muted = false;
-                    audioAlarm.currentTime = 0;
-                    const p = audioAlarm.play();
-                    if (p && p.catch) p.catch(() => {});
-                } catch (e) {}
+                playSound('alarm', false, 0.65);
             }
         }
 
@@ -1854,10 +1901,12 @@
             const displaySecs = currentMode === 'timer' ? Math.floor(state.timeRemaining) : Math.ceil(state.timeRemaining);
             const minutes = Math.floor(displaySecs / 60);
             const seconds = displaySecs % 60;
-            timeText.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+            const timeStr = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+            if (timeText.textContent !== timeStr) timeText.textContent = timeStr;
             
             if (currentMode === 'timer') {
                 progressCircle.style.strokeDashoffset = '0';
+                progressCircle.__lastDash = null; progressCircle.__lastOff = null;
                 const cycleIndex = Math.floor(displaySecs / 3600);
                 const progressRatio = (displaySecs % 3600) / 3600;
                 
@@ -1870,9 +1919,10 @@
                     progressCircle.style.strokeDasharray = `${fillLen} ${totalLength}`;
                 }
             } else {
-                progressCircle.style.strokeDasharray = `${totalLength} ${totalLength}`;
                 const offset = totalLength - (state.timeRemaining / state.totalSeconds) * totalLength;
-                progressCircle.style.strokeDashoffset = isNaN(offset) ? 0 : offset;
+                const offStr = (isNaN(offset) ? 0 : offset).toFixed(2);
+                if (progressCircle.__lastDash !== 'full') { progressCircle.style.strokeDasharray = `${totalLength} ${totalLength}`; progressCircle.__lastDash = 'full'; }
+                if (progressCircle.__lastOff !== offStr) { progressCircle.style.strokeDashoffset = offStr; progressCircle.__lastOff = offStr; }
             }
         }
 
@@ -1957,6 +2007,8 @@
         }
 
         /* [백그라운드 다중 타이머 추적 및 60분 단위 알람 재생] */
+        /* [수정] 시간 계산은 화면 그리기(rAF)와 분리: 렌더링이 버벅여도 종료 시점이 밀리지 않음 */
+        const TICK_MS = 50;
         function timerLoop() {
             const now = Date.now();
             if (!lastTimestamp) lastTimestamp = now;
@@ -2007,7 +2059,7 @@
             updateDisplay();
 
             if (anyRunning) {
-                timerAnimationId = requestAnimationFrame(timerLoop);
+                timerAnimationId = setTimeout(timerLoop, TICK_MS);
             } else {
                 timerAnimationId = null;
                 lastTimestamp = null;
@@ -2024,7 +2076,7 @@
                 saveState();
                 
                 if (!tabStates.focus.isRunning && !tabStates.short.isRunning && !tabStates.timer.isRunning) {
-                    if (timerAnimationId) cancelAnimationFrame(timerAnimationId);
+                    if (timerAnimationId) clearTimeout(timerAnimationId);
                     timerAnimationId = null;
                     stabilizeSkySmoothly();
                 }
@@ -2040,7 +2092,7 @@
                 
                 if (!timerAnimationId) {
                     lastTimestamp = Date.now();
-                    timerAnimationId = requestAnimationFrame(timerLoop);
+                    timerAnimationId = setTimeout(timerLoop, TICK_MS);
                 }
             }
         }
@@ -2064,7 +2116,7 @@
             startBtn.textContent = 'START';
             
             if (!tabStates.focus.isRunning && !tabStates.short.isRunning && !tabStates.timer.isRunning) {
-                if (timerAnimationId) cancelAnimationFrame(timerAnimationId);
+                if (timerAnimationId) clearTimeout(timerAnimationId);
                 timerAnimationId = null;
                 lastTimestamp = null;
                 stopAudioEngine();
@@ -2094,7 +2146,7 @@
             startBtn.textContent = tabStates[currentMode].isRunning ? 'STOP' : 'START';
 
             if (!tabStates.focus.isRunning && !tabStates.short.isRunning && !tabStates.timer.isRunning) {
-                if (timerAnimationId) cancelAnimationFrame(timerAnimationId);
+                if (timerAnimationId) clearTimeout(timerAnimationId);
                 timerAnimationId = null;
                 lastTimestamp = null;
                 stabilizeSkySmoothly();
@@ -2122,7 +2174,7 @@
             }
             
             if (!tabStates.focus.isRunning && !tabStates.short.isRunning && !tabStates.timer.isRunning) {
-                if (timerAnimationId) cancelAnimationFrame(timerAnimationId);
+                if (timerAnimationId) clearTimeout(timerAnimationId);
                 timerAnimationId = null;
             }
             
@@ -2203,7 +2255,7 @@
             });
             if (currentMode === 'focus' || currentMode === 'short') startBtn.textContent = 'START';
             if (!tabStates.focus.isRunning && !tabStates.short.isRunning && !tabStates.timer.isRunning) {
-                if (timerAnimationId) cancelAnimationFrame(timerAnimationId);
+                if (timerAnimationId) clearTimeout(timerAnimationId);
                 timerAnimationId = null;
                 lastTimestamp = null;
             }
@@ -2944,7 +2996,7 @@
 
             if (isFullscreenMode) {
                 // 네이티브 전체화면: 마우스 기반 PC에서만 시도
-                if (!isTouchDevice && !isStandaloneApp) {
+                if (!isStandaloneApp) {
                     const reqFs = docEl.requestFullscreen || docEl.webkitRequestFullscreen || docEl.mozRequestFullScreen || docEl.msRequestFullscreen;
                     if (reqFs) {
                         try {
@@ -2967,11 +3019,20 @@
             }
         }
 
-        // 네이티브 전체화면이 (ESC·키보드 등으로) 풀려도 버튼을 누르기 전까지는 전체화면 UI 유지
+        /* 브라우저/OS가 네이티브 전체화면을 강제로 끝낸 경우(iPad의 시스템 제스처, ESC 등)는 막을 수 없으므로
+           화면 상태와 버튼 아이콘을 실제 상태에 맞춰 둔다 → 다시 누르면 바로 전체화면 진입 */
+        let nativeFsWasActive = false;
         function handleFsChange() {
-            if (isFullscreenMode && !document.fullscreenElement && !document.webkitFullscreenElement) {
-                applyPseudoFullscreen(true);
-                updateFullscreenIcon(true);
+            const active = !!(document.fullscreenElement || document.webkitFullscreenElement);
+            if (active) {
+                nativeFsWasActive = true;
+            } else if (nativeFsWasActive) {
+                nativeFsWasActive = false;
+                if (isFullscreenMode && !isStandaloneApp) {
+                    isFullscreenMode = false;
+                    applyPseudoFullscreen(false);
+                    updateFullscreenIcon(false);
+                }
             }
         }
         document.addEventListener('fullscreenchange', handleFsChange);
