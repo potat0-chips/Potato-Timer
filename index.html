@@ -10,8 +10,8 @@
     <link rel="icon" type="image/png" href="./potato.png">
     <link rel="apple-touch-icon" href="./potato.png">
 
-    <title>Potato Timer · R8</title>
-    <meta name="potato-build" content="R8-20261109">
+    <title>Potato Timer · R9</title>
+    <meta name="potato-build" content="R9-20261109">
     
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -1303,10 +1303,11 @@
 
         let db = null;
         const isFirebaseConfigured = firebaseConfig.apiKey !== "YOUR_API_KEY";
-        if (isFirebaseConfigured && window.firebase) {
-            try { firebase.initializeApp(firebaseConfig); db = firebase.firestore(); }
-            catch (e) { console.warn('Firebase 초기화 실패: 로컬 모드 유지', e); }
-        }
+        try {
+            if (isFirebaseConfigured && window.firebase) {
+                firebase.initializeApp(firebaseConfig); db = firebase.firestore();
+            }
+        } catch (e) { console.warn('Firebase 초기화 실패: 로컬 모드 유지', e); db = null; }
 
         const urlParams = new URLSearchParams(window.location.search);
         const userId = urlParams.get('user') || 'default_local_user';
@@ -1354,7 +1355,8 @@
             alarmPlayer.src = AUDIO_FILES[key];
             alarmPlayer.muted = false;
             alarmPlayer.loop = !!loop;
-            alarmPlayer.volume = loop ? 0 : volume;
+            const fadeIn = key === 'focus';
+            alarmPlayer.volume = fadeIn ? 0 : volume;
             try {
                 const p = alarmPlayer.play();
                 if (p && p.catch) p.catch(() => {
@@ -1363,12 +1365,13 @@
             } catch (e) {
                 if (generation === soundGeneration) soundRequest = null;
             }
-            if (loop) fadeVolume(volume, 2000, generation);
+            if (fadeIn) fadeVolume(volume, 4000, generation);
         }
 
-        /* [수정] 홈 화면 웹 앱(standalone) 감지 */
+        /* [수정] 홈 화면 웹 앱(standalone) 감지 — 버튼 처리보다 먼저 */
         try {
-            if (window.navigator.standalone === true || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)) {
+            const standaloneMedia = window.matchMedia && window.matchMedia('(display-mode: standalone)').matches;
+            if (window.navigator.standalone === true || standaloneMedia) {
                 document.documentElement.classList.add('standalone');
             }
         } catch (e) {}
@@ -1379,7 +1382,7 @@
         };
 
         function getInitialModeSettings() {
-            const isSavePermanent = localStorage.getItem(`potato-save-default-${userId}`) === 'true';
+            let isSavePermanent = false; try { isSavePermanent = localStorage.getItem(`potato-save-default-${userId}`) === 'true'; } catch (e) {}
             if (isSavePermanent) {
                 try {
                     const saved = localStorage.getItem(`potato-timer-presets-${userId}`);
@@ -1393,7 +1396,7 @@
         }
 
         let modeSettings = getInitialModeSettings();
-        let targetCycleGoal = parseInt(localStorage.getItem(`potato-target-goal-${userId}`), 10) || 10;
+        let targetCycleGoal = 10; try { targetCycleGoal = parseInt(localStorage.getItem(`potato-target-goal-${userId}`), 10) || 10; } catch (e) {}
 
         let tabStates = {
             focus: { timeRemaining: modeSettings.focus.min * 60 + modeSettings.focus.sec, totalSeconds: modeSettings.focus.min * 60 + modeSettings.focus.sec, isRunning: false },
@@ -1408,19 +1411,19 @@
         
         const totalLength = 345.57; 
 
-        let pomoStars = parseInt(localStorage.getItem(`potato-pomo-stars-${userId}`), 10) || 0;
-        let pomoCycleCount = parseInt(localStorage.getItem(`potato-pomo-cycles-${userId}`), 10) || 0;
+        let pomoStars = 0; try { pomoStars = parseInt(localStorage.getItem(`potato-pomo-stars-${userId}`), 10) || 0; } catch (e) {}
+        let pomoCycleCount = 0; try { pomoCycleCount = parseInt(localStorage.getItem(`potato-pomo-cycles-${userId}`), 10) || 0; } catch (e) {}
         
-        let storedAutoPomo = localStorage.getItem(`potato-auto-pomo-${userId}`);
+        let storedAutoPomo = null; try { storedAutoPomo = localStorage.getItem(`potato-auto-pomo-${userId}`); } catch (e) {}
         let isAutoPomo = storedAutoPomo === 'true'; 
 
-        let lastActiveTime = parseInt(localStorage.getItem(`potato-last-active-${userId}`), 10) || Date.now();
+        let lastActiveTime = Date.now(); try { lastActiveTime = parseInt(localStorage.getItem(`potato-last-active-${userId}`), 10) || Date.now(); } catch (e) {}
         let actualFocusSecondsCompleted = 0; 
         let lastCompletedMode = 'focus'; 
 
         function updateLastActive() {
             lastActiveTime = Date.now();
-            localStorage.setItem(`potato-last-active-${userId}`, lastActiveTime.toString());
+            try { localStorage.setItem(`potato-last-active-${userId}`, lastActiveTime.toString()); } catch (e) {}
         }
 
         const timeText = document.getElementById('time-text');
@@ -1451,7 +1454,7 @@
         let isTooltipPinned = false;
 
         /* [음소거 로직] */
-        let isMuted = localStorage.getItem(`potato-muted-${userId}`) === 'true';
+        let isMuted = false; try { isMuted = localStorage.getItem(`potato-muted-${userId}`) === 'true'; } catch (e) {}
 
         const ICON_SOUND_ON = `
             <g transform="translate(1, 0)">
@@ -1769,7 +1772,13 @@
 
         /* [오디오 알람 제어] */
         function stopAudioEngine() {
-            stopAllSound();
+            if (soundRequest && soundRequest.loop && !isMuted) {
+                const generation = soundGeneration;
+                fadeVolume(0, 1500, generation);
+                setTimeout(() => { if (generation === soundGeneration) stopAllSound(); }, 1500);
+            } else {
+                stopAllSound();
+            }
             try { stabilizeSkySmoothly(); } catch (e) {}
         }
         function playEndAlert(mode) { playSound(mode === 'focus' ? 'focus' : 'short', true, 1); }
