@@ -10,8 +10,8 @@
     <link rel="icon" type="image/png" href="./potato.png">
     <link rel="apple-touch-icon" href="./potato.png">
 
-    <title>Potato Timer · R5</title>
-    <meta name="potato-build" content="R5-20261109">
+    <title>Potato Timer · R6</title>
+    <meta name="potato-build" content="R6-20261109">
     
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -1087,9 +1087,22 @@
         html, body, button, input, textarea, div, span { touch-action: manipulation; }
         .todo-drag-handle { touch-action: none; }
         .todo-drawer, .todo-list { overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+
+        /* R6: top-layer completion UI; no inherited 3D transform or delayed hit target. */
+        dialog.custom-alert-overlay { margin: 0; padding: 0; border: 0; width: 100%; max-width: none; height: 100%; max-height: none; box-sizing: border-box; color: #fff; transform: none !important; z-index: 2147483647; }
+        dialog.custom-alert-overlay:not(.show), dialog.custom-alert-overlay[hidden] { display: none !important; }
+        dialog.custom-alert-overlay.show { display: flex; opacity: 1; pointer-events: auto; transition: none; }
+        dialog.custom-alert-overlay::backdrop { background: transparent; }
+        #custom-alert .custom-alert-box { transform: none !important; transition: none; }
+        #custom-alert button { position: relative; pointer-events: auto; touch-action: manipulation; min-height: 44px; }
+        .sound-check { margin-top: 14px; border-top: 1px solid rgba(0,0,0,.1); padding-top: 10px; }
+        .sound-check button { background: #6A55C9; color: white; border: 0; border-radius: 10px; padding: 8px 12px; cursor: pointer; }
+        .sound-check p { font-size: 11px; line-height: 1.5; color: #334155; margin: 8px 0 0; overflow-wrap: anywhere; user-select: text; -webkit-user-select: text; }
+        #app-notice { position: fixed; left: 50%; top: max(72px, calc(env(safe-area-inset-top, 0px) + 64px)); transform: translateX(-50%); z-index: 5000; max-width: min(88vw, 440px); background: rgba(15,27,49,.97); border: 1px solid #64748b; color: white; border-radius: 10px; padding: 10px 14px; font-size: 12px; line-height: 1.5; pointer-events: none; }
     </style>
 </head>
 <body>
+    <div id="app-notice" role="status" hidden></div>
     <div class="milky-way-nebula" id="milky-way-glow"></div>
     <div class="ambient-stars-container" id="ambient-container"></div>
     <div class="shooting-star" id="shooting-star-element"></div>
@@ -1171,12 +1184,12 @@
     </div>
 
     <!-- 완료 팝업 -->
-    <div class="custom-alert-overlay" id="custom-alert">
+    <dialog class="custom-alert-overlay" id="custom-alert" aria-labelledby="custom-alert-msg">
         <div class="custom-alert-box" id="custom-alert-box">
             <div class="custom-alert-text" id="custom-alert-msg">시간이 다 되었습니다! 고생하셨어요 🎉</div>
-            <button class="custom-alert-btn" onclick="closeCustomAlert()">확인</button>
+            <button class="custom-alert-btn" id="completion-confirm" type="button">확인</button>
         </div>
-    </div>
+    </dialog>
 
     <!-- 환경설정 모달 -->
     <div class="settings-modal-overlay" id="settings-modal" onclick="handleSettingsOverlayClick(event)">
@@ -1223,6 +1236,10 @@
                 <input type="checkbox" id="chk-save-default">
                 <span class="settings-save-default-label">기본 세팅으로 저장</span>
             </label>
+        <div class="sound-check">
+                <button type="button" id="sound-test-btn">소리 확인 · R6</button>
+                <p id="audio-status" role="status">준비 전 — 소리 확인 버튼으로 알람을 점검할 수 있습니다.</p>
+            </div>
         </div>
     </div>
 
@@ -1307,145 +1324,175 @@
 
         let db = null;
         const isFirebaseConfigured = firebaseConfig.apiKey !== "YOUR_API_KEY";
-        if (isFirebaseConfigured) {
-            firebase.initializeApp(firebaseConfig);
-            db = firebase.firestore();
+        if (isFirebaseConfigured && window.firebase) {
+            try { firebase.initializeApp(firebaseConfig); db = firebase.firestore(); }
+            catch (e) { console.warn('Firebase 초기화 실패: 로컬 모드 유지', e); }
         }
 
         const urlParams = new URLSearchParams(window.location.search);
         const userId = urlParams.get('user') || 'default_local_user';
-        const isCloudSyncActive = isFirebaseConfigured && urlParams.has('user');
+        const isCloudSyncActive = !!db && urlParams.has('user');
 
-        /* [오디오 객체 사전 생성 & 초기 무음 언락으로 소리 튐 방지] */
-        const audioFocus = new Audio('./focus.mp3');
-        const audioBreak = new Audio('./break.mp3');
-        const audioAlarm = new Audio('./alarm.mp3');
-
-        audioFocus.preload = 'auto';
-        audioBreak.preload = 'auto';
-        audioAlarm.preload = 'auto';
-        audioAlarm.loop = false;
-        audioAlarm.volume = 0.65; // [수정 5] 알람 소리 기존 대비 약 2/3 크기로 조절
-
-        // R5: only one alarm may own playback. Never play actual songs to unlock audio.
-        const AUDIO_FILES = { focus: './focus.mp3', short: './break.mp3', alarm: './alarm.mp3' };
-        const audioByKey = { focus: audioFocus, short: audioBreak, alarm: audioAlarm };
+        // R6: stream original media; never decode/download the entire Focus track before playback.
+        const AUDIO_FILES = { focus: './focus.mp3', short: './break.mp3', alarm: './alarm.mp3', test: './alarm.mp3' };
+        const SILENT_AUDIO = 'data:audio/wav;base64,UklGRpYDAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YXIDAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=';
+        const alarmPlayer = new Audio();
+        alarmPlayer.preload = 'auto';
+        alarmPlayer.playsInline = true;
+        alarmPlayer.setAttribute('playsinline', '');
         const AudioCtxClass = window.AudioContext || window.webkitAudioContext;
         let audioCtx = null;
+        let mediaPrimed = false;
+        let primeBusy = false;
         let soundGeneration = 0;
         let soundRequest = null;
-        let webAudioHandle = null;
-        let webGain = null;
-        const bufferJobs = {};
-        function audioProblem(key, err) {
-            console.warn('[Potato R5 audio]', key, err);
-            const btn = document.getElementById('mute-toggle-btn');
-            if (btn) btn.title = '오디오 재생 실패: ' + key + ' — ' + (err && err.message || err);
+        let fallbackTimer = null;
+        let chimeTimer = null;
+        const toneNodes = new Set();
+        let audioStatusText = '준비 전';
+        const appErrorLog = [];
+        function setAudioStatus(text) {
+            audioStatusText = text;
+            const out = document.getElementById('audio-status');
+            if (out) out.textContent = text;
+        }
+        function reportAppError(where, e) {
+            const msg = where + ': ' + (e && e.message || e);
+            appErrorLog.push(msg);
+            if (appErrorLog.length > 10) appErrorLog.shift();
+            console.warn('[Potato R6]', msg);
+            const out = document.getElementById('audio-status');
+            if (out) out.textContent = audioStatusText + ' / ' + msg;
         }
         function ensureAudioCtx() {
             if (!AudioCtxClass) return null;
-            if (!audioCtx) {
-                try { audioCtx = new AudioCtxClass(); } catch (e) { return null; }
-                Object.entries(AUDIO_FILES).forEach(([key, url]) => {
-                    bufferJobs[key] = fetch(url).then(r => {
-                        if (!r.ok) throw new Error('음원 HTTP ' + r.status + ': ' + url);
-                        return r.arrayBuffer();
-                    }).then(data => new Promise((resolve, reject) => {
-                        audioCtx.decodeAudioData(data, resolve, reject);
-                    }));
-                    bufferJobs[key].catch(err => audioProblem(key, err));
-                });
-            }
+            if (!audioCtx) { try { audioCtx = new AudioCtxClass(); } catch (e) { reportAppError('AudioContext', e); } }
             return audioCtx;
         }
         function unlockAudio() {
+            // Synchronous calls inside a real gesture; no MP3 playback/decoding during unlock.
             const ctx = ensureAudioCtx();
-            if (!ctx) return;
-            // The only priming sound is a zero-valued buffer, never focus/break/alarm.mp3.
+            if (ctx && ctx.state !== 'running') {
+                try {
+                    const p = ctx.resume();
+                    if (p && p.catch) p.catch(e => reportAppError('audio-unlock', e));
+                } catch (e) { reportAppError('audio-unlock', e); }
+            }
+            if (mediaPrimed || primeBusy || soundRequest) return;
+            primeBusy = true;
+            const generation = soundGeneration;
+            alarmPlayer.src = SILENT_AUDIO;
+            alarmPlayer.volume = 1;
+            alarmPlayer.muted = false;
+            alarmPlayer.loop = false;
             try {
-                const p = ctx.resume();
-                if (p && p.catch) p.catch(err => audioProblem('unlock', err));
-                if (!ctx.__silentPrimed) {
-                    const src = ctx.createBufferSource();
-                    src.buffer = ctx.createBuffer(1, 1, ctx.sampleRate);
-                    src.connect(ctx.destination);
-                    src.start();
-                    ctx.__silentPrimed = true;
-                }
-            } catch (e) { audioProblem('unlock', e); }
+                const p = alarmPlayer.play();
+                Promise.resolve(p).then(() => {
+                    mediaPrimed = true;
+                    if (generation === soundGeneration && !soundRequest) alarmPlayer.pause();
+                }).catch(() => {}).finally(() => { primeBusy = false; });
+            } catch (e) { primeBusy = false; }
         }
-        ['pointerdown', 'touchend', 'click', 'keydown'].forEach(evt => {
+        ['pointerup', 'click', 'keydown'].forEach(evt => {
             document.addEventListener(evt, unlockAudio, { capture: true, passive: true });
         });
-        function stopWebAudio() {
-            // Invalidates every outstanding decode/resume/play callback before stopping sound.
+        function clearChime() {
+            clearTimeout(chimeTimer);
+            chimeTimer = null;
+            toneNodes.forEach(pair => {
+                try { pair.osc.stop(); } catch (e) {}
+                try { pair.osc.disconnect(); pair.gain.disconnect(); } catch (e) {}
+            });
+            toneNodes.clear();
+        }
+        function stopAllSound() {
+            // Never await sound promises while acknowledging a completion dialog.
             soundGeneration++;
             soundRequest = null;
-            if (webAudioHandle) {
-                try { webAudioHandle.stop(); } catch (e) {}
-                try { webAudioHandle.disconnect(); } catch (e) {}
+            clearTimeout(fallbackTimer);
+            fallbackTimer = null;
+            clearChime();
+            try { alarmPlayer.pause(); } catch (e) {}
+            alarmPlayer.loop = false;
+            try { alarmPlayer.currentTime = 0; } catch (e) {}
+        }
+        function playFallbackChime(generation) {
+            if (generation !== soundGeneration || !soundRequest || isMuted) return;
+            const ctx = ensureAudioCtx();
+            if (!ctx || ctx.state !== 'running') {
+                setAudioStatus('재생 불가 — 음소거·Safari 사이트 권한을 확인한 뒤 소리 확인 버튼을 눌러 주세요.');
+                showAppNotice('소리를 재생하지 못했습니다. 설정의 “소리 확인 · R6”로 점검해 주세요.');
+                return;
             }
-            webAudioHandle = null;
-            if (webGain) { try { webGain.disconnect(); } catch (e) {} }
-            webGain = null;
-            Object.values(audioByKey).forEach(el => {
-                el.pause();
-                el.loop = false;
-                try { el.currentTime = 0; } catch (e) {}
-            });
+            try { alarmPlayer.pause(); } catch (e) {}
+            soundRequest.fallback = true;
+            setAudioStatus('원본 음원 재생 지연/실패 — 대체 알림음 사용');
+            function pulse() {
+                if (generation !== soundGeneration || !soundRequest || isMuted) return;
+                [784, 988, 1175].forEach((hz, i) => {
+                    const osc = ctx.createOscillator(), gain = ctx.createGain();
+                    const t = ctx.currentTime + i * 0.16;
+                    osc.type = 'sine'; osc.frequency.value = hz;
+                    gain.gain.setValueAtTime(0, t);
+                    gain.gain.linearRampToValueAtTime(0.12 * soundRequest.volume, t + 0.015);
+                    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.28);
+                    osc.connect(gain); gain.connect(ctx.destination);
+                    const pair = { osc, gain }; toneNodes.add(pair);
+                    osc.onended = () => { toneNodes.delete(pair); try { osc.disconnect(); gain.disconnect(); } catch (e) {} };
+                    osc.start(t); osc.stop(t + 0.3);
+                });
+                if (soundRequest.loop) chimeTimer = setTimeout(pulse, 1500);
+                else chimeTimer = setTimeout(() => {
+                    if (generation === soundGeneration) { soundRequest = null; setAudioStatus('대체 알림음 재생 완료'); }
+                }, 900);
+            }
+            try { pulse(); } catch (e) { reportAppError('chime', e); }
         }
         function playSound(key, loop, volume) {
-            // Do not let a one-shot Timer notification replace a Focus/Break completion alarm.
-            if (key === 'alarm' && soundRequest && soundRequest.loop) return;
-            stopWebAudio();
-            if (isMuted) return;
+            if ((key === 'alarm' || key === 'test') && soundRequest && soundRequest.loop) return;
+            stopAllSound();
+            if (isMuted) { setAudioStatus('사이트 음소거 켜짐 — 우측 상단에서 소리를 켜 주세요.'); return; }
             const generation = soundGeneration;
-            soundRequest = { key, loop, volume };
-            const valid = () => generation === soundGeneration && !isMuted && soundRequest;
-            const el = audioByKey[key];
-            let fallbackStarted = false;
-            function htmlFallback() {
-                if (!valid() || fallbackStarted) return;
-                fallbackStarted = true;
-                el.muted = false;
-                el.volume = volume;
-                el.loop = !!loop;
-                try {
-                    el.currentTime = 0;
-                    const p = el.play();
-                    if (p && p.then) p.then(() => {
-                        // A slow play() promise must not resurrect an acknowledged alarm.
-                        if (generation !== soundGeneration && !(soundRequest && soundRequest.key === key)) el.pause();
-                    }).catch(e => { if (valid()) audioProblem(key, e); });
-                } catch (e) { audioProblem(key, e); }
-            }
-            const ctx = ensureAudioCtx();
-            if (!ctx || !bufferJobs[key]) { htmlFallback(); return; }
-            let resume;
-            try { resume = ctx.resume(); } catch (e) { htmlFallback(); return; }
-            Promise.all([resume, bufferJobs[key]]).then(([, buffer]) => {
-                if (!valid()) return;
-                if (ctx.state !== 'running') { htmlFallback(); return; }
-                const src = ctx.createBufferSource();
-                const gain = ctx.createGain();
-                src.buffer = buffer;
-                src.loop = !!loop;
-                gain.gain.value = volume;
-                src.connect(gain);
-                gain.connect(ctx.destination);
-                webAudioHandle = src;
-                webGain = gain;
-                src.onended = () => {
-                    if (generation === soundGeneration && !loop) {
-                        soundRequest = null;
-                        webAudioHandle = null;
-                        webGain = null;
+            soundRequest = { key, loop: !!loop, volume, fallback: false };
+            setAudioStatus('원본 음원 재생 요청: ' + key);
+            const failed = (e) => {
+                if (generation !== soundGeneration || !soundRequest) return;
+                clearTimeout(fallbackTimer); fallbackTimer = null;
+                if (e) reportAppError('media-' + key, e);
+                if (!soundRequest.fallback) playFallbackChime(generation);
+            };
+            alarmPlayer.onerror = () => failed(new Error('음원 파일/네트워크 오류 ' + (alarmPlayer.error && alarmPlayer.error.code || '')));
+            alarmPlayer.onended = () => {
+                if (generation === soundGeneration && soundRequest && !loop && !soundRequest.fallback) {
+                    soundRequest = null; setAudioStatus('원본 음원 재생 완료');
+                }
+            };
+            alarmPlayer.onplaying = () => {
+                if (generation !== soundGeneration || !soundRequest) return;
+                if (soundRequest.fallback) { alarmPlayer.pause(); return; }
+                clearTimeout(fallbackTimer); fallbackTimer = null;
+                setAudioStatus('원본 음원 재생 중: ' + key);
+            };
+            alarmPlayer.src = AUDIO_FILES[key];
+            alarmPlayer.muted = false;
+            alarmPlayer.loop = !!loop;
+            alarmPlayer.volume = volume;
+            try {
+                const p = alarmPlayer.play();
+                // A stalled play/resume cannot block alarm/UI forever. One output owns playback.
+                fallbackTimer = setTimeout(() => failed(new Error('원본 음원 재생 2초 대기 초과')), 2000);
+                if (p && p.then) p.then(() => {
+                    if (generation !== soundGeneration) {
+                        if (!soundRequest) alarmPlayer.pause();
+                        return;
                     }
-                    try { src.disconnect(); gain.disconnect(); } catch (e) {}
-                };
-                src.start();
-            }).catch(() => { if (valid()) htmlFallback(); });
+                    if (soundRequest && soundRequest.fallback) { alarmPlayer.pause(); return; }
+                    clearTimeout(fallbackTimer); fallbackTimer = null;
+                    setAudioStatus('원본 음원 재생 중: ' + key);
+                }).catch(failed);
+            } catch (e) { failed(e); }
         }
+
         /* [수정] 홈 화면 웹 앱(standalone) 감지 */
         try {
             if (window.navigator.standalone === true || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)) {
@@ -1547,10 +1594,10 @@
         `;
 
         function updateMuteDisplay() {
-            if (isMuted) stopWebAudio();
+            if (isMuted) stopAllSound();
             muteIcon.innerHTML = isMuted ? ICON_SOUND_MUTED : ICON_SOUND_ON;
             document.getElementById('mute-toggle-btn').title = isMuted ? "소리 켜기" : "소리 끄기 (음소거)";
-            [audioFocus, audioBreak, audioAlarm].forEach(a => { if (a) a.muted = isMuted; });
+            alarmPlayer.muted = isMuted;
         }
 
         function toggleMute() {
@@ -1848,26 +1895,12 @@
         }
 
         /* [오디오 알람 제어] */
-        let activeAlertAudio = null;
-
         function stopAudioEngine() {
-            stopWebAudio();
-            activeAlertAudio = null;
-            stabilizeSkySmoothly();
+            stopAllSound();
+            try { stabilizeSkySmoothly(); } catch (e) { reportAppError('effect-stop', e); }
         }
-
-        function playEndAlert(mode) {
-            if (isMuted) return;
-            stopAudioEngine();
-            activeAlertAudio = (mode === 'focus') ? audioFocus : audioBreak;
-            playSound(mode === 'focus' ? 'focus' : 'short', true, 1.0);
-        }
-
-        function playHourlyAlert() {
-            if (!isMuted) {
-                playSound('alarm', false, 0.65);
-            }
-        }
+        function playEndAlert(mode) { playSound(mode === 'focus' ? 'focus' : 'short', true, 1); }
+        function playHourlyAlert() { playSound('alarm', false, 0.65); }
 
         function getFormattedDate(d = new Date()) {
             const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -2197,7 +2230,7 @@
         }
 
         function stopTimerWithAlert(completedMode) {
-            updateLastActive();
+            try { updateLastActive(); } catch (e) { reportAppError('completion-activity', e); }
             tabStates[completedMode].isRunning = false;
             
             if (completedMode === currentMode) {
@@ -2222,7 +2255,7 @@
 
             lastCompletedMode = completedMode;
 
-            customAlert.classList.add('show');
+            showCompletionDialog();
             setTimeout(() => {
                 if (customAlert.classList.contains('show')) {
                     try { startCelebrationVFX(); } catch (e) { console.error(e); }
@@ -2230,10 +2263,33 @@
             }, 100);
         }
 
+        function showCompletionDialog() {
+            customAlert.hidden = false;
+            customAlert.classList.add('show');
+            try {
+                if (typeof customAlert.showModal === 'function' && !customAlert.open) customAlert.showModal();
+            } catch (e) { reportAppError('dialog-show', e); }
+            const btn = document.getElementById('completion-confirm');
+            if (btn) { try { btn.focus({ preventScroll: true }); } catch (e) {} }
+        }
+        const confirmBtn = document.getElementById('completion-confirm');
+        confirmBtn.addEventListener('click', (e) => { e.stopPropagation(); closeCustomAlert(); });
+        confirmBtn.addEventListener('pointerup', (e) => {
+            if (e.pointerType === 'touch' || e.pointerType === 'pen') {
+                e.preventDefault(); e.stopPropagation(); closeCustomAlert();
+            }
+        });
+        customAlert.addEventListener('cancel', (e) => { e.preventDefault(); closeCustomAlert(); });
+
         function closeCustomAlert() {
-            updateLastActive();
+            if (!customAlert.classList.contains('show')) return;
+            // Acknowledge first, synchronously. No storage, sound-unlock or animation may block dismissal.
             customAlert.classList.remove('show');
-            stopAudioEngine();
+            try { if (customAlert.open && customAlert.close) customAlert.close(); } catch (e) { reportAppError('dialog-close', e); }
+            customAlert.hidden = true;
+            try { stopAudioEngine(); } catch (e) { reportAppError('sound-stop', e); }
+            try { updateLastActive(); } catch (e) { reportAppError('activity-save', e); }
+            try {
 
             if (lastCompletedMode === 'focus') {
                 const starTarget = (focusSessionTarget !== null) ? focusSessionTarget : (modeSettings.focus.min * 60 + modeSettings.focus.sec);
@@ -2270,6 +2326,7 @@
                 }
                 updateDisplay();
             }
+            } catch (e) { reportAppError('completion-bookkeeping', e); }
         }
 
         function pauseFocusBreakForBackground() {
@@ -3003,74 +3060,100 @@
             adjustLayoutScale();
         }
 
-        /* [수정] 전체화면은 버튼을 눌렀을 때만 켜지고 꺼짐.
-           - 터치 기기(폰/태블릿): 스크롤·입력·키보드 때문에 풀릴 수 있는 브라우저 네이티브 전체화면은 쓰지 않고 페이지 내부 전체화면만 사용
-           - 홈 화면에 추가한 웹 앱(standalone): 이미 전체화면이므로 시작 상태를 '전체화면 중'(종료 아이콘)으로 표시 */
+        // R6: actual native state, CSS fallback, and standalone layout are distinct.
         const isStandaloneApp = document.documentElement.classList.contains('standalone');
         const isTouchDevice = (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) || (navigator.maxTouchPoints || 0) > 1;
         let isFullscreenMode = false;
-
+        let fsCssFallback = false;
+        let fsDesired = false;
+        let fsRequestId = 0;
+        let fsPending = false;
+        let noticeTimer = null;
+        function showAppNotice(text) {
+            const el = document.getElementById('app-notice');
+            if (!el) return;
+            el.textContent = text; el.hidden = false;
+            clearTimeout(noticeTimer);
+            noticeTimer = setTimeout(() => { el.hidden = true; }, 7000);
+        }
+        function nativeFullscreenElement() {
+            return document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement || null;
+        }
         function applyPseudoFullscreen(on) {
             document.documentElement.classList.toggle('pseudo-fullscreen', on);
             document.body.classList.toggle('pseudo-fullscreen', on);
         }
-
-        function toggleFullScreen(e) {
-            if (e) {
-                e.preventDefault();
-                e.stopPropagation();
-            }
-            updateLastActive();
-            const doc = document;
-            const docEl = document.documentElement;
-
-            isFullscreenMode = !isFullscreenMode;
-            updateFullscreenIcon(isFullscreenMode);
+        function syncFullscreenUI() {
+            isFullscreenMode = isStandaloneApp ? fsDesired : !!nativeFullscreenElement() || fsCssFallback;
             applyPseudoFullscreen(isFullscreenMode);
-
-            if (isFullscreenMode) {
-                // Request native fullscreen only from the fullscreen button, including tablets.
-                if (!isStandaloneApp) {
-                    const reqFs = docEl.requestFullscreen || docEl.webkitRequestFullscreen || docEl.mozRequestFullScreen || docEl.msRequestFullscreen;
-                    if (reqFs) {
-                        try {
-                            const p = reqFs.call(docEl);
-                            if (p && p.catch) p.catch(() => {});
-                        } catch (err) {}
-                    }
-                }
-            } else {
-                const isNative = !!(doc.fullscreenElement || doc.webkitFullscreenElement || doc.mozFullScreenElement);
-                if (isNative) {
-                    const exitFs = doc.exitFullscreen || doc.webkitExitFullscreen || doc.mozCancelFullScreen;
-                    if (exitFs) {
-                        try {
-                            const p = exitFs.call(doc);
-                            if (p && p.catch) p.catch(() => {});
-                        } catch (err) {}
-                    }
-                }
-            }
+            updateFullscreenIcon(isFullscreenMode);
+            document.getElementById('fullscreen-toggle-btn').setAttribute('aria-pressed', String(isFullscreenMode));
         }
-
-        // OS may exit native fullscreen. Keep the user's page-layout choice;
-        // do not re-request native fullscreen from scrolling or typing events.
-        function handleFsChange() {
-            applyPseudoFullscreen(isFullscreenMode);
-            updateFullscreenIcon(isFullscreenMode);
-            if (isFullscreenMode && !isStandaloneApp && !document.fullscreenElement && !document.webkitFullscreenElement) {
-                document.getElementById('fullscreen-toggle-btn').title = '페이지 확장 해제 (Safari 전체화면은 종료됨)';
+        function fallbackFullscreen() {
+            fsPending = false;
+            fsCssFallback = fsDesired;
+            syncFullscreenUI();
+            if (fsDesired) showAppNotice('브라우저 전체화면을 사용할 수 없어 페이지 내부만 확장합니다. 주소창은 숨겨지지 않습니다.');
+        }
+        function toggleFullScreen(e) {
+            if (e) { e.preventDefault(); e.stopPropagation(); }
+            try { updateLastActive(); } catch (err) { reportAppError('fullscreen-activity', err); }
+            const requestId = ++fsRequestId;
+            const active = !!nativeFullscreenElement();
+            fsDesired = !(isStandaloneApp ? fsDesired : active || fsCssFallback || fsPending);
+            if (isStandaloneApp) { fsPending = false; syncFullscreenUI(); return; }
+            if (!fsDesired) {
+                fsPending = false; fsCssFallback = false;
+                if (active) {
+                    const exit = document.exitFullscreen || document.webkitExitFullscreen || document.mozCancelFullScreen || document.msExitFullscreen;
+                    if (exit) {
+                        try { const p = exit.call(document); if (p && p.catch) p.catch(err => { reportAppError('fullscreen-exit', err); syncFullscreenUI(); }); }
+                        catch (err) { reportAppError('fullscreen-exit', err); }
+                    }
+                }
+                syncFullscreenUI(); return;
             }
+            const root = document.documentElement;
+            const req = root.requestFullscreen || root.webkitRequestFullscreen || root.mozRequestFullScreen || root.msRequestFullscreen;
+            if (!req) { fallbackFullscreen(); return; }
+            fsPending = true;
+            try {
+                const p = req.call(root);
+                if (p && p.then) p.then(() => {
+                    if (requestId !== fsRequestId) {
+                        if (!fsDesired && nativeFullscreenElement()) {
+                            const exit = document.exitFullscreen || document.webkitExitFullscreen;
+                            if (exit) Promise.resolve(exit.call(document)).catch(() => {});
+                        }
+                        return;
+                    }
+                    fsPending = false;
+                    if (!nativeFullscreenElement()) fallbackFullscreen(); else syncFullscreenUI();
+                }).catch(err => {
+                    if (requestId === fsRequestId && fsDesired) { reportAppError('fullscreen-request', err); fallbackFullscreen(); }
+                });
+                // Old webkit API has no Promise; state is delivered by fullscreenchange/error.
+            } catch (err) { reportAppError('fullscreen-request', err); fallbackFullscreen(); }
+        }
+        function handleFsChange() {
+            const active = !!nativeFullscreenElement();
+            const was = isFullscreenMode;
+            fsPending = false;
+            fsCssFallback = false;
+            if (active && !fsDesired) {
+                const exit = document.exitFullscreen || document.webkitExitFullscreen;
+                if (exit) { try { Promise.resolve(exit.call(document)).catch(() => {}); } catch (e) {} }
+            }
+            if (!active && !isStandaloneApp) fsDesired = false;
+            syncFullscreenUI();
+            if (was && !active && !isStandaloneApp) showAppNotice('Safari가 전체화면을 종료했습니다. 버튼 상태를 실제 화면에 맞췄습니다. 입력 시 종료는 웹 코드로 막을 수 없습니다.');
         }
         document.addEventListener('fullscreenchange', handleFsChange);
         document.addEventListener('webkitfullscreenchange', handleFsChange);
-
-        // 홈 화면 웹 앱으로 실행 중이면 처음부터 전체화면 상태로 표시
-        if (isStandaloneApp) {
-            isFullscreenMode = true;
-            applyPseudoFullscreen(true);
-            updateFullscreenIcon(true);
-        }
+        ['fullscreenerror', 'webkitfullscreenerror'].forEach(evt => {
+            document.addEventListener(evt, () => { if (fsDesired) fallbackFullscreen(); });
+        });
+        if (isStandaloneApp) { fsDesired = true; syncFullscreenUI(); }
 
         /* [수정] 확대/축소 방지 (핀치, 더블탭). 버튼 연타는 그대로 동작 */
         ['gesturestart', 'gesturechange', 'gestureend'].forEach(evt => {
@@ -3083,6 +3166,11 @@
             if (isTouchDevice) e.preventDefault();
         }, { passive: false });
 
+        document.getElementById('sound-test-btn').addEventListener('click', () => {
+            unlockAudio();
+            if (soundRequest && soundRequest.key === 'test') { stopAllSound(); setAudioStatus('점검 소리 정지'); return; }
+            playSound('test', false, 0.65);
+        });
         /* [초기 구동] */
         if (!activeDayKey) activeDayKey = getDateKey(new Date(lastActiveTime));
         lastSavedDate = getFormattedDate(keyToDate(activeDayKey));
@@ -3093,8 +3181,8 @@
         initCloudSync();
         adjustLayoutScale();
         updateMuteDisplay();
-        document.getElementById('fullscreen-toggle-btn').dataset.build = 'R5';
-        document.getElementById('mute-toggle-btn').dataset.build = 'R5';
+        document.getElementById('fullscreen-toggle-btn').dataset.build = 'R6';
+        document.getElementById('mute-toggle-btn').dataset.build = 'R6';
         renderPomoTracker();
         setTimeout(triggerShootingStar, 1500);
     </script>
