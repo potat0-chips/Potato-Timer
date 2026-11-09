@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -27,30 +27,27 @@
         *, *::before, *::after { 
             box-sizing: border-box; 
             -webkit-tap-highlight-color: transparent !important;
-            outline: none;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
             text-rendering: optimizeLegibility;
         }
 
-        /* [핵심] 최상위 오버스크롤 전파를 차단하여 브라우저 제스처로 인한 전체화면 강제 해제 방지 */
         html, body {
             overflow: hidden !important;
-            overscroll-behavior: none !important;
             width: 100%;
             height: 100%;
             height: 100dvh;
             margin: 0;
             padding: 0;
+            background-color: #0b1424;
         }
 
         body {
             font-family: 'IM_Hyemin', -apple-system, BlinkMacSystemFont, "NanumSquareRound", sans-serif;
             background-image: url('./night.png'), radial-gradient(circle at 50% 30%, #172554 0%, #0b1424 100%);
             background-size: cover;
-            background-position: center;
+            background-position: center bottom !important; 
             background-repeat: no-repeat;
-            background-color: #0b1424;
             color: #ffffff;
             display: flex;
             align-items: center;
@@ -62,7 +59,6 @@
             position: relative;
         }
 
-        /* [가상 전체화면 모드 스타일 - OS 튕김 방지] */
         html.pseudo-fullscreen, body.pseudo-fullscreen {
             position: fixed !important;
             top: 0 !important;
@@ -146,7 +142,7 @@
             100% { transform: translate(var(--move-x), var(--move-y)) rotate(45deg) scaleX(0.1) translateZ(0); opacity: 0; }
         }
 
-        /* [PC/태블릿 비율 래퍼 - 0.1cm 미세 상향 적용] */
+        /* [상단 여백 0.1cm 미세 상향] */
         .viewport-scaler {
             display: flex;
             align-items: center;
@@ -300,7 +296,6 @@
             -webkit-tap-highlight-color: transparent;
         }
 
-        /* [START / STOP 글씨 정중앙 배치] */
         .btn-start { 
             background-color: #6A55C9; 
             color: #ffffff; 
@@ -525,7 +520,7 @@
         .todo-input::placeholder { line-height: 20px; color: #666666; vertical-align: middle; }
         .todo-add-btn { font-family: inherit; background-color: #6A55C9; color: white; border: none; height: 38px; padding: 0 16px; border-radius: 12px; font-size: 14px; font-weight: bold; cursor: pointer; transition: background 0.1s; -webkit-tap-highlight-color: transparent; }
         
-        /* [투두 리스트 - 터치 스크롤 안정화] */
+        /* [투두 리스트 스크롤 영역] */
         .todo-list { 
             list-style: none; 
             padding: 0; 
@@ -615,7 +610,7 @@
         }
         .todo-del-btn { color: rgba(255, 255, 255, 0.55); }
         .todo-del-btn:hover { color: #ff5b5b; }
-        .todo-drag-handle { cursor: grab; }
+        .todo-drag-handle { cursor: grab; touch-action: none; }
         .todo-drag-handle:hover { color: #ffffff; }
         .todo-drag-handle:active { cursor: grabbing; transform: scale(0.9); }
         
@@ -1019,7 +1014,7 @@
         .fullscreen-btn { left: 20px; }
         .stats-btn { right: 20px; }
 
-        /* [우측 상단 액션 버튼] */
+        /* [우측 상단 액션 버튼 - 정렬 및 규격 복원] */
         .top-action-btn {
             position: fixed;
             top: max(20px, calc(env(safe-area-inset-top, 0px) + 12px));
@@ -1032,21 +1027,23 @@
             -webkit-backdrop-filter: blur(8px); 
             color: #ffffff;
             cursor: pointer; 
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
+            display: flex !important; 
+            align-items: center !important; 
+            justify-content: center !important; 
             z-index: 100;
             transition: all 0.2s ease;
             -webkit-tap-highlight-color: transparent;
-            padding: 0;
+            padding: 0 !important;
+            box-sizing: border-box !important;
             flex-shrink: 0;
         }
         .top-action-btn svg { 
             width: 22px !important; 
             height: 22px !important; 
-            display: block; 
-            margin: 0;
+            display: block !important; 
+            margin: auto !important;
             flex-shrink: 0 !important;
+            stroke: #ffffff;
         }
 
         .settings-btn { right: 20px; }
@@ -1059,6 +1056,28 @@
             .settings-btn { right: 32px; }
             .mute-btn { right: 84px; }
         }
+        /* [수정] 키보드 포커스 표시: 마우스/터치 클릭 시에는 기존과 동일하게 표시 없음 */
+        :focus:not(:focus-visible) { outline: none; }
+        button:focus-visible, input[type="checkbox"]:focus-visible, [tabindex]:focus-visible {
+            outline: 2px solid #ffd966 !important;
+            outline-offset: 2px;
+        }
+        /* [수정] 설정 아이콘 비율 고정 */
+        .settings-btn svg { width: 22px !important; height: 22px !important; aspect-ratio: 1 / 1; flex: 0 0 22px; }
+        /* [수정] 홈 화면(standalone) 웹 앱: 하단 Safe Area 및 To-Do 하단 여백 */
+        html.standalone, html.standalone body { height: 100vh; min-height: 100vh; min-height: -webkit-fill-available; }
+        html.standalone .todo-drawer {
+            height: calc(290px + env(safe-area-inset-bottom, 0px));
+            padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+            bottom: calc(-320px - env(safe-area-inset-bottom, 0px)) !important;
+        }
+        html.standalone .todo-drawer.open { bottom: 0px !important; }
+        html.standalone .todo-drawer::after {
+            content: ''; position: absolute; left: -1px; right: -1px; top: 100%; height: 240px;
+            background: rgba(11, 20, 36, 0.96); pointer-events: none;
+        }
+        html.standalone .todo-toggle-btn.drawer-open { bottom: calc(290px + env(safe-area-inset-bottom, 0px)) !important; }
+        .todo-drag-handle { touch-action: none; }
     </style>
 </head>
 <body>
@@ -1071,9 +1090,9 @@
         <svg id="mute-icon" viewBox="0 0 24 24"></svg>
     </button>
 
-    <!-- 우측 상단 설정 버튼 -->
+    <!-- [수정 1] 우측 상단 설정 버튼 (완벽 정중앙 배치 복원) -->
     <button class="top-action-btn settings-btn" id="settings-toggle-btn" onclick="openSettings()" title="설정">
-        <svg viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <svg viewBox="0 0 24 24" width="22" height="22" preserveAspectRatio="xMidYMid meet" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="3"></circle>
             <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
         </svg>
@@ -1131,7 +1150,7 @@
         </div>
     </div>
 
-    <!-- 투두 Drawer (터치 버블링 전파 차단) -->
+    <!-- 투두 Drawer -->
     <button class="todo-toggle-btn" id="todo-toggle-btn" onclick="toggleDrawer(event)">To-Do List 📋</button>
     
     <div class="todo-drawer" id="todo-drawer">
@@ -1288,7 +1307,7 @@
         const userId = urlParams.get('user') || 'default_local_user';
         const isCloudSyncActive = isFirebaseConfigured && urlParams.has('user');
 
-        /* [오디오 객체 사전 생성 및 최초 터치 언락] */
+        /* [오디오 객체 사전 생성 & 초기 무음 언락으로 소리 튐 방지] */
         const audioFocus = new Audio('./focus.mp3');
         const audioBreak = new Audio('./break.mp3');
         const audioAlarm = new Audio('./alarm.mp3');
@@ -1297,19 +1316,32 @@
         audioBreak.preload = 'auto';
         audioAlarm.preload = 'auto';
         audioAlarm.loop = false;
+        audioAlarm.volume = 0.65; // [수정 5] 알람 소리 기존 대비 약 2/3 크기로 조절
 
         let isAudioUnlocked = false;
         function unlockAudio() {
             if (isAudioUnlocked) return;
             isAudioUnlocked = true;
             [audioFocus, audioBreak, audioAlarm].forEach(audio => {
+                audio.muted = true;
                 audio.play().then(() => {
                     audio.pause();
                     audio.currentTime = 0;
-                }).catch(() => {});
+                    audio.muted = isMuted;
+                }).catch(() => {
+                    audio.muted = isMuted;
+                });
             });
         }
         document.addEventListener('pointerdown', unlockAudio, { once: true });
+        /* [수정] 지원되는 환경(iOS 16.4+)에서 다른 앱의 소리를 끊지 않는 오디오 세션 */
+        try { if (navigator.audioSession) navigator.audioSession.type = 'ambient'; } catch (e) {}
+        /* [수정] 홈 화면 웹 앱(standalone) 감지 */
+        try {
+            if (window.navigator.standalone === true || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)) {
+                document.documentElement.classList.add('standalone');
+            }
+        } catch (e) {}
 
         const HARD_DEFAULTS = {
             focus: { min: 25, sec: 0 },
@@ -1529,6 +1561,12 @@
         let todos = safeGetJSON(`potato-todos-${userId}`, []);
         let accumulatedFocusSeconds = parseFloat(localStorage.getItem(`potato-focus-seconds-${userId}`)) || 0;
         let lastSavedDate = localStorage.getItem(`potato-last-date-${userId}`) || "";
+        let activeDayKey = localStorage.getItem(`potato-active-day-${userId}`) || '';
+        let focusSessionTarget = null;
+        const CLIENT_ID = Math.random().toString(36).slice(2) + Date.now().toString(36);
+        let lastServerTs = parseInt(localStorage.getItem(`potato-server-ts-${userId}`), 10) || 0;
+        const DAY_RESET_HOUR = 5;
+        const IDLE_RESET_MS = 2 * 60 * 60 * 1000;
         let isSyncingFromCloud = false;
 
         let focusHistory = safeGetJSON(`potato-history-${userId}`, {});
@@ -1537,6 +1575,7 @@
             localStorage.setItem(`potato-todos-${userId}`, JSON.stringify(todos));
             localStorage.setItem(`potato-focus-seconds-${userId}`, accumulatedFocusSeconds.toString());
             localStorage.setItem(`potato-last-date-${userId}`, lastSavedDate);
+            localStorage.setItem(`potato-active-day-${userId}`, activeDayKey);
             localStorage.setItem(`potato-history-${userId}`, JSON.stringify(focusHistory));
 
             if (isCloudSyncActive && db && !isSyncingFromCloud) {
@@ -1544,11 +1583,17 @@
                     todos: todos,
                     accumulatedFocusSeconds: accumulatedFocusSeconds,
                     lastSavedDate: lastSavedDate,
+                    activeDayKey: activeDayKey,
                     pomoStars: pomoStars,
                     pomoCycleCount: pomoCycleCount,
                     targetCycleGoal: targetCycleGoal,
+                    modeSettings: modeSettings,
+                    isMuted: isMuted,
+                    isAutoPomo: isAutoPomo,
                     focusHistory: focusHistory,
-                    updatedAt: Date.now()
+                    writerId: CLIENT_ID,
+                    updatedAt: Date.now(),
+                    updatedAtServer: firebase.firestore.FieldValue.serverTimestamp()
                 }, { merge: true }).catch(err => console.error("Firestore Save Error:", err));
             }
         }
@@ -1557,34 +1602,67 @@
             if (!isCloudSyncActive || !db) return;
 
             db.collection("users").doc(userId).onSnapshot((doc) => {
-                if (doc.exists) {
-                    const data = doc.data();
-                    isSyncingFromCloud = true;
-                    if (data.todos) todos = data.todos;
-                    if (typeof data.accumulatedFocusSeconds === 'number') accumulatedFocusSeconds = data.accumulatedFocusSeconds;
-                    if (data.lastSavedDate) lastSavedDate = data.lastSavedDate;
-                    if (typeof data.pomoStars === 'number') pomoStars = data.pomoStars;
-                    if (typeof data.pomoCycleCount === 'number') pomoCycleCount = data.pomoCycleCount;
-                    if (typeof data.targetCycleGoal === 'number') targetCycleGoal = data.targetCycleGoal;
-                    if (data.focusHistory) focusHistory = data.focusHistory;
-
-                    localStorage.setItem(`potato-todos-${userId}`, JSON.stringify(todos));
-                    localStorage.setItem(`potato-focus-seconds-${userId}`, accumulatedFocusSeconds.toString());
-                    localStorage.setItem(`potato-last-date-${userId}`, lastSavedDate);
-                    localStorage.setItem(`potato-pomo-stars-${userId}`, pomoStars.toString());
-                    localStorage.setItem(`potato-pomo-cycles-${userId}`, pomoCycleCount.toString());
-                    localStorage.setItem(`potato-target-goal-${userId}`, targetCycleGoal.toString());
-                    localStorage.setItem(`potato-history-${userId}`, JSON.stringify(focusHistory));
-
-                    renderTodos();
-                    updateStatsDisplay();
-                    renderPomoTracker();
-                    isSyncingFromCloud = false;
+                if (!doc.exists) return;
+                // 내 기기의 아직 서버에 확정되지 않은 저장은 무시
+                if (doc.metadata.hasPendingWrites) return;
+                const data = doc.data();
+                const ts = (data.updatedAtServer && data.updatedAtServer.toMillis) ? data.updatedAtServer.toMillis() : 0;
+                if (ts) {
+                    // 서버 저장 시각 기준: 이미 반영한 것보다 오래된 저장본은 적용하지 않음
+                    if (ts <= lastServerTs) return;
+                    lastServerTs = ts;
+                    localStorage.setItem(`potato-server-ts-${userId}`, String(ts));
                 }
+                // 내가 저장한 데이터가 되돌아온 경우 다시 적용하지 않음 (진행 중인 시간이 뒤로 가는 것 방지)
+                if (data.writerId === CLIENT_ID) return;
+
+                isSyncingFromCloud = true;
+                if (data.todos) todos = data.todos;
+                if (typeof data.accumulatedFocusSeconds === 'number') accumulatedFocusSeconds = data.accumulatedFocusSeconds;
+                if (data.lastSavedDate) lastSavedDate = data.lastSavedDate;
+                if (data.activeDayKey) activeDayKey = data.activeDayKey;
+                if (typeof data.pomoStars === 'number') pomoStars = data.pomoStars;
+                if (typeof data.pomoCycleCount === 'number') pomoCycleCount = data.pomoCycleCount;
+                if (typeof data.targetCycleGoal === 'number') targetCycleGoal = data.targetCycleGoal;
+                if (data.focusHistory) focusHistory = data.focusHistory;
+                if (data.modeSettings && data.modeSettings.focus && data.modeSettings.short) {
+                    modeSettings = data.modeSettings;
+                    ['focus', 'short'].forEach(m => {
+                        if (!tabStates[m].isRunning) {
+                            tabStates[m].totalSeconds = modeSettings[m].min * 60 + modeSettings[m].sec;
+                            tabStates[m].timeRemaining = tabStates[m].totalSeconds;
+                        }
+                    });
+                }
+                if (typeof data.isMuted === 'boolean') {
+                    isMuted = data.isMuted;
+                    localStorage.setItem(`potato-muted-${userId}`, isMuted.toString());
+                    updateMuteDisplay();
+                }
+                if (typeof data.isAutoPomo === 'boolean') {
+                    isAutoPomo = data.isAutoPomo;
+                    localStorage.setItem(`potato-auto-pomo-${userId}`, isAutoPomo.toString());
+                }
+
+                localStorage.setItem(`potato-todos-${userId}`, JSON.stringify(todos));
+                localStorage.setItem(`potato-focus-seconds-${userId}`, accumulatedFocusSeconds.toString());
+                localStorage.setItem(`potato-last-date-${userId}`, lastSavedDate);
+                localStorage.setItem(`potato-active-day-${userId}`, activeDayKey);
+                localStorage.setItem(`potato-pomo-stars-${userId}`, pomoStars.toString());
+                localStorage.setItem(`potato-pomo-cycles-${userId}`, pomoCycleCount.toString());
+                localStorage.setItem(`potato-target-goal-${userId}`, targetCycleGoal.toString());
+                localStorage.setItem(`potato-history-${userId}`, JSON.stringify(focusHistory));
+
+                if (activeDayKey) statsDateEl.textContent = getFormattedDate(keyToDate(activeDayKey));
+                renderTodos();
+                updateStatsDisplay();
+                renderPomoTracker();
+                updateDisplay();
+                isSyncingFromCloud = false;
             }, (err) => console.error("Firestore Listen Error:", err));
         }
 
-        for (let i = 0; i < 80; i++) {
+                for (let i = 0; i < 80; i++) {
             const star = document.createElement('div');
             star.className = 'ambient-star';
             star.style.left = `${Math.random() * 100}%`;
@@ -1700,43 +1778,50 @@
             return `${year}-${month}-${day}`;
         }
 
-        /* [자정 자동 갱신 - 새로고침 없이 즉각 날짜 갱신 및 완료 투두 삭제] */
-        function checkMidnightReset() {
-            const todayStr = getFormattedDate();
-            
-            if (lastSavedDate !== todayStr && lastSavedDate !== "") {
-                statsDateEl.textContent = todayStr;
-                
-                const prevTodoCount = todos.length;
-                todos = todos.filter(t => !t.completed);
-                if (todos.length !== prevTodoCount) {
-                    renderTodos();
-                }
-
-                const now = Date.now();
-                const idleDuration = now - lastActiveTime;
-                const isOverTwoHoursIdle = idleDuration >= (2 * 60 * 60 * 1000);
-                const isAnyRunning = tabStates.focus.isRunning || tabStates.short.isRunning || tabStates.timer.isRunning;
-
-                if (!isAnyRunning && isOverTwoHoursIdle) {
-                    accumulatedFocusSeconds = 0;
-                    pomoStars = 0;
-                    pomoCycleCount = 0;
-                    savePomoState();
-                    renderPomoTracker();
-                }
-
-                lastSavedDate = todayStr;
-                saveState();
-                updateStatsDisplay();
-            } else if (lastSavedDate === "") {
-                lastSavedDate = todayStr;
-                statsDateEl.textContent = todayStr;
-                saveState();
-            }
+        /* [수정] 날짜 기준 통일: activeDayKey 하나로 상단 날짜 / 집중 시간 / 통계 / 완료 투두 삭제를 관리
+           - 자정이 지나도 활동 중이면 전날로 계속 처리, 마지막 활동 후 2시간 + 모든 타이머 정지 시 새 날짜로 전환
+           - 오전 5시 이후에도 아직 전환 전이면 실행 중이어도 강제 전환 */
+        function keyToDate(key) {
+            const p = String(key).split('-').map(Number);
+            return new Date(p[0], (p[1] || 1) - 1, p[2] || 1);
         }
 
-        setInterval(checkMidnightReset, 5000);
+        function performDayRollover(dateObj) {
+            const newKey = getDateKey(dateObj);
+            if (activeDayKey === newKey) return false;
+            activeDayKey = newKey;
+            lastSavedDate = getFormattedDate(dateObj);
+            statsDateEl.textContent = lastSavedDate;
+            todos = todos.filter(t => !t.completed);
+            accumulatedFocusSeconds = 0;
+            pomoStars = 0;
+            pomoCycleCount = 0;
+            savePomoState();
+            renderTodos();
+            renderPomoTracker();
+            updateStatsDisplay();
+            return true;
+        }
+
+        function checkDayRollover() {
+            const now = new Date();
+            const todayKey = getDateKey(now);
+            if (activeDayKey === todayKey || activeDayKey > todayKey) return;
+            const isAnyRunning = tabStates.focus.isRunning || tabStates.short.isRunning || tabStates.timer.isRunning;
+            const forced = now.getHours() >= DAY_RESET_HOUR;
+            const idleOk = !isAnyRunning && (Date.now() - lastActiveTime) >= IDLE_RESET_MS;
+            if (forced || idleOk) performDayRollover(now);
+        }
+        setInterval(checkDayRollover, 1000);
+
+        /* 사이트 어디에서든 발생한 사용자 조작은 활동으로 간주 (통계 대시보드 포함) */
+        let lastActivityMark = 0;
+        ['pointerdown', 'keydown', 'touchstart', 'wheel', 'scroll'].forEach(evt => {
+            document.addEventListener(evt, () => {
+                const t = Date.now();
+                if (t - lastActivityMark > 1000) { lastActivityMark = t; updateLastActive(); }
+            }, { capture: true, passive: true });
+        });
 
         function updateStatsDisplay() {
             const focusMinutes = Math.floor(accumulatedFocusSeconds / 60);
@@ -1798,9 +1883,9 @@
 
         let lastFocusSaveTime = 0;
 
-        function recordFocusTime(seconds) {
-            const dateKey = getDateKey();
-            const hour = new Date().getHours();
+        function recordFocusTime(seconds, atMs) {
+            const dateKey = activeDayKey || getDateKey();
+            const hour = new Date(atMs || Date.now()).getHours();
 
             if (!focusHistory[dateKey]) {
                 focusHistory[dateKey] = {
@@ -1813,7 +1898,45 @@
             focusHistory[dateKey].hourly[hour] = (focusHistory[dateKey].hourly[hour] || 0) + seconds;
         }
 
-        /* [백그라운드 다중 타이머 추적] */
+        /* [수정] 집중 시간 가산: 오전 5시 경계를 지나는 구간은 5시 전(전날)/후(새 날짜)로 분리 */
+        function addFocusSeconds(seconds, endMs) {
+            if (!(seconds > 0)) return;
+            endMs = endMs || Date.now();
+            const startMs = endMs - seconds * 1000;
+            const b = new Date(endMs);
+            b.setHours(DAY_RESET_HOUR, 0, 0, 0);
+            const bMs = b.getTime();
+            if (startMs < bMs && endMs >= bMs && activeDayKey && activeDayKey !== getDateKey(b)) {
+                const pre = (bMs - startMs) / 1000;
+                accumulatedFocusSeconds += pre;
+                recordFocusTime(pre, bMs - 1);
+                performDayRollover(b);
+                const post = seconds - pre;
+                accumulatedFocusSeconds += post;
+                recordFocusTime(post, endMs);
+            } else {
+                accumulatedFocusSeconds += seconds;
+                recordFocusTime(seconds, endMs);
+            }
+        }
+
+        /* [수정] 일반 Timer 전진 (루프/백그라운드 복귀 공용). 별 지급 없음, 집중 시간 통계에는 합산 */
+        function advanceGeneralTimer(elapsed, endMs) {
+            const st = tabStates.timer;
+            const prevHour = Math.floor(st.timeRemaining / 3600);
+            let eff = elapsed;
+            if (st.timeRemaining + eff >= 59999) {
+                eff = Math.max(0, 59999 - st.timeRemaining);
+                st.isRunning = false;
+                if (currentMode === 'timer') startBtn.textContent = 'START';
+            }
+            st.timeRemaining += eff;
+            addFocusSeconds(eff, endMs);
+            const curHour = Math.floor(st.timeRemaining / 3600);
+            if (curHour > prevHour && curHour >= 1) playHourlyAlert();
+        }
+
+        /* [백그라운드 다중 타이머 추적 및 60분 단위 알람 재생] */
         function timerLoop() {
             const now = Date.now();
             if (!lastTimestamp) lastTimestamp = now;
@@ -1825,9 +1948,8 @@
             if (tabStates.focus.isRunning) {
                 anyRunning = true;
                 tabStates.focus.timeRemaining -= elapsedSeconds;
-                accumulatedFocusSeconds += elapsedSeconds;
+                addFocusSeconds(elapsedSeconds, now);
                 actualFocusSecondsCompleted += elapsedSeconds;
-                recordFocusTime(elapsedSeconds);
 
                 if (tabStates.focus.timeRemaining <= 10 && currentMode === 'focus' && !isCelebrationActive) {
                     startCelebrationVFX();
@@ -1855,27 +1977,8 @@
 
             if (tabStates.timer.isRunning) {
                 anyRunning = true;
-                let prevHour = Math.floor(tabStates.timer.timeRemaining / 3600);
-                
-                tabStates.timer.timeRemaining += elapsedSeconds;
-                accumulatedFocusSeconds += elapsedSeconds;
-                recordFocusTime(elapsedSeconds);
-
-                if (tabStates.timer.timeRemaining >= 59999) { 
-                    elapsedSeconds -= (tabStates.timer.timeRemaining - 59999);
-                    tabStates.timer.timeRemaining = 59999;
-                    tabStates.timer.isRunning = false;
-                    if (currentMode === 'timer') {
-                        startBtn.textContent = 'START';
-                    }
-                }
-                
-                let currentHour = Math.floor(tabStates.timer.timeRemaining / 3600);
-                if (currentHour > prevHour && currentHour >= 1) {
-                    playHourlyAlert();
-                }
+                advanceGeneralTimer(elapsedSeconds, now);
             }
-
             updateStatsDisplay();
             if (now - lastFocusSaveTime > 10000) {
                 lastFocusSaveTime = now;
@@ -1909,7 +2012,9 @@
                 if (currentMode !== 'timer' && state.timeRemaining <= 0) return;
                 if (currentMode === 'timer' && state.timeRemaining >= 59999) return;
                 
-                checkMidnightReset(); 
+                if (currentMode === 'focus' && focusSessionTarget === null) {
+                    focusSessionTarget = modeSettings.focus.min * 60 + modeSettings.focus.sec;
+                }
                 state.isRunning = true;
                 startBtn.textContent = 'STOP';
                 
@@ -1935,6 +2040,7 @@
             }
             
             actualFocusSecondsCompleted = 0; 
+            if (currentMode === 'focus') focusSessionTarget = null;
             startBtn.textContent = 'START';
             
             if (!tabStates.focus.isRunning && !tabStates.short.isRunning && !tabStates.timer.isRunning) {
@@ -2024,7 +2130,8 @@
             stopAudioEngine();
 
             if (lastCompletedMode === 'focus') {
-                if (actualFocusSecondsCompleted >= 1498) {
+                const starTarget = (focusSessionTarget !== null) ? focusSessionTarget : (modeSettings.focus.min * 60 + modeSettings.focus.sec);
+                if (actualFocusSecondsCompleted >= Math.max(1, starTarget - 2)) {
                     if (pomoStars < 4) {
                         pomoStars++;
                     } else {
@@ -2038,6 +2145,7 @@
                     renderPomoTracker();
                 }
                 actualFocusSecondsCompleted = 0; 
+                focusSessionTarget = null;
             }
 
             if (isAutoPomo) {
@@ -2058,49 +2166,58 @@
             }
         }
 
-        /* [백그라운드 복귀 시 종료 판정 및 소리 재생 보정] */
+        function pauseFocusBreakForBackground() {
+            const now = Date.now();
+            ['focus', 'short'].forEach(m => {
+                const st = tabStates[m];
+                if (!st.isRunning) return;
+                if (m === 'focus' && lastTimestamp) {
+                    const e = Math.min(1, Math.max(0, (now - lastTimestamp) / 1000));
+                    if (e > 0) {
+                        st.timeRemaining = Math.max(0.001, st.timeRemaining - e);
+                        addFocusSeconds(e, now);
+                        actualFocusSecondsCompleted += e;
+                    }
+                }
+                st.isRunning = false;
+            });
+            if (currentMode === 'focus' || currentMode === 'short') startBtn.textContent = 'START';
+            if (!tabStates.focus.isRunning && !tabStates.short.isRunning && !tabStates.timer.isRunning) {
+                if (timerAnimationId) cancelAnimationFrame(timerAnimationId);
+                timerAnimationId = null;
+                lastTimestamp = null;
+            }
+            updateDisplay();
+            updateStatsDisplay();
+            saveState();
+        }
+
+        /* [수정] Focus/Break는 백그라운드 진입 즉시 정지하고 복귀해도 재개하지 않음. 일반 Timer만 경과 시간 반영 */
         document.addEventListener('visibilitychange', () => {
             if (document.hidden) {
                 bgTimestamp = Date.now();
+                pauseFocusBreakForBackground();
             } else {
-                if (bgTimestamp && timerAnimationId) {
+                if (bgTimestamp) {
                     const bgElapsed = (Date.now() - bgTimestamp) / 1000;
-                    
-                    if (tabStates.focus.isRunning) {
-                        tabStates.focus.timeRemaining -= bgElapsed;
-                        accumulatedFocusSeconds += bgElapsed;
-                        actualFocusSecondsCompleted += bgElapsed; 
-                        recordFocusTime(bgElapsed);
-                        if (tabStates.focus.timeRemaining <= 0) {
-                            tabStates.focus.timeRemaining = 0;
-                            stopTimerWithAlert('focus');
-                        }
-                    }
-                    if (tabStates.short.isRunning) {
-                        tabStates.short.timeRemaining -= bgElapsed;
-                        if (tabStates.short.timeRemaining <= 0) {
-                            tabStates.short.timeRemaining = 0;
-                            stopTimerWithAlert('short');
-                        }
-                    }
+                    bgTimestamp = null;
+                    lastTimestamp = Date.now();
                     if (tabStates.timer.isRunning) {
-                        const oldHour = Math.floor(tabStates.timer.timeRemaining / 3600);
-                        tabStates.timer.timeRemaining += bgElapsed;
-                        accumulatedFocusSeconds += bgElapsed;
-                        recordFocusTime(bgElapsed);
-                        
-                        const newHour = Math.floor(tabStates.timer.timeRemaining / 3600);
-                        if (newHour > oldHour && newHour >= 1) {
-                            playHourlyAlert();
-                        }
+                        advanceGeneralTimer(bgElapsed, Date.now());
                     }
-                    lastTimestamp = Date.now(); 
+                    updateDisplay();
+                    updateStatsDisplay();
+                    saveState();
                 }
-                bgTimestamp = null;
+                checkDayRollover();
             }
         });
+        window.addEventListener('pagehide', () => {
+            if (!bgTimestamp) bgTimestamp = Date.now();
+            pauseFocusBreakForBackground();
+        });
 
-        /* [환경설정 모달 인터랙션 로직] */
+        /* [환경설정 모달] */
         let settingsSnapshot = null;
 
         function validateInput(input, maxVal, minVal = 0) {
@@ -2246,7 +2363,7 @@
         }
 
         function renderStatsDashboard() {
-            const today = new Date();
+            const today = keyToDate(activeDayKey || getDateKey());
             const last30DaysKeys = [];
             for (let i = 29; i >= 0; i--) {
                 const d = new Date(today);
@@ -2295,7 +2412,7 @@
             axisLabelsContainer.innerHTML = '';
 
             const days = currentChartRange;
-            const today = new Date();
+            const today = keyToDate(activeDayKey || getDateKey());
             const dateList = [];
             const weekdays = ['일', '월', '화', '수', '목', '금', '토'];
 
@@ -2457,32 +2574,36 @@
             }
         }
 
-        /* [실시간 고스트 커스텀 드래그 앤 드롭] */
+        /* [수정 3] 순수하고 안정적인 실시간 고스트 커스텀 드래그 앤 드롭 복원 */
         let draggedTodoId = null;
         let dragGhost = null;
         let offsetX = 0;
         let offsetY = 0;
 
+        let dragPointerId = null;
+
         function handlePointerDown(e, id, itemEl) {
-            if (e.type.startsWith('mouse') && e.button !== 0) return;
+            if (dragGhost) return;
+            if (e.pointerType === 'mouse' && e.button !== 0) return;
             e.stopPropagation();
             if (e.cancelable) e.preventDefault();
-            
+
             const activeEl = document.activeElement;
             if (activeEl && (activeEl.tagName === 'TEXTAREA' || activeEl.tagName === 'INPUT')) {
                 activeEl.blur();
             }
 
             draggedTodoId = id;
-            const rect = itemEl.getBoundingClientRect();
-            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            dragPointerId = e.pointerId;
+            try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) {}
 
+            const rect = itemEl.getBoundingClientRect();
+            const clientX = e.clientX;
+            const clientY = e.clientY;
             offsetX = clientX - rect.left;
             offsetY = clientY - rect.top;
 
             itemEl.classList.add('is-placeholder');
-
             dragGhost = itemEl.cloneNode(true);
             dragGhost.classList.remove('is-placeholder');
             dragGhost.classList.add('is-dragging-ghost');
@@ -2492,20 +2613,17 @@
             dragGhost.style.top = `${clientY - offsetY}px`;
             document.body.appendChild(dragGhost);
 
-            document.addEventListener('touchmove', handlePointerMove, { passive: false });
-            document.addEventListener('touchend', handlePointerUp);
-            document.addEventListener('mousemove', handlePointerMove);
-            document.addEventListener('mouseup', handlePointerUp);
+            document.addEventListener('pointermove', handlePointerMove, { passive: false });
+            document.addEventListener('pointerup', handlePointerUp);
+            document.addEventListener('pointercancel', handlePointerUp);
         }
 
         function handlePointerMove(e) {
-            if (!dragGhost) return;
-            e.preventDefault(); 
+            if (!dragGhost || e.pointerId !== dragPointerId) return;
+            if (e.cancelable) e.preventDefault();
             e.stopPropagation();
-
-            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-
+            const clientX = e.clientX;
+            const clientY = e.clientY;
             dragGhost.style.left = `${clientX - offsetX}px`;
             dragGhost.style.top = `${clientY - offsetY}px`;
 
@@ -2530,22 +2648,25 @@
 
         function handlePointerUp(e) {
             if (!dragGhost) return;
-            
+            if (e && e.pointerId !== undefined && e.pointerId !== dragPointerId) return;
+            const cancelled = !!(e && e.type === 'pointercancel');
+
             dragGhost.remove();
             dragGhost = null;
 
             const overTop = document.querySelector('.todo-item.drag-over-top');
             const overBottom = document.querySelector('.todo-item.drag-over-bottom');
-
             let targetId = null;
             let position = null;
 
-            if (overTop) {
-                targetId = parseFloat(overTop.dataset.id);
-                position = 'before';
-            } else if (overBottom) {
-                targetId = parseFloat(overBottom.dataset.id);
-                position = 'after';
+            if (!cancelled) {
+                if (overTop) {
+                    targetId = parseFloat(overTop.dataset.id);
+                    position = 'before';
+                } else if (overBottom) {
+                    targetId = parseFloat(overBottom.dataset.id);
+                    position = 'after';
+                }
             }
 
             document.querySelectorAll('.todo-item').forEach(el => {
@@ -2559,13 +2680,13 @@
             }
 
             draggedTodoId = null;
-            document.removeEventListener('touchmove', handlePointerMove);
-            document.removeEventListener('touchend', handlePointerUp);
-            document.removeEventListener('mousemove', handlePointerMove);
-            document.removeEventListener('mouseup', handlePointerUp);
+            dragPointerId = null;
+            document.removeEventListener('pointermove', handlePointerMove);
+            document.removeEventListener('pointerup', handlePointerUp);
+            document.removeEventListener('pointercancel', handlePointerUp);
         }
 
-        function reorderTodosCustom(sourceId, targetId, position) {
+                function reorderTodosCustom(sourceId, targetId, position) {
             updateLastActive();
             const uncompleted = todos.filter(t => !t.completed).sort((a, b) => a.order - b.order);
             const sourceIdx = uncompleted.findIndex(t => t.id === sourceId);
@@ -2599,25 +2720,24 @@
             todoToggleBtn.classList.toggle('drawer-open');
         }
 
-        /* [핵심: 투두 내부 터치/클릭이 바깥 document로 전파되어 전체화면을 건드리지 못하게 원천 봉쇄] */
+        /* [수정 3] 투두 내부의 모든 터치/클릭 이벤트 격리 (외부로 새어나가지 않음) */
         ['click', 'touchstart', 'touchend', 'pointerdown'].forEach(evtName => {
             todoDrawer.addEventListener(evtName, (e) => {
                 e.stopPropagation();
             }, { passive: true });
         });
 
-        /* 서랍 외부를 명확히 클릭했을 때만 투두 닫기 */
+        /* 외부 클릭 판정 시에만 서랍 닫기 */
         document.addEventListener('click', (event) => {
-            if (event.target.closest('#todo-drawer') || 
-                event.target.closest('#todo-toggle-btn') || 
-                event.target.closest('#fullscreen-toggle-btn') || 
-                event.target.closest('.top-action-btn') || 
-                event.target.closest('.bottom-action-btn') ||
-                event.target.closest('.settings-modal-overlay') || 
-                event.target.closest('.custom-alert-overlay')) {
-                return;
-            }
-            if (todoDrawer && todoDrawer.classList.contains('open')) {
+            const path = event.composedPath ? event.composedPath() : [];
+            const isInsideDrawer = path.includes(todoDrawer) || todoDrawer.contains(event.target);
+            const isToggleBtn = path.includes(todoToggleBtn) || todoToggleBtn.contains(event.target);
+            const isFsBtn = event.target.closest('#fullscreen-toggle-btn');
+            const isModal = event.target.closest('.settings-modal-overlay') || event.target.closest('.custom-alert-overlay');
+
+            if (isInsideDrawer || isToggleBtn || isFsBtn || isModal) return;
+
+            if (todoDrawer.classList.contains('open')) {
                 todoDrawer.classList.remove('open');
                 todoToggleBtn.classList.remove('drawer-open');
             }
@@ -2687,8 +2807,7 @@
                 `;
 
                 if (!todo.completed) {
-                    dragHandle.addEventListener('touchstart', (e) => handlePointerDown(e, todo.id, li), { passive: false });
-                    dragHandle.addEventListener('mousedown', (e) => handlePointerDown(e, todo.id, li));
+                    dragHandle.addEventListener('pointerdown', (e) => handlePointerDown(e, todo.id, li));
                 }
 
                 const delBtn = document.createElement('button');
@@ -2733,9 +2852,6 @@
 
             input.value = '';
             input.style.height = '38px';
-            if (!isFullscreenActive) {
-                input.focus();
-            }
             
             setTimeout(() => {
                 input.scrollTop = 0;
@@ -2781,8 +2897,8 @@
             adjustLayoutScale();
         }
 
-        /* [핵심: 오직 #fullscreen-toggle-btn 클릭으로만 작동/해제되는 안전 상태 머신] */
-        let isFullscreenActive = false;
+        /* [수정 2] 버튼 클릭 시 무조건 실행되며, 내부 터치에 영향받지 않는 독립 전체화면 상태 머신 */
+        let isFullscreenMode = false;
 
         function toggleFullScreen(e) {
             if (e) {
@@ -2790,39 +2906,33 @@
                 e.stopPropagation();
             }
             updateLastActive();
-
             const doc = document;
             const docEl = document.documentElement;
-            const isNative = !!(doc.fullscreenElement || doc.webkitFullscreenElement || doc.mozFullScreenElement || doc.msFullscreenElement);
 
-            if (!isFullscreenActive) {
-                // 전체화면 진입: 어떤 기기든 즉각 실행
-                isFullscreenActive = true;
-                updateFullscreenIcon(true);
+            isFullscreenMode = !isFullscreenMode;
+            updateFullscreenIcon(isFullscreenMode);
 
+            if (isFullscreenMode) {
+                // 가상 전체화면(pseudo-fullscreen) 무조건 활성화
+                document.documentElement.classList.add('pseudo-fullscreen');
+                document.body.classList.add('pseudo-fullscreen');
+
+                // 네이티브 전체화면 시도 (PC 및 네이티브 지원 기기용)
                 const reqFs = docEl.requestFullscreen || docEl.webkitRequestFullscreen || docEl.mozRequestFullScreen || docEl.msRequestFullscreen;
                 if (reqFs) {
                     try {
                         const p = reqFs.call(docEl);
-                        if (p && p.catch) {
-                            p.catch(() => {
-                                document.body.classList.add('pseudo-fullscreen');
-                            });
-                        }
-                    } catch (err) {
-                        document.body.classList.add('pseudo-fullscreen');
-                    }
-                } else {
-                    document.body.classList.add('pseudo-fullscreen');
+                        if (p && p.catch) p.catch(() => {});
+                    } catch (err) {}
                 }
             } else {
-                // 전체화면 해제: 오직 이 버튼을 눌렀을 때만 해제
-                isFullscreenActive = false;
-                updateFullscreenIcon(false);
+                // 사용자가 해제 버튼을 눌렀을 때만 해제
+                document.documentElement.classList.remove('pseudo-fullscreen');
                 document.body.classList.remove('pseudo-fullscreen');
 
+                const isNative = !!(doc.fullscreenElement || doc.webkitFullscreenElement || doc.mozFullScreenElement);
                 if (isNative) {
-                    const exitFs = doc.exitFullscreen || doc.webkitExitFullscreen || doc.mozCancelFullScreen || doc.msExitFullscreen;
+                    const exitFs = doc.exitFullscreen || doc.webkitExitFullscreen || doc.mozCancelFullScreen;
                     if (exitFs) {
                         try {
                             const p = exitFs.call(doc);
@@ -2833,20 +2943,22 @@
             }
         }
 
-        /* 브라우저가 키보드 호출 등으로 네이티브 전체화면을 임의로 풀더라도 사용자가 버튼을 안 눌렀다면 UI 전체화면 상태 강제 유지 */
+        // 키보드 팝업 등으로 브라우저가 네이티브 전체화면을 일시 해제하더라도, 버튼을 누르지 않았다면 전체화면 UI 유지
         function handleFsChange() {
-            const isNative = !!(document.fullscreenElement || document.webkitFullscreenElement);
-            if (!isNative && isFullscreenActive) {
+            if (isFullscreenMode && !document.fullscreenElement && !document.webkitFullscreenElement) {
+                document.documentElement.classList.add('pseudo-fullscreen');
                 document.body.classList.add('pseudo-fullscreen');
                 updateFullscreenIcon(true);
             }
         }
-
         document.addEventListener('fullscreenchange', handleFsChange);
         document.addEventListener('webkitfullscreenchange', handleFsChange);
 
-        /* 초기 구동 */
-        checkMidnightReset();
+        /* [초기 구동] */
+        if (!activeDayKey) activeDayKey = getDateKey(new Date(lastActiveTime));
+        lastSavedDate = getFormattedDate(keyToDate(activeDayKey));
+        statsDateEl.textContent = lastSavedDate;
+        checkDayRollover();
         updateDisplay();
         renderTodos();
         initCloudSync();
