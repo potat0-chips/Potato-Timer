@@ -10,8 +10,8 @@
     <link rel="icon" type="image/png" href="./potato.png">
     <link rel="apple-touch-icon" href="./potato.png">
 
-    <title>Potato Timer · R9</title>
-    <meta name="potato-build" content="R9-20261109">
+    <title>Potato Timer · R7</title>
+    <meta name="potato-build" content="R7-20261109">
     
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -67,11 +67,10 @@
             left: 0 !important;
             right: 0 !important;
             bottom: 0 !important;
-            width: auto !important;
-            height: auto !important;
+            width: 100% !important;
+            height: 100% !important;
             min-height: 0 !important;
             overflow: hidden !important;
-            z-index: 999999 !important;
         }
 
         button, input, textarea, div, span, p {
@@ -1106,7 +1105,7 @@
     <div class="viewport-scaler">
         <div class="main-wrapper" id="main-content-box">
             <div class="header-area">
-                <div class="stats-date" id="stats-date-string">Monday Nov 2, 2026</div>
+                <div class="stats-date" id="stats-date-string">&nbsp;</div>
                 <h1 class="app-title">
                     <img src="./potato.png" alt="Potato" class="potato-study-img">
                     Potato Timer
@@ -1190,7 +1189,7 @@
                     <div class="settings-inputs-wrapper">
                         <input type="number" inputmode="numeric" class="settings-num-input" id="input-focus-min" min="0" max="999" onblur="validateInput(this, 999)">
                         <span class="settings-unit-label">min</span>
-                        <input type="number" inputmode="numeric" class="settings-num-input" id="input-focus-sec" min="0" max="59" oninput="validateInput(this, 59)" onblur="validateInput(this, 59)">
+                        <input type="number" inputmode="numeric" class="settings-num-input" id="input-focus-sec" min="0" max="59" onblur="validateInput(this, 59)">
                         <span class="settings-unit-label">sec</span>
                     </div>
                 </div>
@@ -1200,7 +1199,7 @@
                     <div class="settings-inputs-wrapper">
                         <input type="number" inputmode="numeric" class="settings-num-input" id="input-short-min" min="0" max="999" onblur="validateInput(this, 999)">
                         <span class="settings-unit-label">min</span>
-                        <input type="number" inputmode="numeric" class="settings-num-input" id="input-short-sec" min="0" max="59" oninput="validateInput(this, 59)" onblur="validateInput(this, 59)">
+                        <input type="number" inputmode="numeric" class="settings-num-input" id="input-short-sec" min="0" max="59" onblur="validateInput(this, 59)">
                         <span class="settings-unit-label">sec</span>
                     </div>
                 </div>
@@ -1279,9 +1278,7 @@
 
     <!-- 좌측 하단 전체화면 버튼 -->
     <button class="bottom-action-btn fullscreen-btn" id="fullscreen-toggle-btn" onclick="toggleFullScreen(event)" title="전체화면 전환">
-        <svg id="fs-icon" viewBox="0 0 24 24">
-            <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
-        </svg>
+        <svg id="fs-icon" viewBox="0 0 24 24"></svg>
     </button>
 
     <!-- 우측 하단 통계 대시보드 버튼 -->
@@ -1303,11 +1300,10 @@
 
         let db = null;
         const isFirebaseConfigured = firebaseConfig.apiKey !== "YOUR_API_KEY";
-        try {
-            if (isFirebaseConfigured && window.firebase) {
-                firebase.initializeApp(firebaseConfig); db = firebase.firestore();
-            }
-        } catch (e) { console.warn('Firebase 초기화 실패: 로컬 모드 유지', e); db = null; }
+        if (isFirebaseConfigured && window.firebase) {
+            try { firebase.initializeApp(firebaseConfig); db = firebase.firestore(); }
+            catch (e) { console.warn('Firebase 초기화 실패: 로컬 모드 유지', e); }
+        }
 
         const urlParams = new URLSearchParams(window.location.search);
         const userId = urlParams.get('user') || 'default_local_user';
@@ -1322,6 +1318,17 @@
         let soundGeneration = 0;
         let soundRequest = null;
         let fadeTimer = null;
+        let isAudioUnlocked = false;
+
+        function unlockAudioEngine() {
+            if (isAudioUnlocked) return;
+            alarmPlayer.play().then(() => {
+                alarmPlayer.pause();
+                alarmPlayer.currentTime = 0;
+                isAudioUnlocked = true;
+            }).catch(() => {});
+        }
+
         function stopAllSound() {
             soundGeneration++;
             soundRequest = null;
@@ -1332,6 +1339,7 @@
             try { alarmPlayer.currentTime = 0; } catch (e) {}
             alarmPlayer.volume = 1;
         }
+
         function fadeVolume(target, ms, generation) {
             clearInterval(fadeTimer);
             const start = alarmPlayer.volume;
@@ -1343,7 +1351,8 @@
                 if (p >= 1) { clearInterval(fadeTimer); fadeTimer = null; }
             }, 50);
         }
-        function playSound(key, loop, volume) {
+
+        function playSound(key, loop, volume, fadeInDuration = 0) {
             if (key === 'alarm' && soundRequest && soundRequest.loop) return;
             stopAllSound();
             if (isMuted) return;
@@ -1355,8 +1364,7 @@
             alarmPlayer.src = AUDIO_FILES[key];
             alarmPlayer.muted = false;
             alarmPlayer.loop = !!loop;
-            const fadeIn = key === 'focus';
-            alarmPlayer.volume = fadeIn ? 0 : volume;
+            alarmPlayer.volume = fadeInDuration > 0 ? 0 : (loop ? 0 : volume);
             try {
                 const p = alarmPlayer.play();
                 if (p && p.catch) p.catch(() => {
@@ -1365,13 +1373,16 @@
             } catch (e) {
                 if (generation === soundGeneration) soundRequest = null;
             }
-            if (fadeIn) fadeVolume(volume, 4000, generation);
+            if (fadeInDuration > 0) {
+                fadeVolume(volume, fadeInDuration, generation);
+            } else if (loop) {
+                fadeVolume(volume, 2000, generation);
+            }
         }
 
-        /* [수정] 홈 화면 웹 앱(standalone) 감지 — 버튼 처리보다 먼저 */
+        /* [수정] 홈 화면 웹 앱(standalone) 감지 */
         try {
-            const standaloneMedia = window.matchMedia && window.matchMedia('(display-mode: standalone)').matches;
-            if (window.navigator.standalone === true || standaloneMedia) {
+            if (window.navigator.standalone === true || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)) {
                 document.documentElement.classList.add('standalone');
             }
         } catch (e) {}
@@ -1382,7 +1393,7 @@
         };
 
         function getInitialModeSettings() {
-            let isSavePermanent = false; try { isSavePermanent = localStorage.getItem(`potato-save-default-${userId}`) === 'true'; } catch (e) {}
+            const isSavePermanent = localStorage.getItem(`potato-save-default-${userId}`) === 'true';
             if (isSavePermanent) {
                 try {
                     const saved = localStorage.getItem(`potato-timer-presets-${userId}`);
@@ -1396,7 +1407,7 @@
         }
 
         let modeSettings = getInitialModeSettings();
-        let targetCycleGoal = 10; try { targetCycleGoal = parseInt(localStorage.getItem(`potato-target-goal-${userId}`), 10) || 10; } catch (e) {}
+        let targetCycleGoal = parseInt(localStorage.getItem(`potato-target-goal-${userId}`), 10) || 10;
 
         let tabStates = {
             focus: { timeRemaining: modeSettings.focus.min * 60 + modeSettings.focus.sec, totalSeconds: modeSettings.focus.min * 60 + modeSettings.focus.sec, isRunning: false },
@@ -1411,19 +1422,19 @@
         
         const totalLength = 345.57; 
 
-        let pomoStars = 0; try { pomoStars = parseInt(localStorage.getItem(`potato-pomo-stars-${userId}`), 10) || 0; } catch (e) {}
-        let pomoCycleCount = 0; try { pomoCycleCount = parseInt(localStorage.getItem(`potato-pomo-cycles-${userId}`), 10) || 0; } catch (e) {}
+        let pomoStars = parseInt(localStorage.getItem(`potato-pomo-stars-${userId}`), 10) || 0;
+        let pomoCycleCount = parseInt(localStorage.getItem(`potato-pomo-cycles-${userId}`), 10) || 0;
         
-        let storedAutoPomo = null; try { storedAutoPomo = localStorage.getItem(`potato-auto-pomo-${userId}`); } catch (e) {}
+        let storedAutoPomo = localStorage.getItem(`potato-auto-pomo-${userId}`);
         let isAutoPomo = storedAutoPomo === 'true'; 
 
-        let lastActiveTime = Date.now(); try { lastActiveTime = parseInt(localStorage.getItem(`potato-last-active-${userId}`), 10) || Date.now(); } catch (e) {}
+        let lastActiveTime = parseInt(localStorage.getItem(`potato-last-active-${userId}`), 10) || Date.now();
         let actualFocusSecondsCompleted = 0; 
         let lastCompletedMode = 'focus'; 
 
         function updateLastActive() {
             lastActiveTime = Date.now();
-            try { localStorage.setItem(`potato-last-active-${userId}`, lastActiveTime.toString()); } catch (e) {}
+            localStorage.setItem(`potato-last-active-${userId}`, lastActiveTime.toString());
         }
 
         const timeText = document.getElementById('time-text');
@@ -1454,7 +1465,7 @@
         let isTooltipPinned = false;
 
         /* [음소거 로직] */
-        let isMuted = false; try { isMuted = localStorage.getItem(`potato-muted-${userId}`) === 'true'; } catch (e) {}
+        let isMuted = localStorage.getItem(`potato-muted-${userId}`) === 'true';
 
         const ICON_SOUND_ON = `
             <g transform="translate(1, 0)">
@@ -1696,7 +1707,7 @@
             }, (err) => console.error("Firestore Listen Error:", err));
         }
 
-                for (let i = 0; i < 80; i++) {
+        for (let i = 0; i < 80; i++) {
             const star = document.createElement('div');
             star.className = 'ambient-star';
             star.style.left = `${Math.random() * 100}%`;
@@ -1781,7 +1792,13 @@
             }
             try { stabilizeSkySmoothly(); } catch (e) {}
         }
-        function playEndAlert(mode) { playSound(mode === 'focus' ? 'focus' : 'short', true, 1); }
+        function playEndAlert(mode) { 
+            if (mode === 'focus') {
+                playSound('focus', true, 1, 4000); 
+            } else {
+                playSound('short', true, 1);
+            }
+        }
         function playHourlyAlert() { playSound('alarm', false, 0.65); }
 
         function getFormattedDate(d = new Date()) {
@@ -2014,6 +2031,7 @@
 
         function toggleTimer() {
             updateLastActive();
+            unlockAudioEngine();
             let state = tabStates[currentMode];
 
             if (state.isRunning) {
@@ -2239,10 +2257,6 @@
                     lastTimestamp = Date.now();
                     if (tabStates.timer.isRunning) {
                         advanceGeneralTimer(bgElapsed, Date.now());
-                        if (!isSafariBrowser) {
-                            const crossed = Math.floor(tabStates.timer.timeRemaining / 3600) - Math.floor((tabStates.timer.timeRemaining - bgElapsed) / 3600);
-                            for (let i = 0; i < crossed; i++) playHourlyAlert();
-                        }
                     }
                     updateDisplay();
                     updateStatsDisplay();
@@ -2263,7 +2277,7 @@
             let val = parseInt(input.value, 10);
             if (isNaN(val) || val < minVal) val = minVal;
             if (val > maxVal) val = maxVal;
-            input.value = (maxVal === 59 || (maxVal === 999 && minVal === 0)) ? String(val).padStart(2, '0') : String(val);
+            input.value = String(val).padStart(2, '0');
         }
 
         function openSettings() {
@@ -2474,18 +2488,19 @@
                 if (sec > maxSeconds) maxSeconds = sec;
             });
 
-            const svgWidth = svg.clientWidth || 380;
+            const svgWidth = (svg.clientWidth && svg.clientWidth > 0) ? svg.clientWidth : 380;
             const svgHeight = 105;
             const padLeft = 14;
             const padRight = 14;
             const padTop = 15;
             const padBottom = 15;
-            const chartW = svgWidth - padLeft - padRight;
+            const chartW = Math.max(10, svgWidth - padLeft - padRight);
             const chartH = svgHeight - padTop - padBottom;
+            const stepX = (days > 1) ? (chartW / (days - 1)) : 0;
 
             const points = dateList.map((item, idx) => {
                 const sec = (focusHistory[item.dateKey] && focusHistory[item.dateKey].totalSeconds) || 0;
-                const x = padLeft + (chartW / (days - 1)) * idx;
+                const x = padLeft + stepX * idx;
                 const y = padTop + chartH - (sec / maxSeconds) * chartH;
                 return { x, y, item, sec };
             });
@@ -2725,23 +2740,25 @@
             document.removeEventListener('pointercancel', handlePointerUp);
         }
 
-                function reorderTodosCustom(sourceId, targetId, position) {
+        function reorderTodosCustom(sourceId, targetId, position) {
             updateLastActive();
             const uncompleted = todos.filter(t => !t.completed).sort((a, b) => a.order - b.order);
-            const sourceIdx = uncompleted.findIndex(t => t.id === sourceId);
-            const targetIdx = uncompleted.findIndex(t => t.id === targetId);
+            const completed = todos.filter(t => t.completed);
 
-            if (sourceIdx === -1 || targetIdx === -1) return;
+            const sourceIdx = uncompleted.findIndex(t => t.id === sourceId);
+            if (sourceIdx === -1) return;
 
             const [movedItem] = uncompleted.splice(sourceIdx, 1);
-            let newTargetIdx = uncompleted.findIndex(t => t.id === targetId);
+            let targetIdx = uncompleted.findIndex(t => t.id === targetId);
+            if (targetIdx === -1) return;
 
             if (position === 'after') {
-                newTargetIdx++;
+                targetIdx++;
             }
-            uncompleted.splice(newTargetIdx, 0, movedItem);
+            uncompleted.splice(targetIdx, 0, movedItem);
 
-            uncompleted.forEach((item, index) => {
+            todos = [...uncompleted, ...completed];
+            todos.forEach((item, index) => {
                 item.order = index + 1;
             });
 
@@ -2921,18 +2938,17 @@
             renderTodos();
         }
 
-        /* [아이콘 SVG 정의] */
-        const ICON_ENTER_FULLSCREEN = '<path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" stroke-linecap="round" stroke-linejoin="round"/>';
+        /* [아이콘 SVG 정의 - 통일된 코너 프레임 스타일] */
+        const ICON_ENTER_FULLSCREEN = `
+            <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+        `;
         const ICON_EXIT_FULLSCREEN = `
-            <path d="M4 10h3.5a1.5 1.5 0 0 0 1.5-1.5V5" stroke-linecap="round" stroke-linejoin="round"/>
-            <path d="M20 10h-3.5a1.5 1.5 0 0 1-1.5-1.5V5" stroke-linecap="round" stroke-linejoin="round"/>
-            <path d="M4 14h3.5a1.5 1.5 0 0 1 1.5 1.5V19" stroke-linecap="round" stroke-linejoin="round"/>
-            <path d="M20 14h-3.5a1.5 1.5 0 0 0-1.5 1.5V19" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M3 8h3a2 2 0 0 0 2-2V3m13 5h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
         `;
 
         function updateFullscreenIcon(isFs) {
             fsIcon.innerHTML = isFs ? ICON_EXIT_FULLSCREEN : ICON_ENTER_FULLSCREEN;
-            document.getElementById('fullscreen-toggle-btn').title = isFs ? "전체화면 종료" : "전체화면";
+            document.getElementById('fullscreen-toggle-btn').title = isFs ? "전체화면 종료" : "전체화면 전환";
             adjustLayoutScale();
         }
 
@@ -2980,7 +2996,7 @@
         initCloudSync();
         adjustLayoutScale();
         updateMuteDisplay();
-                        renderPomoTracker();
+        renderPomoTracker();
         setTimeout(triggerShootingStar, 1500);
     </script>
 </body>
