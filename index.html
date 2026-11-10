@@ -10,8 +10,8 @@
     <link rel="icon" type="image/png" href="./potato.png">
     <link rel="apple-touch-icon" href="./potato.png">
 
-    <title>Potato Timer · R10</title>
-    <meta name="potato-build" content="R10-20261109">
+    <title>Potato Timer · R11</title>
+    <meta name="potato-build" content="R11-20261110">
     
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -60,7 +60,7 @@
             position: relative;
         }
 
-        /* [수정] 높이를 vh/dvh로 계산하지 않고 화면 네 모서리에 고정 → 홈 화면 웹 앱 하단 남색 여백 제거 */
+        /* 전체화면 의사 고정 */
         html.pseudo-fullscreen, body.pseudo-fullscreen {
             position: fixed !important;
             top: 0 !important;
@@ -91,7 +91,7 @@
                 radial-gradient(ellipse 55% 25% at 55% 55%, rgba(68, 114, 255, 0.22), transparent 75%),
                 radial-gradient(circle at 50% 50%, rgba(142, 121, 231, 0.18), transparent 60%);
             transform: rotate(-32deg) translateZ(0);
-            filter: blur(12px); /* R4: reduced full-screen blur cost; gradients retained */
+            filter: blur(12px);
             opacity: 0;
             pointer-events: none;
             z-index: 1;
@@ -147,7 +147,6 @@
             100% { transform: translate(var(--move-x), var(--move-y)) rotate(45deg) scaleX(0.1) translateZ(0); opacity: 0; }
         }
 
-        /* [상단 여백 0.1cm 미세 상향] */
         .viewport-scaler {
             display: flex;
             align-items: center;
@@ -158,6 +157,11 @@
             z-index: 5;
             transform: translateY(-4px); 
             transition: transform 0.2s ease;
+        }
+
+        /* 홈 화면(PWA) 전용 상하 균형 보정 */
+        html.standalone .viewport-scaler {
+            transform: translateY(0);
         }
 
         .main-wrapper { 
@@ -451,7 +455,7 @@
             transform: translateX(16px);
         }
 
-        /* [투두 버튼 본래 두께(padding 8px 24px) 및 바닥 밀착] */
+        /* [투두 버튼: 일반 브라우저 및 홈 화면 바닥 밀착 지원] */
         .todo-toggle-btn {
             background-color: rgba(255, 255, 255, 0.25); 
             border: 1px solid rgba(255, 255, 255, 0.3); 
@@ -512,6 +516,28 @@
             }
         }
 
+        /* [홈 화면(PWA) 전용: 기기 최하단 완전 밀착 앵커링] */
+        html.standalone .todo-toggle-btn {
+            bottom: 0px !important;
+        }
+        html.standalone .todo-drawer {
+            bottom: -320px !important;
+        }
+        html.standalone .todo-drawer.open {
+            bottom: 0px !important;
+        }
+        @media (min-width: 601px) {
+            html.standalone .todo-drawer {
+                bottom: -330px !important;
+            }
+            html.standalone .todo-drawer.open {
+                bottom: 0px !important;
+            }
+            html.standalone .todo-toggle-btn.drawer-open {
+                bottom: 300px !important;
+            }
+        }
+
         .todo-form { display: flex; gap: 8px; margin-bottom: 12px; align-items: flex-end; }
         
         .todo-input { 
@@ -525,7 +551,6 @@
         .todo-input::placeholder { line-height: 20px; color: #666666; vertical-align: middle; }
         .todo-add-btn { font-family: inherit; background-color: #6A55C9; color: white; border: none; height: 38px; padding: 0 16px; border-radius: 12px; font-size: 14px; font-weight: bold; cursor: pointer; transition: background 0.1s; -webkit-tap-highlight-color: transparent; }
         
-        /* [투두 리스트 스크롤 영역] */
         .todo-list { 
             list-style: none; 
             padding: 0; 
@@ -583,7 +608,6 @@
         .todo-item.completed { background-color: rgba(255, 255, 255, 0.08); }
         .todo-item.completed .todo-text { text-decoration: line-through; opacity: 0.5; }
 
-        /* [우측 투두 아이콘 2개 높낮이 오차 0% 완벽 일직선 수평 정렬] */
         .todo-actions {
             display: inline-flex !important;
             align-items: center !important;
@@ -897,7 +921,6 @@
             box-shadow: 0 1px 4px rgba(0,0,0,0.1);
         }
 
-        /* [활동 시간: 꺾은선] */
         .line-chart-wrapper {
             width: 100%;
             height: 130px;
@@ -923,7 +946,6 @@
             white-space: nowrap;
         }
 
-        /* [가장 잘 집중하는 시간대: 24시간 막대 차트] */
         .hourly-chart-wrapper {
             width: 100%;
             height: 80px;
@@ -971,7 +993,6 @@
             white-space: nowrap;
         }
 
-        /* [차트 호버/터치 툴팁] */
         .chart-tooltip {
             position: absolute;
             background: rgba(15, 27, 49, 0.95);
@@ -992,7 +1013,6 @@
             opacity: 1;
         }
 
-        /* [좌측/우측 하단 원형 버튼] */
         .bottom-action-btn {
             position: fixed; 
             bottom: 20px; 
@@ -1019,7 +1039,6 @@
         .fullscreen-btn { left: 20px; }
         .stats-btn { right: 20px; }
 
-        /* [우측 상단 액션 버튼 - 정렬 및 규격 복원] */
         .top-action-btn {
             position: fixed;
             top: max(20px, calc(env(safe-area-inset-top, 0px) + 12px));
@@ -1061,14 +1080,8 @@
             .settings-btn { right: 32px; }
             .mute-btn { right: 84px; }
         }
-        /* [수정] 설정 아이콘 비율 고정 */
         .settings-btn svg { width: 22px !important; height: 22px !important; aspect-ratio: 1 / 1; flex: 0 0 22px; }
-        @media (min-width: 601px) {
-            html.standalone .todo-drawer.open { bottom: 0px !important; }
-            html.standalone .todo-toggle-btn.drawer-open { bottom: 300px !important; }
-        }
-        .todo-drag-handle { touch-action: none; }
-        /* [수정] 모바일/태블릿: 빠른 연타·더블탭으로 확대되지 않게 (버튼 동작은 그대로) */
+        
         html, body, button, input, textarea, div, span { touch-action: manipulation; }
         .todo-drag-handle { touch-action: none; }
         .todo-drawer, .todo-list { overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
@@ -1086,7 +1099,7 @@
         <svg id="mute-icon" viewBox="0 0 24 24"></svg>
     </button>
 
-    <!-- [수정 1] 우측 상단 설정 버튼 (완벽 정중앙 배치 복원) -->
+    <!-- 우측 상단 설정 버튼 -->
     <button class="top-action-btn settings-btn" id="settings-toggle-btn" onclick="openSettings()" title="설정">
         <svg viewBox="0 0 24 24" width="22" height="22" preserveAspectRatio="xMidYMid meet" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="3"></circle>
@@ -1304,25 +1317,67 @@
         const userId = urlParams.get('user') || 'default_local_user';
         const isCloudSyncActive = !!db && urlParams.has('user');
 
-        // R7: three original files, one playing at a time. Focus/Break loop; Timer plays once.
+        /* [개선된 오디오 시스템: 음악 일시정지 후 자동 복구 및 사파리 언락] */
         const AUDIO_FILES = { focus: './focus.mp3', short: './break.mp3', alarm: './alarm.mp3' };
+        
+        // preload='none'으로 설정하여 초기 진입 시 기기 오디오 세션 하이재킹 원천 방지
         const alarmPlayer = new Audio();
-        alarmPlayer.preload = 'auto';
+        alarmPlayer.preload = 'none';
         alarmPlayer.playsInline = true;
         alarmPlayer.setAttribute('playsinline', '');
+        
         let soundGeneration = 0;
         let soundRequest = null;
         let fadeTimer = null;
+        let isAudioUnlocked = false;
+
+        // 첫 사용자 터치(START 등) 시 사파리 오디오 언락
+        function unlockAudioEngine() {
+            if (isAudioUnlocked) return;
+            isAudioUnlocked = true;
+
+            // 평상시에는 ambient로 두어 재생 중인 음악을 건드리지 않음
+            if ('audioSession' in navigator) {
+                try { navigator.audioSession.type = 'ambient'; } catch (e) {}
+            }
+
+            try {
+                const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                if (AudioContextClass) {
+                    const ctx = new AudioContextClass();
+                    if (ctx.state === 'suspended') ctx.resume();
+                    const buf = ctx.createBuffer(1, 1, 22050);
+                    const src = ctx.createBufferSource();
+                    src.buffer = buf;
+                    src.connect(ctx.destination);
+                    src.start(0);
+                }
+            } catch (e) {}
+        }
+
+        // 알람 종료 및 오디오 세션 완전 반환 (외부 음악 앱 자동 재개 트리거)
         function stopAllSound() {
             soundGeneration++;
             soundRequest = null;
             clearInterval(fadeTimer);
             fadeTimer = null;
+            
             try { alarmPlayer.pause(); } catch (e) {}
             alarmPlayer.loop = false;
             try { alarmPlayer.currentTime = 0; } catch (e) {}
             alarmPlayer.volume = 1;
+
+            // 하드웨어 오디오 채널 완전 해제 -> 백그라운드 음악 앱에 InterruptionEnded 신호 전송
+            try {
+                alarmPlayer.removeAttribute('src');
+                alarmPlayer.load();
+            } catch (e) {}
+
+            if ('audioSession' in navigator) {
+                try { navigator.audioSession.type = 'auto'; } catch (e) {}
+            }
         }
+
         function fadeVolume(target, ms, generation) {
             clearInterval(fadeTimer);
             const start = alarmPlayer.volume;
@@ -1330,36 +1385,60 @@
             fadeTimer = setInterval(() => {
                 if (generation !== soundGeneration) { clearInterval(fadeTimer); fadeTimer = null; return; }
                 const p = Math.min(1, (Date.now() - t0) / ms);
-                alarmPlayer.volume = start + (target - start) * p;
-                if (p >= 1) { clearInterval(fadeTimer); fadeTimer = null; }
+                alarmPlayer.volume = Math.max(0, Math.min(1, start + (target - start) * p));
+                if (p >= 1) { 
+                    clearInterval(fadeTimer); 
+                    fadeTimer = null; 
+                    if (target === 0 && generation === soundGeneration) {
+                        stopAllSound();
+                    }
+                }
             }, 50);
         }
+
         function playSound(key, loop, volume) {
             if (key === 'alarm' && soundRequest && soundRequest.loop) return;
             stopAllSound();
             if (isMuted) return;
+
+            // transient-solo 모드: 음악 앱을 임시 정지시키고 알람 재생, 종료 시 자동 재개
+            if ('audioSession' in navigator) {
+                try { navigator.audioSession.type = 'transient-solo'; } catch (e) {}
+            }
+
             const generation = soundGeneration;
             soundRequest = { key, loop: !!loop };
+
             alarmPlayer.onended = () => {
-                if (generation === soundGeneration && !loop) soundRequest = null;
+                if (generation === soundGeneration && !loop) {
+                    stopAllSound();
+                }
             };
+
             alarmPlayer.src = AUDIO_FILES[key];
             alarmPlayer.muted = false;
             alarmPlayer.loop = !!loop;
+            
             const fadeIn = key === 'focus';
             alarmPlayer.volume = fadeIn ? 0 : volume;
+
             try {
                 const p = alarmPlayer.play();
-                if (p && p.catch) p.catch(() => {
-                    if (generation === soundGeneration) soundRequest = null;
-                });
+                if (p && p.catch) {
+                    p.catch(() => {
+                        if (generation === soundGeneration) soundRequest = null;
+                    });
+                }
             } catch (e) {
                 if (generation === soundGeneration) soundRequest = null;
             }
-            if (fadeIn) fadeVolume(volume, 4000, generation);
+
+            if (fadeIn) {
+                fadeVolume(volume, 4000, generation);
+            }
         }
 
-        /* [수정] 홈 화면 웹 앱(standalone) 감지 — 버튼 처리보다 먼저 */
+        /* 홈 화면 웹 앱(standalone) 감지 */
         try {
             const standaloneMedia = window.matchMedia && window.matchMedia('(display-mode: standalone)').matches;
             if (window.navigator.standalone === true || standaloneMedia) {
@@ -1373,13 +1452,14 @@
         };
 
         function getInitialModeSettings() {
-            let isSavePermanent = false; try { isSavePermanent = localStorage.getItem(`potato-save-default-${userId}`) === 'true'; } catch (e) {}
+            let isSavePermanent = false; 
+            try { isSavePermanent = localStorage.getItem(`potato-save-default-${userId}`) === 'true'; } catch (e) {}
             if (isSavePermanent) {
                 try {
                     const saved = localStorage.getItem(`potato-timer-presets-${userId}`);
                     if (saved) {
                         const parsed = JSON.parse(saved);
-                        if(parsed.focus && parsed.short) return parsed;
+                        if (parsed.focus && parsed.short) return parsed;
                     }
                 } catch(e) {}
             }
@@ -1387,7 +1467,8 @@
         }
 
         let modeSettings = getInitialModeSettings();
-        let targetCycleGoal = 10; try { targetCycleGoal = parseInt(localStorage.getItem(`potato-target-goal-${userId}`), 10) || 10; } catch (e) {}
+        let targetCycleGoal = 10; 
+        try { targetCycleGoal = parseInt(localStorage.getItem(`potato-target-goal-${userId}`), 10) || 10; } catch (e) {}
 
         let tabStates = {
             focus: { timeRemaining: modeSettings.focus.min * 60 + modeSettings.focus.sec, totalSeconds: modeSettings.focus.min * 60 + modeSettings.focus.sec, isRunning: false },
@@ -1402,13 +1483,17 @@
         
         const totalLength = 345.57; 
 
-        let pomoStars = 0; try { pomoStars = parseInt(localStorage.getItem(`potato-pomo-stars-${userId}`), 10) || 0; } catch (e) {}
-        let pomoCycleCount = 0; try { pomoCycleCount = parseInt(localStorage.getItem(`potato-pomo-cycles-${userId}`), 10) || 0; } catch (e) {}
+        let pomoStars = 0; 
+        try { pomoStars = parseInt(localStorage.getItem(`potato-pomo-stars-${userId}`), 10) || 0; } catch (e) {}
+        let pomoCycleCount = 0; 
+        try { pomoCycleCount = parseInt(localStorage.getItem(`potato-pomo-cycles-${userId}`), 10) || 0; } catch (e) {}
         
-        let storedAutoPomo = null; try { storedAutoPomo = localStorage.getItem(`potato-auto-pomo-${userId}`); } catch (e) {}
+        let storedAutoPomo = null; 
+        try { storedAutoPomo = localStorage.getItem(`potato-auto-pomo-${userId}`); } catch (e) {}
         let isAutoPomo = storedAutoPomo === 'true'; 
 
-        let lastActiveTime = Date.now(); try { lastActiveTime = parseInt(localStorage.getItem(`potato-last-active-${userId}`), 10) || Date.now(); } catch (e) {}
+        let lastActiveTime = Date.now(); 
+        try { lastActiveTime = parseInt(localStorage.getItem(`potato-last-active-${userId}`), 10) || Date.now(); } catch (e) {}
         let actualFocusSecondsCompleted = 0; 
         let lastCompletedMode = 'focus'; 
 
@@ -1445,7 +1530,8 @@
         let isTooltipPinned = false;
 
         /* [음소거 로직] */
-        let isMuted = false; try { isMuted = localStorage.getItem(`potato-muted-${userId}`) === 'true'; } catch (e) {}
+        let isMuted = false; 
+        try { isMuted = localStorage.getItem(`potato-muted-${userId}`) === 'true'; } catch (e) {}
 
         const ICON_SOUND_ON = `
             <g transform="translate(1, 0)">
@@ -1468,6 +1554,7 @@
         }
 
         function toggleMute() {
+            unlockAudioEngine();
             updateLastActive();
             isMuted = !isMuted;
             localStorage.setItem(`potato-muted-${userId}`, isMuted.toString());
@@ -1498,7 +1585,6 @@
             }
 
             pomoCycleCounter.textContent = `${pomoCycleCount}/${targetCycleGoal}`;
-            
             if (pomoCycleCount >= targetCycleGoal) {
                 pomoCycleCounter.classList.add('max-achieved');
             } else {
@@ -1535,6 +1621,7 @@
 
             function triggerAdjust(e) {
                 if (e) e.preventDefault();
+                unlockAudioEngine();
                 updateLastActive();
                 adjustTime(deltaAmount);
             }
@@ -1564,13 +1651,25 @@
         setupAdjustButton('btn-adjust-minus', -1);
         setupAdjustButton('btn-adjust-plus', 1);
 
+        /* [홈 화면(PWA) 전용 비율 스케일러] */
         function adjustLayoutScale() {
             const baseW = 480;
             const baseH = 650;
             const winW = window.innerWidth;
             const winH = window.innerHeight;
-            const scaleFactor = Math.min(1, (winW - 20) / baseW, (winH - 80) / baseH);
-            mainContentBox.style.transform = `scale(${Math.max(0.68, scaleFactor)})`;
+
+            const isStandalone = document.documentElement.classList.contains('standalone');
+            
+            if (isStandalone) {
+                // 홈 화면 추가 모드: 세로 여백을 최적화하여 투두 바닥 밀착과 메인 영역 간의 황금비율 유지
+                const availableH = winH - 64;
+                const scaleFactor = Math.min(1.05, (winW - 24) / baseW, availableH / baseH);
+                mainContentBox.style.transform = `scale(${Math.max(0.72, scaleFactor)})`;
+            } else {
+                // 일반 브라우저 모드: 기존 비율 유지
+                const scaleFactor = Math.min(1, (winW - 20) / baseW, (winH - 80) / baseH);
+                mainContentBox.style.transform = `scale(${Math.max(0.68, scaleFactor)})`;
+            }
         }
         window.addEventListener('resize', adjustLayoutScale);
 
@@ -1628,17 +1727,14 @@
 
             db.collection("users").doc(userId).onSnapshot((doc) => {
                 if (!doc.exists) return;
-                // 내 기기의 아직 서버에 확정되지 않은 저장은 무시
                 if (doc.metadata.hasPendingWrites) return;
                 const data = doc.data();
                 const ts = (data.updatedAtServer && data.updatedAtServer.toMillis) ? data.updatedAtServer.toMillis() : 0;
                 if (ts) {
-                    // 서버 저장 시각 기준: 이미 반영한 것보다 오래된 저장본은 적용하지 않음
                     if (ts <= lastServerTs) return;
                     lastServerTs = ts;
                     localStorage.setItem(`potato-server-ts-${userId}`, String(ts));
                 }
-                // 내가 저장한 데이터가 되돌아온 경우 다시 적용하지 않음 (진행 중인 시간이 뒤로 가는 것 방지)
                 if (data.writerId === CLIENT_ID) return;
 
                 isSyncingFromCloud = true;
@@ -1687,7 +1783,7 @@
             }, (err) => console.error("Firestore Listen Error:", err));
         }
 
-                for (let i = 0; i < 80; i++) {
+        for (let i = 0; i < 80; i++) {
             const star = document.createElement('div');
             star.className = 'ambient-star';
             star.style.left = `${Math.random() * 100}%`;
@@ -1700,7 +1796,6 @@
         let starTimeoutId = null;
         let slowDownSteps = 0;
 
-        /* [별똥별 전역 분산] */
         function triggerShootingStar() {
             const screenW = window.innerWidth || 800;
             const screenH = window.innerHeight || 600;
@@ -1766,7 +1861,6 @@
             if (soundRequest && soundRequest.loop && !isMuted) {
                 const generation = soundGeneration;
                 fadeVolume(0, 1500, generation);
-                setTimeout(() => { if (generation === soundGeneration) stopAllSound(); }, 1500);
             } else {
                 stopAllSound();
             }
@@ -1788,9 +1882,6 @@
             return `${year}-${month}-${day}`;
         }
 
-        /* [수정] 날짜 기준 통일: activeDayKey 하나로 상단 날짜 / 집중 시간 / 통계 / 완료 투두 삭제를 관리
-           - 자정이 지나도 활동 중이면 전날로 계속 처리, 마지막 활동 후 2시간 + 모든 타이머 정지 시 새 날짜로 전환
-           - 오전 5시 이후에도 아직 전환 전이면 실행 중이어도 강제 전환 */
         function keyToDate(key) {
             const p = String(key).split('-').map(Number);
             return new Date(p[0], (p[1] || 1) - 1, p[2] || 1);
@@ -1824,7 +1915,6 @@
         }
         setInterval(checkDayRollover, 1000);
 
-        /* 사이트 어디에서든 발생한 사용자 조작은 활동으로 간주 (통계 대시보드 포함) */
         let lastActivityMark = 0;
         ['pointerdown', 'keydown', 'touchstart', 'wheel', 'scroll'].forEach(evt => {
             document.addEventListener(evt, () => {
@@ -1839,7 +1929,6 @@
             if (statsCounterEl.textContent !== label) statsCounterEl.textContent = label;
         }
 
-        /* [타이머 SVG 게이지 갱신 - 0~59분 시계방향 비워짐 / 60~119분 시계방향 채워짐] */
         function updateDisplay() {
             let state = tabStates[currentMode];
             const displaySecs = currentMode === 'timer' ? Math.floor(state.timeRemaining) : Math.ceil(state.timeRemaining);
@@ -1912,7 +2001,6 @@
             focusHistory[dateKey].hourly[hour] = (focusHistory[dateKey].hourly[hour] || 0) + seconds;
         }
 
-        /* [수정] 집중 시간 가산: 오전 5시 경계를 지나는 구간은 5시 전(전날)/후(새 날짜)로 분리 */
         function addFocusSeconds(seconds, endMs) {
             if (!(seconds > 0)) return;
             endMs = endMs || Date.now();
@@ -1934,7 +2022,6 @@
             }
         }
 
-        /* [수정] 일반 Timer 전진 (루프/백그라운드 복귀 공용). 별 지급 없음, 집중 시간 통계에는 합산 */
         function advanceGeneralTimer(elapsed, endMs) {
             const st = tabStates.timer;
             const prevHour = Math.floor(st.timeRemaining / 3600);
@@ -1950,8 +2037,6 @@
             if (curHour > prevHour && curHour >= 1) playHourlyAlert();
         }
 
-        /* [백그라운드 다중 타이머 추적 및 60분 단위 알람 재생] */
-        /* [수정] 시간 계산은 화면 그리기(rAF)와 분리: 렌더링이 버벅여도 종료 시점이 밀리지 않음 */
         const TICK_MS = 50;
         function timerLoop() {
             const now = Date.now();
@@ -1959,10 +2044,7 @@
             let elapsedSeconds = (now - lastTimestamp) / 1000;
             lastTimestamp = now;
 
-            let anyRunning = false;
-
             if (tabStates.focus.isRunning) {
-                anyRunning = true;
                 const consumed = Math.min(Math.max(0, elapsedSeconds), tabStates.focus.timeRemaining);
                 tabStates.focus.timeRemaining = Math.max(0, tabStates.focus.timeRemaining - consumed);
                 addFocusSeconds(consumed, now);
@@ -1975,7 +2057,6 @@
             }
 
             if (tabStates.short.isRunning) {
-                anyRunning = true;
                 tabStates.short.timeRemaining -= elapsedSeconds;
 
                 if (tabStates.short.timeRemaining <= 0) {
@@ -1985,7 +2066,6 @@
             }
 
             if (tabStates.timer.isRunning) {
-                anyRunning = true;
                 advanceGeneralTimer(elapsedSeconds, now);
             }
             updateStatsDisplay();
@@ -2004,6 +2084,7 @@
         }
 
         function toggleTimer() {
+            unlockAudioEngine();
             updateLastActive();
             let state = tabStates[currentMode];
 
@@ -2035,6 +2116,7 @@
         }
 
         function resetTimer() {
+            unlockAudioEngine();
             updateLastActive();
             let state = tabStates[currentMode];
             state.isRunning = false;
@@ -2093,6 +2175,7 @@
         }
 
         function handleManualTabChange(mode) {
+            unlockAudioEngine();
             updateLastActive();
             if (isAutoPomo) {
                 isAutoPomo = false;
@@ -2153,42 +2236,41 @@
             try { stopAudioEngine(); } catch (e) {}
             try { updateLastActive(); } catch (e) { console.warn('activity-save', e); }
             try {
-
-            if (lastCompletedMode === 'focus') {
-                const starTarget = (focusSessionTarget !== null) ? focusSessionTarget : (modeSettings.focus.min * 60 + modeSettings.focus.sec);
-                if (actualFocusSecondsCompleted >= Math.max(1, starTarget - 2)) {
-                    if (pomoStars < 4) {
-                        pomoStars++;
-                    } else {
-                        pomoStars = 1;
-                    }
-
-                    if (pomoStars === 4) {
-                        pomoCycleCount++;
-                    }
-                    savePomoState();
-                    renderPomoTracker();
-                }
-                actualFocusSecondsCompleted = 0; 
-                focusSessionTarget = null;
-            }
-
-            if (isAutoPomo) {
                 if (lastCompletedMode === 'focus') {
-                    setMode('short');
+                    const starTarget = (focusSessionTarget !== null) ? focusSessionTarget : (modeSettings.focus.min * 60 + modeSettings.focus.sec);
+                    if (actualFocusSecondsCompleted >= Math.max(1, starTarget - 2)) {
+                        if (pomoStars < 4) {
+                            pomoStars++;
+                        } else {
+                            pomoStars = 1;
+                        }
+
+                        if (pomoStars === 4) {
+                            pomoCycleCount++;
+                        }
+                        savePomoState();
+                        renderPomoTracker();
+                    }
+                    actualFocusSecondsCompleted = 0; 
+                    focusSessionTarget = null;
+                }
+
+                if (isAutoPomo) {
+                    if (lastCompletedMode === 'focus') {
+                        setMode('short');
+                    } else {
+                        setMode('focus');
+                    }
+                    toggleTimer(); 
                 } else {
-                    setMode('focus');
+                    let state = tabStates[lastCompletedMode];
+                    const setting = modeSettings[lastCompletedMode];
+                    if (setting) {
+                        state.totalSeconds = setting.min * 60 + setting.sec;
+                        state.timeRemaining = state.totalSeconds;
+                    }
+                    updateDisplay();
                 }
-                toggleTimer(); 
-            } else {
-                let state = tabStates[lastCompletedMode];
-                const setting = modeSettings[lastCompletedMode];
-                if (setting) {
-                    state.totalSeconds = setting.min * 60 + setting.sec;
-                    state.timeRemaining = state.totalSeconds;
-                }
-                updateDisplay();
-            }
             } catch (e) { console.warn('completion-bookkeeping', e); }
         }
 
@@ -2218,7 +2300,6 @@
             saveState();
         }
 
-        /* [수정] Focus/Break는 백그라운드 진입 즉시 정지하고 복귀해도 재개하지 않음. 일반 Timer만 경과 시간 반영 */
         document.addEventListener('visibilitychange', () => {
             if (document.hidden) {
                 bgTimestamp = Date.now();
@@ -2258,6 +2339,7 @@
         }
 
         function openSettings() {
+            unlockAudioEngine();
             updateLastActive();
             document.getElementById('input-focus-min').value = String(modeSettings.focus.min).padStart(2, '0');
             document.getElementById('input-focus-sec').value = String(modeSettings.focus.sec).padStart(2, '0');
@@ -2336,6 +2418,7 @@
         let currentChartRange = 7;
 
         function openStats() {
+            unlockAudioEngine();
             updateLastActive();
             renderStatsDashboard();
             statsModal.classList.add('show');
@@ -2604,12 +2687,11 @@
             }
         }
 
-        /* [수정 3] 순수하고 안정적인 실시간 고스트 커스텀 드래그 앤 드롭 복원 */
+        /* [커스텀 포인터 드래그 앤 드롭] */
         let draggedTodoId = null;
         let dragGhost = null;
         let offsetX = 0;
         let offsetY = 0;
-
         let dragPointerId = null;
 
         function handlePointerDown(e, id, itemEl) {
@@ -2716,7 +2798,7 @@
             document.removeEventListener('pointercancel', handlePointerUp);
         }
 
-                function reorderTodosCustom(sourceId, targetId, position) {
+        function reorderTodosCustom(sourceId, targetId, position) {
             updateLastActive();
             const uncompleted = todos.filter(t => !t.completed).sort((a, b) => a.order - b.order);
             const sourceIdx = uncompleted.findIndex(t => t.id === sourceId);
@@ -2740,8 +2822,9 @@
             renderTodos();
         }
 
-        /* [To-Do 리스트 토글] */
+        /* [To-Do 서랍 토글] */
         function toggleDrawer(event) {
+            unlockAudioEngine();
             updateLastActive();
             if (event) {
                 event.stopPropagation(); 
@@ -2750,14 +2833,12 @@
             todoToggleBtn.classList.toggle('drawer-open');
         }
 
-        /* [수정 3] 투두 내부의 모든 터치/클릭 이벤트 격리 (외부로 새어나가지 않음) */
         ['click', 'touchstart', 'touchend', 'pointerdown'].forEach(evtName => {
             todoDrawer.addEventListener(evtName, (e) => {
                 e.stopPropagation();
             }, { passive: true });
         });
 
-        /* 외부 클릭 판정 시에만 서랍 닫기 */
         document.addEventListener('click', (event) => {
             const path = event.composedPath ? event.composedPath() : [];
             const isInsideDrawer = path.includes(todoDrawer) || todoDrawer.contains(event.target);
@@ -2781,7 +2862,6 @@
 
         function handleTodoKeyDown(e) {
             if (e.isComposing) return;
-            
             const isMobile = window.innerWidth <= 600; 
             
             if (e.key === 'Enter') {
@@ -2866,6 +2946,7 @@
         }
 
         function addTodo() {
+            unlockAudioEngine();
             updateLastActive();
             const input = document.getElementById('todo-input');
             const text = input.value.trim();
@@ -2912,7 +2993,7 @@
             renderTodos();
         }
 
-        /* [아이콘 SVG 정의] */
+        /* [전체화면 제어] */
         const ICON_ENTER_FULLSCREEN = '<path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" stroke-linecap="round" stroke-linejoin="round"/>';
         const ICON_EXIT_FULLSCREEN = `
             <path d="M4 10h3.5a1.5 1.5 0 0 0 1.5-1.5V5" stroke-linecap="round" stroke-linejoin="round"/>
@@ -2927,28 +3008,33 @@
             adjustLayoutScale();
         }
 
-        // R7: Safari browser button does nothing. Other apps and Home Screen use page fullscreen only.
+        // 사파리 브라우저는 버튼 무반응, 타 브라우저 및 홈 화면 앱은 전체화면 처리
         const isStandaloneApp = document.documentElement.classList.contains('standalone');
         const isTouchDevice = (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) || (navigator.maxTouchPoints || 0) > 1;
         const isSafariBrowser = !isStandaloneApp && /Safari/i.test(navigator.userAgent) && !/CriOS|FxiOS|EdgiOS|OPiOS|Chrome|Chromium|Firefox|Edg\//i.test(navigator.userAgent);
         let isFullscreenMode = false;
+
         function applyPseudoFullscreen(on) {
             document.documentElement.classList.toggle('pseudo-fullscreen', on);
             document.body.classList.toggle('pseudo-fullscreen', on);
         }
+
         function toggleFullScreen(e) {
             if (e) { e.preventDefault(); e.stopPropagation(); }
-            if (isSafariBrowser) return;
+            if (isSafariBrowser) return; // 사파리 브라우저 비활성화 정책 유지
+            unlockAudioEngine();
             try { updateLastActive(); } catch (err) {}
             isFullscreenMode = !isFullscreenMode;
             applyPseudoFullscreen(isFullscreenMode);
             updateFullscreenIcon(isFullscreenMode);
         }
+
         if (isStandaloneApp) {
             isFullscreenMode = true;
             applyPseudoFullscreen(true);
             updateFullscreenIcon(true);
         }
+
         window.addEventListener('pageshow', () => {
             if (!isStandaloneApp) return;
             isFullscreenMode = true;
@@ -2956,7 +3042,7 @@
             updateFullscreenIcon(true);
         });
 
-        /* [수정] 확대/축소 방지 (핀치, 더블탭). 버튼 연타는 그대로 동작 */
+        /* 핀치 및 더블탭 줌 방지 */
         ['gesturestart', 'gesturechange', 'gestureend'].forEach(evt => {
             document.addEventListener(evt, (e) => e.preventDefault(), { passive: false });
         });
@@ -2977,7 +3063,7 @@
         initCloudSync();
         adjustLayoutScale();
         updateMuteDisplay();
-                        renderPomoTracker();
+        renderPomoTracker();
         setTimeout(triggerShootingStar, 1500);
     </script>
 </body>
