@@ -10,8 +10,8 @@
     <link rel="icon" type="image/png" href="./potato.png">
     <link rel="apple-touch-icon" href="./potato.png">
 
-    <title>Potato Timer · R14</title>
-    <meta name="potato-build" content="R14-20261110">
+    <title>Potato Timer · R15</title>
+    <meta name="potato-build" content="R15-20261110">
     
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -58,6 +58,20 @@
             user-select: none;
             -webkit-user-select: none;
             position: relative;
+        }
+
+        /* [작은 화면 모드 (IMG_1451): 하단 여백 형성] */
+        html.pseudo-fullscreen, body.pseudo-fullscreen {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            bottom: 0 !important;
+            width: auto !important;
+            height: auto !important;
+            min-height: 0 !important;
+            overflow: hidden !important;
+            z-index: 999999 !important;
         }
 
         button, input, textarea, div, span, p {
@@ -610,18 +624,32 @@
 
         .todo-item.completed .todo-actions .todo-drag-handle { display: none; }
 
-        /* [완료 모달: 터치 즉시 즉각 반응] */
+        /* [완료 모달: 0.25초 부드러운 페이드인/아웃] */
         .custom-alert-overlay {
             position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(6, 11, 23, 0.72);
-            display: none; align-items: center; justify-content: center; z-index: 2000;
+            display: flex; align-items: center; justify-content: center;
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+            transition: opacity 0.25s ease, visibility 0.25s ease;
+            z-index: 2000;
         }
-        .custom-alert-overlay.show { display: flex !important; }
+        .custom-alert-overlay.show { 
+            opacity: 1; 
+            visibility: visible;
+            pointer-events: auto; 
+        }
         .custom-alert-box {
             background-color: rgba(15, 27, 49, 0.98); border: 1px solid rgba(255, 255, 255, 0.2); padding: 36px 24px; border-radius: 20px;
             display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; box-shadow: 0 15px 35px rgba(0,0,0,0.6);
             max-width: 90%; width: 320px;
+            transform: scale(0.92) translateY(8px);
+            transition: transform 0.25s cubic-bezier(0.25, 1, 0.5, 1), width 0.2s ease;
         }
         .custom-alert-box.wide { width: 360px; padding: 36px 28px; }
+        .custom-alert-overlay.show .custom-alert-box {
+            transform: scale(1) translateY(0);
+        }
         .custom-alert-text { font-size: 16px; font-weight: bold; margin: 0 0 26px 0; line-height: 1.4; white-space: nowrap; width: 100%; display: flex; align-items: center; justify-content: center; text-align: center; letter-spacing: -0.2px; }
         .custom-alert-btn { background-color: #6A55C9; color: white; border: none; padding: 11px 36px; font-size: 14px; font-weight: bold; border-radius: 16px; cursor: pointer; transition: background 0.1s; -webkit-tap-highlight-color: transparent; }
 
@@ -1234,10 +1262,8 @@
     <div class="chart-tooltip" id="chart-tooltip"></div>
 
     <!-- 좌측 하단 전체화면 버튼 -->
-    <button class="bottom-action-btn fullscreen-btn" id="fullscreen-toggle-btn" onclick="toggleFullScreen(event)" title="전체화면 전환">
-        <svg id="fs-icon" viewBox="0 0 24 24">
-            <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
-        </svg>
+    <button class="bottom-action-btn fullscreen-btn" id="fullscreen-toggle-btn" onclick="toggleFullScreen(event)" title="전체화면 종료">
+        <svg id="fs-icon" viewBox="0 0 24 24"></svg>
     </button>
 
     <!-- 우측 하단 통계 대시보드 버튼 -->
@@ -2084,9 +2110,19 @@
             try { startCelebrationVFX(); } catch (e) {}
         }
 
-        /* [완료 확인 버튼: 렉 없이 0ms 즉각 처리] */
+        function showCompletionDialog() {
+            customAlert.classList.add('show');
+        }
+
+        /* [완료 확인 버튼: 부드러운 0.25초 페이드아웃 + 더블클릭 방지] */
+        let isClosingAlert = false;
         function closeCustomAlert() {
+            if (!customAlert.classList.contains('show') || isClosingAlert) return;
+            isClosingAlert = true;
+            
+            // 팝업 부드럽게 페이드아웃
             customAlert.classList.remove('show');
+            
             stopAllSound();
             try { stabilizeSkySmoothly(); } catch (e) {}
             try { updateLastActive(); } catch (e) {}
@@ -2128,6 +2164,8 @@
                     updateDisplay();
                 }
             } catch (e) {}
+
+            setTimeout(() => { isClosingAlert = false; }, 300);
         }
 
         function pauseFocusBreakForBackground() {
@@ -2845,7 +2883,7 @@
             renderTodos();
         }
 
-        /* [전체화면 제어] */
+        /* [전체화면 제어: 기본 꽉 찬 전체화면(IMG_1452) ↔ 작은 화면(IMG_1451) 완벽 토글] */
         const ICON_ENTER_FULLSCREEN = '<path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" stroke-linecap="round" stroke-linejoin="round"/>';
         const ICON_EXIT_FULLSCREEN = `
             <path d="M4 10h3.5a1.5 1.5 0 0 0 1.5-1.5V5" stroke-linecap="round" stroke-linejoin="round"/>
@@ -2854,26 +2892,36 @@
             <path d="M20 14h-3.5a1.5 1.5 0 0 0-1.5 1.5V19" stroke-linecap="round" stroke-linejoin="round"/>
         `;
 
-        function updateFullscreenIcon(isFs) {
-            fsIcon.innerHTML = isFs ? ICON_EXIT_FULLSCREEN : ICON_ENTER_FULLSCREEN;
-            document.getElementById('fullscreen-toggle-btn').title = isFs ? "전체화면 종료" : "전체화면";
+        const isTouchDevice = (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) || (navigator.maxTouchPoints || 0) > 1;
+        const isSafariBrowser = /Safari/i.test(navigator.userAgent) && !/CriOS|FxiOS|EdgiOS|OPiOS|Chrome|Chromium|Firefox|Edg\//i.test(navigator.userAgent);
+        const isStandaloneApp = window.navigator.standalone === true || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+
+        // isFullView: true = 꽉 찬 전체화면(IMG_1452), false = 하단 여백 축소화면(IMG_1451)
+        let isFullView = true;
+
+        function updateFullscreenDisplay(full) {
+            if (full) {
+                // 전체화면(IMG_1452): 여백 제거, 축소 아이콘 표시
+                document.documentElement.classList.remove('pseudo-fullscreen');
+                document.body.classList.remove('pseudo-fullscreen');
+                fsIcon.innerHTML = ICON_EXIT_FULLSCREEN;
+                document.getElementById('fullscreen-toggle-btn').title = "전체화면 종료";
+            } else {
+                // 작은 화면(IMG_1451): 하단 여백 형성, 확대 아이콘 표시
+                document.documentElement.classList.add('pseudo-fullscreen');
+                document.body.classList.add('pseudo-fullscreen');
+                fsIcon.innerHTML = ICON_ENTER_FULLSCREEN;
+                document.getElementById('fullscreen-toggle-btn').title = "전체화면";
+            }
             adjustLayoutScale();
         }
 
-        const isTouchDevice = (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) || (navigator.maxTouchPoints || 0) > 1;
-        const isSafariBrowser = /Safari/i.test(navigator.userAgent) && !/CriOS|FxiOS|EdgiOS|OPiOS|Chrome|Chromium|Firefox|Edg\//i.test(navigator.userAgent);
-        
-        // 홈 화면(PWA) 및 일반 실행 시 기본적으로 전체화면 비활성화 상태(IMG_1452)로 고정
-        let isFullscreenMode = false;
-
         function toggleFullScreen(e) {
             if (e) { e.preventDefault(); e.stopPropagation(); }
-            if (isSafariBrowser && !window.navigator.standalone) return; 
+            if (isSafariBrowser && !isStandaloneApp) return; 
             try { updateLastActive(); } catch (err) {}
-            isFullscreenMode = !isFullscreenMode;
-            document.documentElement.classList.toggle('pseudo-fullscreen', isFullscreenMode);
-            document.body.classList.toggle('pseudo-fullscreen', isFullscreenMode);
-            updateFullscreenIcon(isFullscreenMode);
+            isFullView = !isFullView;
+            updateFullscreenDisplay(isFullView);
         }
 
         /* 핀치 및 더블탭 줌 방지 */
@@ -2887,7 +2935,7 @@
             if (isTouchDevice) e.preventDefault();
         }, { passive: false });
 
-        /* [초기 구동: 무조건 IMG_1452 비율로 시작] */
+        /* [초기 구동: 홈 화면 앱 실행 시 꽉 찬 전체화면(IMG_1452) + 전체화면 해제 아이콘 기본 표시] */
         if (!activeDayKey) activeDayKey = getDateKey(new Date(lastActiveTime));
         lastSavedDate = getFormattedDate(keyToDate(activeDayKey));
         statsDateEl.textContent = lastSavedDate;
@@ -2898,6 +2946,7 @@
         adjustLayoutScale();
         updateMuteDisplay();
         renderPomoTracker();
+        updateFullscreenDisplay(true);
         setTimeout(triggerShootingStar, 3000);
     </script>
 </body>
