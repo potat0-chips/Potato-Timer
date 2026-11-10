@@ -11,7 +11,7 @@
     <link rel="apple-touch-icon" href="./potato.png">
 
     <title>Potato Timer</title>
-    <meta name="potato-build" content="R25-20261110">
+    <meta name="potato-build" content="R26-20261110">
     
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -1359,12 +1359,12 @@
             if (fadeIn) fadeVolume(volume, 2000, generation);
         }
 
-        /* [수정: 정확히 요청하신 0.5초(500ms) 페이드아웃 적용 — Focus와 Break 동일] */
+        /* [수정: 정확히 요청하신 0.8초(800ms) 페이드아웃 적용 — Focus와 Break 동일] */
         function stopAudioEngine() {
             if (soundRequest && soundRequest.loop && !isMuted) {
                 const generation = soundGeneration;
-                fadeVolume(0, 500, generation);
-                setTimeout(() => { if (generation === soundGeneration) stopAllSound(); }, 500);
+                fadeVolume(0, 800, generation);
+                setTimeout(() => { if (generation === soundGeneration) stopAllSound(); }, 800);
             } else {
                 stopAllSound();
             }
@@ -2113,7 +2113,7 @@
             customAlert.classList.add('show');
         }
 
-        /* [완료 확인 버튼: 부드러운 팝업 닫힘 + 0.5초 R8 오디오 페이드아웃] */
+        /* [완료 확인 버튼: 부드러운 팝업 닫힘 + 정확히 0.8초 R8 오디오 페이드아웃] */
         let isClosingAlert = false;
         function closeCustomAlert() {
             if (!customAlert.classList.contains('show') || isClosingAlert) return;
@@ -2121,7 +2121,7 @@
             
             customAlert.classList.remove('show');
             
-            // Focus & Break 공통 0.5초(500ms) 페이드아웃 실행
+            // Focus & Break 공통 0.8초(800ms) 페이드아웃 실행
             stopAudioEngine();
             try { updateLastActive(); } catch (e) {}
 
@@ -2843,7 +2843,7 @@
             });
         }
 
-        /* [수정: 모바일에서 투두 추가 시 자판 위치가 위아래로 흔들리지 않고 완전히 고정되도록 개선] */
+        /* [모바일 투두 추가 시 자판 위치 고정 및 화면 울렁거림 방지] */
         function addTodo() {
             updateLastActive();
             const input = document.getElementById('todo-input');
@@ -2863,7 +2863,7 @@
             input.style.height = '38px';
             input.scrollTop = 0;
 
-            // 이미 포커스된 상태면 추가적인 .focus() 호출을 생략하여 모바일 사파리 화면 울렁거림 방지
+            // 이미 포커스된 상태면 추가적인 .focus() 호출을 생략하여 모바일 화면 울렁거림 원천 차단
             if (document.activeElement !== input) {
                 input.focus({ preventScroll: true });
             }
