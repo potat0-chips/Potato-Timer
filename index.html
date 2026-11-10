@@ -10,8 +10,8 @@
     <link rel="icon" type="image/png" href="./potato.png">
     <link rel="apple-touch-icon" href="./potato.png">
 
-    <title>Potato Timer · R16</title>
-    <meta name="potato-build" content="R16-20261110">
+    <title>Potato Timer · R17</title>
+    <meta name="potato-build" content="R17-20261110">
     
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -60,7 +60,7 @@
             position: relative;
         }
 
-        /* [작은 화면 모드 (IMG_1451): 하단 여백 형성] */
+        /* [축소 모드: 하단 여백 형성 (IMG_3922, IMG_1451)] */
         html.pseudo-fullscreen, body.pseudo-fullscreen {
             position: fixed !important;
             top: 0 !important;
@@ -449,7 +449,7 @@
             transform: translateX(16px);
         }
 
-        /* [IMG_1452 기준: 기기 바닥에 완벽 밀착되는 투두 버튼] */
+        /* [기기 바닥에 완벽 밀착되는 투두 버튼: IMG_3921, IMG_1452] */
         .todo-toggle-btn {
             background-color: rgba(255, 255, 255, 0.25); 
             border: 1px solid rgba(255, 255, 255, 0.3); 
@@ -1262,7 +1262,7 @@
     <div class="chart-tooltip" id="chart-tooltip"></div>
 
     <!-- 좌측 하단 전체화면 버튼 -->
-    <button class="bottom-action-btn fullscreen-btn" id="fullscreen-toggle-btn" onclick="toggleFullScreen(event)" title="전체화면 종료">
+    <button class="bottom-action-btn fullscreen-btn" id="fullscreen-toggle-btn" onclick="toggleFullScreen(event)" title="전체화면 전환">
         <svg id="fs-icon" viewBox="0 0 24 24"></svg>
     </button>
 
@@ -1320,6 +1320,7 @@
             alarmPlayer.loop = false;
         }
 
+        /* [수정: 30ms 단위 정밀 볼륨 선형 보간] */
         function fadeVolume(target, ms, generation) {
             if (fadeTimer) clearInterval(fadeTimer);
             const start = alarmPlayer.volume;
@@ -1339,7 +1340,7 @@
                         stopAllSound();
                     }
                 }
-            }, 50);
+            }, 30);
         }
 
         function playSound(key, loop, volume) {
@@ -1761,11 +1762,11 @@
             starTimeoutId = setTimeout(triggerShootingStar, 5000);
         }
 
-        /* [수정: 루프 사운드 종료 시 1.5초(1500ms) 부드러운 페이드아웃 복원] */
+        /* [수정: 루프 사운드 종료 시 0.5초(500ms) 페이드아웃] */
         function stopAudioEngine() {
             if (soundRequest && soundRequest.loop && !isMuted) {
                 const generation = soundGeneration;
-                fadeVolume(0, 1500, generation);
+                fadeVolume(0, 500, generation);
             } else {
                 stopAllSound();
             }
@@ -1834,7 +1835,7 @@
             if (statsCounterEl.textContent !== label) statsCounterEl.textContent = label;
         }
 
-        /* [수정: 게이지 비율 0~1 클램핑으로 끝부분 튐 완전 방지] */
+        /* [수정: 게이지 비율 0~1 클램핑으로 Focus & Break 모두 부드럽게 감속] */
         function updateDisplay() {
             let state = tabStates[currentMode];
             const displaySecs = currentMode === 'timer' ? Math.floor(state.timeRemaining) : Math.ceil(state.timeRemaining);
@@ -1860,7 +1861,7 @@
             } else {
                 const progressRatio = Math.max(0, Math.min(1, state.timeRemaining / (state.totalSeconds || 1)));
                 const offset = totalLength - progressRatio * totalLength;
-                const offStr = (isNaN(offset) ? 0 : offset).toFixed(2);
+                const offStr = offset.toFixed(2);
                 if (progressCircle.__lastDash !== 'full') { progressCircle.style.strokeDasharray = `${totalLength} ${totalLength}`; progressCircle.__lastDash = 'full'; }
                 if (progressCircle.__lastOff !== offStr) { progressCircle.style.strokeDashoffset = offStr; progressCircle.__lastOff = offStr; }
             }
@@ -1946,7 +1947,7 @@
 
         const TICK_MS = 50;
 
-        /* [수정: Break 타이머 끝 도달 시 정밀 클램핑으로 튀는 현상 완벽 방지] */
+        /* [수정: Focus와 Short 모두 완벽히 동일한 델타 타임 클램핑으로 부드러운 진행 보장] */
         function timerLoop() {
             const now = Date.now();
             if (!lastTimestamp) lastTimestamp = now;
@@ -1961,7 +1962,6 @@
 
                 if (tabStates.focus.timeRemaining <= 0) {
                     tabStates.focus.timeRemaining = 0;
-                    updateDisplay();
                     stopTimerWithAlert('focus');
                 }
             }
@@ -1972,7 +1972,6 @@
 
                 if (tabStates.short.timeRemaining <= 0) {
                     tabStates.short.timeRemaining = 0;
-                    updateDisplay();
                     stopTimerWithAlert('short');
                 }
             }
@@ -2127,16 +2126,16 @@
             customAlert.classList.add('show');
         }
 
-        /* [완료 확인 버튼: 부드러운 0.25초 닫힘 + 1.5초 오디오 페이드아웃] */
+        /* [완료 확인 버튼: 부드러운 페이드아웃 + 0.5초 오디오 페이드아웃] */
         let isClosingAlert = false;
         function closeCustomAlert() {
             if (!customAlert.classList.contains('show') || isClosingAlert) return;
             isClosingAlert = true;
             
-            // 팝업 부드럽게 페이드아웃
+            // 팝업 부드러운 페이드아웃
             customAlert.classList.remove('show');
             
-            // 1.5초 오디오 페이드아웃 실행
+            // 0.5초 오디오 페이드아웃 실행
             stopAudioEngine();
             try { updateLastActive(); } catch (e) {}
 
@@ -2161,11 +2160,11 @@
                 }
 
                 if (isAutoPomo) {
-                    if (lastCompletedMode === 'focus') {
-                        setMode('short');
-                    } else {
-                        setMode('focus');
-                    }
+                    const nextMode = (lastCompletedMode === 'focus') ? 'short' : 'focus';
+                    const setting = modeSettings[nextMode];
+                    tabStates[nextMode].totalSeconds = setting.min * 60 + setting.sec;
+                    tabStates[nextMode].timeRemaining = tabStates[nextMode].totalSeconds;
+                    setMode(nextMode);
                     toggleTimer(); 
                 } else {
                     let state = tabStates[lastCompletedMode];
@@ -2898,7 +2897,7 @@
             renderTodos();
         }
 
-        /* [전체화면 제어: 기본 꽉 찬 전체화면(IMG_1452) ↔ 작은 화면(IMG_1451) 완벽 토글] */
+        /* [전체화면 제어: 홈 화면 PWA vs 일반 브라우저 상호 대응] */
         const ICON_ENTER_FULLSCREEN = '<path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" stroke-linecap="round" stroke-linejoin="round"/>';
         const ICON_EXIT_FULLSCREEN = `
             <path d="M4 10h3.5a1.5 1.5 0 0 0 1.5-1.5V5" stroke-linecap="round" stroke-linejoin="round"/>
@@ -2911,22 +2910,36 @@
         const isSafariBrowser = /Safari/i.test(navigator.userAgent) && !/CriOS|FxiOS|EdgiOS|OPiOS|Chrome|Chromium|Firefox|Edg\//i.test(navigator.userAgent);
         const isStandaloneApp = window.navigator.standalone === true || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
 
-        // isFullView: true = 꽉 찬 전체화면(IMG_1452), false = 하단 여백 축소화면(IMG_1451)
-        let isFullView = true;
+        let isFullView = isStandaloneApp ? true : false;
 
         function updateFullscreenDisplay(full) {
-            if (full) {
-                // 전체화면(IMG_1452): 여백 제거, 축소 아이콘 표시
-                document.documentElement.classList.remove('pseudo-fullscreen');
-                document.body.classList.remove('pseudo-fullscreen');
-                fsIcon.innerHTML = ICON_EXIT_FULLSCREEN;
-                document.getElementById('fullscreen-toggle-btn').title = "전체화면 종료";
+            isFullView = full;
+            if (isStandaloneApp) {
+                // 홈 화면 PWA: full=true가 기본 꽉 찬 전체화면(IMG_3921, IMG_1452)
+                if (full) {
+                    document.documentElement.classList.remove('pseudo-fullscreen');
+                    document.body.classList.remove('pseudo-fullscreen');
+                    fsIcon.innerHTML = ICON_EXIT_FULLSCREEN; // 축소 아이콘
+                    document.getElementById('fullscreen-toggle-btn').title = "화면 축소";
+                } else {
+                    document.documentElement.classList.add('pseudo-fullscreen');
+                    document.body.classList.add('pseudo-fullscreen');
+                    fsIcon.innerHTML = ICON_ENTER_FULLSCREEN; // 확대 아이콘
+                    document.getElementById('fullscreen-toggle-btn').title = "전체화면";
+                }
             } else {
-                // 작은 화면(IMG_1451): 하단 여백 형성, 확대 아이콘 표시
-                document.documentElement.classList.add('pseudo-fullscreen');
-                document.body.classList.add('pseudo-fullscreen');
-                fsIcon.innerHTML = ICON_ENTER_FULLSCREEN;
-                document.getElementById('fullscreen-toggle-btn').title = "전체화면";
+                // 일반 브라우저: full=false가 기본 축소 화면, full=true가 전체화면
+                if (full) {
+                    document.documentElement.classList.add('pseudo-fullscreen');
+                    document.body.classList.add('pseudo-fullscreen');
+                    fsIcon.innerHTML = ICON_EXIT_FULLSCREEN; // 축소 아이콘
+                    document.getElementById('fullscreen-toggle-btn').title = "전체화면 종료";
+                } else {
+                    document.documentElement.classList.remove('pseudo-fullscreen');
+                    document.body.classList.remove('pseudo-fullscreen');
+                    fsIcon.innerHTML = ICON_ENTER_FULLSCREEN; // 확대 아이콘
+                    document.getElementById('fullscreen-toggle-btn').title = "전체화면";
+                }
             }
             adjustLayoutScale();
         }
@@ -2950,7 +2963,7 @@
             if (isTouchDevice) e.preventDefault();
         }, { passive: false });
 
-        /* [초기 구동: 홈 화면 앱 실행 시 꽉 찬 전체화면(IMG_1452) + 전체화면 해제 아이콘 기본 표시] */
+        /* [초기 구동: PWA는 꽉 찬 화면(축소아이콘), 브라우저는 축소화면(확대아이콘)] */
         if (!activeDayKey) activeDayKey = getDateKey(new Date(lastActiveTime));
         lastSavedDate = getFormattedDate(keyToDate(activeDayKey));
         statsDateEl.textContent = lastSavedDate;
@@ -2961,7 +2974,7 @@
         adjustLayoutScale();
         updateMuteDisplay();
         renderPomoTracker();
-        updateFullscreenDisplay(true);
+        updateFullscreenDisplay(isFullView);
         setTimeout(triggerShootingStar, 3000);
     </script>
 </body>
