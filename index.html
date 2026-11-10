@@ -10,8 +10,8 @@
     <link rel="icon" type="image/png" href="./potato.png">
     <link rel="apple-touch-icon" href="./potato.png">
 
-    <title>Potato Timer · R11</title>
-    <meta name="potato-build" content="R11-20261110">
+    <title>Potato Timer · R12</title>
+    <meta name="potato-build" content="R12-20261110">
     
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -60,7 +60,6 @@
             position: relative;
         }
 
-        /* 전체화면 의사 고정 */
         html.pseudo-fullscreen, body.pseudo-fullscreen {
             position: fixed !important;
             top: 0 !important;
@@ -159,7 +158,6 @@
             transition: transform 0.2s ease;
         }
 
-        /* 홈 화면(PWA) 전용 상하 균형 보정 */
         html.standalone .viewport-scaler {
             transform: translateY(0);
         }
@@ -455,7 +453,7 @@
             transform: translateX(16px);
         }
 
-        /* [투두 버튼: 일반 브라우저 및 홈 화면 바닥 밀착 지원] */
+        /* [투두 버튼: 기본 설정] */
         .todo-toggle-btn {
             background-color: rgba(255, 255, 255, 0.25); 
             border: 1px solid rgba(255, 255, 255, 0.3); 
@@ -516,25 +514,31 @@
             }
         }
 
-        /* [홈 화면(PWA) 전용: 기기 최하단 완전 밀착 앵커링] */
+        /* [수정: '홈 화면에 추가' PWA 환경 바닥 밀착 보정 (-6px 하향 적용)] */
         html.standalone .todo-toggle-btn {
-            bottom: 0px !important;
+            bottom: -6px !important;
+            padding-bottom: 14px !important;
+        }
+        html.standalone .todo-toggle-btn.drawer-open {
+            bottom: 284px !important;
         }
         html.standalone .todo-drawer {
-            bottom: -320px !important;
+            bottom: -330px !important;
         }
         html.standalone .todo-drawer.open {
-            bottom: 0px !important;
+            bottom: -6px !important;
+            padding-bottom: 26px !important;
         }
         @media (min-width: 601px) {
+            html.standalone .todo-toggle-btn.drawer-open {
+                bottom: 294px !important;
+            }
             html.standalone .todo-drawer {
-                bottom: -330px !important;
+                bottom: -340px !important;
             }
             html.standalone .todo-drawer.open {
-                bottom: 0px !important;
-            }
-            html.standalone .todo-toggle-btn.drawer-open {
-                bottom: 300px !important;
+                bottom: -6px !important;
+                padding-bottom: 26px !important;
             }
         }
 
@@ -1174,7 +1178,7 @@
     <div class="custom-alert-overlay" id="custom-alert">
         <div class="custom-alert-box" id="custom-alert-box">
             <div class="custom-alert-text" id="custom-alert-msg">시간이 다 되었습니다! 고생하셨어요 🎉</div>
-            <button class="custom-alert-btn" id="completion-confirm" type="button" onclick="closeCustomAlert()">확인</button>
+            <button class="custom-alert-btn" id="completion-confirm" type="button" onclick="acknowledgeCompletion(event)">확인</button>
         </div>
     </div>
 
@@ -1234,7 +1238,6 @@
                 <button class="settings-close-btn" onclick="closeStats()">&times;</button>
             </div>
 
-            <!-- 요약 카드 2종 -->
             <div class="stats-summary-grid">
                 <div class="stats-card">
                     <div class="stats-card-label">🔥 활동 일수</div>
@@ -1246,7 +1249,6 @@
                 </div>
             </div>
 
-            <!-- 활동 시간 (각진 꺾은선) -->
             <div class="stats-section-box">
                 <div class="stats-section-header">
                     <span class="stats-section-heading">활동 시간</span>
@@ -1261,7 +1263,6 @@
                 </div>
             </div>
 
-            <!-- 가장 잘 집중하는 시간대 (24H 막대 차트) -->
             <div class="stats-section-box" style="margin-bottom: 0;">
                 <div class="stats-section-header">
                     <span class="stats-section-heading">가장 잘 집중하는 시간대</span>
@@ -1317,12 +1318,11 @@
         const userId = urlParams.get('user') || 'default_local_user';
         const isCloudSyncActive = !!db && urlParams.has('user');
 
-        /* [개선된 오디오 시스템: 음악 일시정지 후 자동 복구 및 사파리 언락] */
+        /* [오디오 시스템: 사파리 권한 사전 언락 + 외부 음악 일시정지 후 자동 재개] */
         const AUDIO_FILES = { focus: './focus.mp3', short: './break.mp3', alarm: './alarm.mp3' };
         
-        // preload='none'으로 설정하여 초기 진입 시 기기 오디오 세션 하이재킹 원천 방지
         const alarmPlayer = new Audio();
-        alarmPlayer.preload = 'none';
+        alarmPlayer.preload = 'auto';
         alarmPlayer.playsInline = true;
         alarmPlayer.setAttribute('playsinline', '');
         
@@ -1331,47 +1331,43 @@
         let fadeTimer = null;
         let isAudioUnlocked = false;
 
-        // 첫 사용자 터치(START 등) 시 사파리 오디오 언락
+        // 첫 제스처(START 등) 시 사파리 오디오 채널 무음 언락 (비동기 재생 허용 획득)
         function unlockAudioEngine() {
             if (isAudioUnlocked) return;
             isAudioUnlocked = true;
 
-            // 평상시에는 ambient로 두어 재생 중인 음악을 건드리지 않음
             if ('audioSession' in navigator) {
                 try { navigator.audioSession.type = 'ambient'; } catch (e) {}
             }
 
             try {
-                const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-                if (AudioContextClass) {
-                    const ctx = new AudioContextClass();
-                    if (ctx.state === 'suspended') ctx.resume();
-                    const buf = ctx.createBuffer(1, 1, 22050);
-                    const src = ctx.createBufferSource();
-                    src.buffer = buf;
-                    src.connect(ctx.destination);
-                    src.start(0);
+                alarmPlayer.src = AUDIO_FILES['alarm'];
+                alarmPlayer.volume = 0;
+                const p = alarmPlayer.play();
+                if (p !== undefined) {
+                    p.then(() => {
+                        alarmPlayer.pause();
+                        alarmPlayer.currentTime = 0;
+                        alarmPlayer.volume = 1;
+                    }).catch(() => {});
                 }
             } catch (e) {}
         }
 
-        // 알람 종료 및 오디오 세션 완전 반환 (외부 음악 앱 자동 재개 트리거)
+        // 오디오 정지 및 채널 반환 (렉 원인이던 동기식 load() 호출 제거)
         function stopAllSound() {
             soundGeneration++;
             soundRequest = null;
-            clearInterval(fadeTimer);
-            fadeTimer = null;
-            
-            try { alarmPlayer.pause(); } catch (e) {}
-            alarmPlayer.loop = false;
-            try { alarmPlayer.currentTime = 0; } catch (e) {}
-            alarmPlayer.volume = 1;
-
-            // 하드웨어 오디오 채널 완전 해제 -> 백그라운드 음악 앱에 InterruptionEnded 신호 전송
-            try {
-                alarmPlayer.removeAttribute('src');
-                alarmPlayer.load();
+            if (fadeTimer) {
+                clearInterval(fadeTimer);
+                fadeTimer = null;
+            }
+            try { 
+                alarmPlayer.pause(); 
+                alarmPlayer.currentTime = 0;
             } catch (e) {}
+            alarmPlayer.loop = false;
+            alarmPlayer.volume = 1;
 
             if ('audioSession' in navigator) {
                 try { navigator.audioSession.type = 'auto'; } catch (e) {}
@@ -1379,11 +1375,15 @@
         }
 
         function fadeVolume(target, ms, generation) {
-            clearInterval(fadeTimer);
+            if (fadeTimer) clearInterval(fadeTimer);
             const start = alarmPlayer.volume;
             const t0 = Date.now();
             fadeTimer = setInterval(() => {
-                if (generation !== soundGeneration) { clearInterval(fadeTimer); fadeTimer = null; return; }
+                if (generation !== soundGeneration) { 
+                    clearInterval(fadeTimer); 
+                    fadeTimer = null; 
+                    return; 
+                }
                 const p = Math.min(1, (Date.now() - t0) / ms);
                 alarmPlayer.volume = Math.max(0, Math.min(1, start + (target - start) * p));
                 if (p >= 1) { 
@@ -1401,7 +1401,7 @@
             stopAllSound();
             if (isMuted) return;
 
-            // transient-solo 모드: 음악 앱을 임시 정지시키고 알람 재생, 종료 시 자동 재개
+            // 음악 앱 일시 정지 및 알람 후 자동 재개를 위한 transient-solo 모드
             if ('audioSession' in navigator) {
                 try { navigator.audioSession.type = 'transient-solo'; } catch (e) {}
             }
@@ -1419,7 +1419,7 @@
             alarmPlayer.muted = false;
             alarmPlayer.loop = !!loop;
             
-            const fadeIn = key === 'focus';
+            const fadeIn = (key === 'focus');
             alarmPlayer.volume = fadeIn ? 0 : volume;
 
             try {
@@ -1661,12 +1661,10 @@
             const isStandalone = document.documentElement.classList.contains('standalone');
             
             if (isStandalone) {
-                // 홈 화면 추가 모드: 세로 여백을 최적화하여 투두 바닥 밀착과 메인 영역 간의 황금비율 유지
                 const availableH = winH - 64;
                 const scaleFactor = Math.min(1.05, (winW - 24) / baseW, availableH / baseH);
                 mainContentBox.style.transform = `scale(${Math.max(0.72, scaleFactor)})`;
             } else {
-                // 일반 브라우저 모드: 기존 비율 유지
                 const scaleFactor = Math.min(1, (winW - 20) / baseW, (winH - 80) / baseH);
                 mainContentBox.style.transform = `scale(${Math.max(0.68, scaleFactor)})`;
             }
@@ -2222,19 +2220,23 @@
         function showCompletionDialog() {
             customAlert.classList.add('show');
         }
-        const confirmBtn = document.getElementById('completion-confirm');
+
+        /* [수정: 완료 확인 버튼 더블클릭 방지 및 렉 제거 락] */
+        let isClosingAlert = false;
         function acknowledgeCompletion(e) {
             if (e) { e.preventDefault(); e.stopPropagation(); }
+            if (isClosingAlert) return;
             closeCustomAlert();
         }
-        confirmBtn.addEventListener('pointerup', acknowledgeCompletion);
-        confirmBtn.addEventListener('click', acknowledgeCompletion);
 
         function closeCustomAlert() {
-            if (!customAlert.classList.contains('show')) return;
+            if (!customAlert.classList.contains('show') || isClosingAlert) return;
+            isClosingAlert = true;
             customAlert.classList.remove('show');
+            
             try { stopAudioEngine(); } catch (e) {}
             try { updateLastActive(); } catch (e) { console.warn('activity-save', e); }
+            
             try {
                 if (lastCompletedMode === 'focus') {
                     const starTarget = (focusSessionTarget !== null) ? focusSessionTarget : (modeSettings.focus.min * 60 + modeSettings.focus.sec);
@@ -2272,6 +2274,8 @@
                     updateDisplay();
                 }
             } catch (e) { console.warn('completion-bookkeeping', e); }
+
+            setTimeout(() => { isClosingAlert = false; }, 350);
         }
 
         function pauseFocusBreakForBackground() {
@@ -2328,14 +2332,14 @@
             pauseFocusBreakForBackground();
         });
 
-        /* [환경설정 모달] */
+        /* [수정: sec도 min과 완전히 동일하게 1자리 입력 시 앞에 0 자동 추가 패딩] */
         let settingsSnapshot = null;
 
         function validateInput(input, maxVal, minVal = 0) {
             let val = parseInt(input.value, 10);
             if (isNaN(val) || val < minVal) val = minVal;
             if (val > maxVal) val = maxVal;
-            input.value = (maxVal === 999 && minVal === 0) ? String(val).padStart(2, '0') : String(val);
+            input.value = (minVal === 0) ? String(val).padStart(2, '0') : String(val);
         }
 
         function openSettings() {
@@ -3008,7 +3012,6 @@
             adjustLayoutScale();
         }
 
-        // 사파리 브라우저는 버튼 무반응, 타 브라우저 및 홈 화면 앱은 전체화면 처리
         const isStandaloneApp = document.documentElement.classList.contains('standalone');
         const isTouchDevice = (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) || (navigator.maxTouchPoints || 0) > 1;
         const isSafariBrowser = !isStandaloneApp && /Safari/i.test(navigator.userAgent) && !/CriOS|FxiOS|EdgiOS|OPiOS|Chrome|Chromium|Firefox|Edg\//i.test(navigator.userAgent);
@@ -3021,7 +3024,7 @@
 
         function toggleFullScreen(e) {
             if (e) { e.preventDefault(); e.stopPropagation(); }
-            if (isSafariBrowser) return; // 사파리 브라우저 비활성화 정책 유지
+            if (isSafariBrowser) return; 
             unlockAudioEngine();
             try { updateLastActive(); } catch (err) {}
             isFullscreenMode = !isFullscreenMode;
