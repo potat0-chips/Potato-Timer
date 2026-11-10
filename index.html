@@ -10,8 +10,8 @@
     <link rel="icon" type="image/png" href="./potato.png">
     <link rel="apple-touch-icon" href="./potato.png">
 
-    <title>Potato Timer · R18</title>
-    <meta name="potato-build" content="R18-20261110">
+    <title>Potato Timer · R19</title>
+    <meta name="potato-build" content="R19-20261110">
     
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -1295,16 +1295,42 @@
         const userId = urlParams.get('user') || 'default_local_user';
         const isCloudSyncActive = !!db && urlParams.has('user');
 
-        /* [오디오 시스템] */
+        /* [Web Audio API 파이프라인: iOS에서도 볼륨 페이드아웃이 100% 작동하도록 구현] */
         const AUDIO_FILES = { focus: './focus.mp3', short: './break.mp3', alarm: './alarm.mp3' };
         const alarmPlayer = new Audio();
         alarmPlayer.preload = 'auto';
         alarmPlayer.playsInline = true;
         alarmPlayer.setAttribute('playsinline', '');
 
+        let audioCtx = null;
+        let gainNode = null;
+        let mediaSourceNode = null;
         let soundGeneration = 0;
         let soundRequest = null;
         let fadeTimer = null;
+
+        function ensureAudioPipeline() {
+            if (audioCtx) return;
+            try {
+                const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                if (!AudioContextClass) return;
+                audioCtx = new AudioContextClass();
+                gainNode = audioCtx.createGain();
+                gainNode.gain.setValueAtTime(1, audioCtx.currentTime);
+                mediaSourceNode = audioCtx.createMediaElementSource(alarmPlayer);
+                mediaSourceNode.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+            } catch (e) {
+                console.warn('Web Audio Setup:', e);
+            }
+        }
+
+        function unlockAudioEngine() {
+            ensureAudioPipeline();
+            if (audioCtx && audioCtx.state === 'suspended') {
+                audioCtx.resume().catch(() => {});
+            }
+        }
 
         function stopAllSound() {
             soundGeneration++;
@@ -1318,9 +1344,20 @@
                 alarmPlayer.currentTime = 0;
             } catch (e) {}
             alarmPlayer.loop = false;
+            alarmPlayer.volume = 1;
+
+            if (audioCtx && gainNode) {
+                try {
+                    gainNode.gain.cancelScheduledValues(audioCtx.currentTime);
+                    gainNode.gain.setValueAtTime(1, audioCtx.currentTime);
+                } catch (e) {}
+            }
+
+            if ('audioSession' in navigator) {
+                try { navigator.audioSession.type = 'auto'; } catch (e) {}
+            }
         }
 
-        /* [수정 1: 0.5초(500ms) 정밀 페이드아웃 보간] */
         function fadeVolume(target, ms, generation) {
             if (fadeTimer) clearInterval(fadeTimer);
             const start = alarmPlayer.volume;
@@ -1348,7 +1385,16 @@
             stopAllSound();
             if (isMuted) return;
 
-            const generation = soundGeneration;
+            ensureAudioPipeline();
+            if (audioCtx && audioCtx.state === 'suspended') {
+                audioCtx.resume().catch(() => {});
+            }
+
+            if ('audioSession' in navigator) {
+                try { navigator.audioSession.type = 'transient-solo'; } catch (e) {}
+            }
+
+            const generation = ++soundGeneration;
             soundRequest = { key, loop: !!loop };
 
             alarmPlayer.onended = () => {
@@ -1362,7 +1408,21 @@
             alarmPlayer.loop = !!loop;
             
             const fadeIn = (key === 'focus');
-            alarmPlayer.volume = fadeIn ? 0 : volume;
+
+            // Web Audio API GainNode를 통해 iOS 기기에서도 페이드 효과 정상 출력
+            if (audioCtx && gainNode) {
+                const now = audioCtx.currentTime;
+                gainNode.gain.cancelScheduledValues(now);
+                if (fadeIn) {
+                    gainNode.gain.setValueAtTime(0, now);
+                    gainNode.gain.linearRampToValueAtTime(volume, now + 3);
+                } else {
+                    gainNode.gain.setValueAtTime(volume, now);
+                }
+            } else {
+                alarmPlayer.volume = fadeIn ? 0 : volume;
+                if (fadeIn) fadeVolume(volume, 3000, generation);
+            }
 
             try {
                 const p = alarmPlayer.play();
@@ -1373,10 +1433,6 @@
                 }
             } catch (e) {
                 if (generation === soundGeneration) soundRequest = null;
-            }
-
-            if (fadeIn) {
-                fadeVolume(volume, 4000, generation);
             }
         }
 
@@ -1488,6 +1544,7 @@
         }
 
         function toggleMute() {
+            unlockAudioEngine();
             updateLastActive();
             isMuted = !isMuted;
             localStorage.setItem(`potato-muted-${userId}`, isMuted.toString());
@@ -1554,6 +1611,7 @@
 
             function triggerAdjust(e) {
                 if (e) e.preventDefault();
+                unlockAudioEngine();
                 updateLastActive();
                 adjustTime(deltaAmount);
             }
@@ -1762,11 +1820,31 @@
             starTimeoutId = setTimeout(triggerShootingStar, 5000);
         }
 
-        /* [수정 1: 소리가 울리는 중이면 Focus/Break 구분 없이 0.5초(500ms) 확실한 페이드아웃] */
+        /* [수정 2: GainNode 기반 0.8초 부드러운 페이드아웃 — iOS에서도 볼륨 감소가 100% 작동] */
         function stopAudioEngine() {
-            if (!isMuted && !alarmPlayer.paused && alarmPlayer.currentTime > 0) {
-                const generation = soundGeneration;
-                fadeVolume(0, 500, generation);
+            if (!isMuted && !alarmPlayer.paused) {
+                ensureAudioPipeline();
+                if (audioCtx && gainNode) {
+                    if (audioCtx.state === 'suspended') audioCtx.resume();
+                    const now = audioCtx.currentTime;
+                    gainNode.gain.cancelScheduledValues(now);
+                    gainNode.gain.setValueAtTime(gainNode.gain.value, now);
+                    // 0.8초 동안 소리가 부드럽게 0으로 사르르 줄어듦
+                    gainNode.gain.linearRampToValueAtTime(0, now + 0.8);
+                    const gen = ++soundGeneration;
+                    setTimeout(() => {
+                        if (gen === soundGeneration) {
+                            stopAllSound();
+                            gainNode.gain.setValueAtTime(1, audioCtx.currentTime);
+                        }
+                    }, 800);
+                } else {
+                    const generation = ++soundGeneration;
+                    fadeVolume(0, 800, generation);
+                    setTimeout(() => {
+                        if (generation === soundGeneration) stopAllSound();
+                    }, 800);
+                }
             } else {
                 stopAllSound();
             }
@@ -1835,7 +1913,7 @@
             if (statsCounterEl.textContent !== label) statsCounterEl.textContent = label;
         }
 
-        /* [수정 2: Focus & Break 공통 - 0~1 사이 완벽 클램핑으로 부드러운 진행률 표시] */
+        /* [수정 1: Focus와 Break 모두 정확히 동일하게 원형 게이지 오프셋 및 00:00 렌더링 동기화] */
         function updateDisplay() {
             let state = tabStates[currentMode];
             const displaySecs = currentMode === 'timer' ? Math.floor(state.timeRemaining) : Math.ceil(state.timeRemaining);
@@ -1859,9 +1937,8 @@
                     progressCircle.style.strokeDasharray = `${fillLen} ${totalLength}`;
                 }
             } else {
-                const progressRatio = Math.max(0, Math.min(1, state.timeRemaining / (state.totalSeconds || 1)));
-                const offset = totalLength - progressRatio * totalLength;
-                const offStr = offset.toFixed(2);
+                const offset = totalLength - (state.timeRemaining / (state.totalSeconds || 1)) * totalLength;
+                const offStr = (isNaN(offset) ? 0 : offset).toFixed(2);
                 if (progressCircle.__lastDash !== 'full') { progressCircle.style.strokeDasharray = `${totalLength} ${totalLength}`; progressCircle.__lastDash = 'full'; }
                 if (progressCircle.__lastOff !== offStr) { progressCircle.style.strokeDashoffset = offStr; progressCircle.__lastOff = offStr; }
             }
@@ -1945,8 +2022,8 @@
             if (curHour > prevHour && curHour >= 1) playHourlyAlert();
         }
 
-        /* [수정 2: 25ms 고주사율 타이머 루프로 Break 끝자락 덜컥거림 완전 해소] */
-        const TICK_MS = 25;
+        /* [수정 1 핵심: Break의 1초->0초 진입 수식과 종료 트리거를 Focus와 100% 동일하게 통일] */
+        const TICK_MS = 50;
 
         function timerLoop() {
             const now = Date.now();
@@ -1965,7 +2042,6 @@
 
                 if (tabStates.focus.timeRemaining <= 0) {
                     tabStates.focus.timeRemaining = 0;
-                    updateDisplay();
                     stopTimerWithAlert('focus');
                 }
             }
@@ -1977,7 +2053,6 @@
 
                 if (tabStates.short.timeRemaining <= 0) {
                     tabStates.short.timeRemaining = 0;
-                    updateDisplay();
                     stopTimerWithAlert('short');
                 }
             }
@@ -2002,6 +2077,7 @@
         }
 
         function toggleTimer() {
+            unlockAudioEngine();
             updateLastActive();
             let state = tabStates[currentMode];
 
@@ -2033,6 +2109,7 @@
         }
 
         function resetTimer() {
+            unlockAudioEngine();
             updateLastActive();
             let state = tabStates[currentMode];
             state.isRunning = false;
@@ -2091,6 +2168,7 @@
         }
 
         function handleManualTabChange(mode) {
+            unlockAudioEngine();
             updateLastActive();
             if (isAutoPomo) {
                 isAutoPomo = false;
@@ -2133,16 +2211,16 @@
             customAlert.classList.add('show');
         }
 
-        /* [완료 확인 버튼: 부드러운 팝업 닫힘 + 0.5초 오디오 페이드아웃] */
+        /* [완료 확인 버튼: 부드러운 팝업 닫힘 + 0.8초 오디오 페이드아웃] */
         let isClosingAlert = false;
         function closeCustomAlert() {
             if (!customAlert.classList.contains('show') || isClosingAlert) return;
             isClosingAlert = true;
             
-            // 팝업 부드럽게 페이드아웃
+            // 팝업 부드럽게 페이드아웃 (0.25초)
             customAlert.classList.remove('show');
             
-            // Focus/Break 공통 0.5초 페이드아웃 실행
+            // 0.8초 동안 소리가 부드럽게 잦아들며 종료
             stopAudioEngine();
             try { updateLastActive(); } catch (e) {}
 
@@ -2184,7 +2262,7 @@
                 }
             } catch (e) {}
 
-            setTimeout(() => { isClosingAlert = false; }, 300);
+            setTimeout(() => { isClosingAlert = false; }, 350);
         }
 
         function pauseFocusBreakForBackground() {
@@ -2254,6 +2332,7 @@
         }
 
         function openSettings() {
+            unlockAudioEngine();
             updateLastActive();
             document.getElementById('input-focus-min').value = String(modeSettings.focus.min).padStart(2, '0');
             document.getElementById('input-focus-sec').value = String(modeSettings.focus.sec).padStart(2, '0');
@@ -2332,6 +2411,7 @@
         let currentChartRange = 7;
 
         function openStats() {
+            unlockAudioEngine();
             updateLastActive();
             renderStatsDashboard();
             statsModal.classList.add('show');
@@ -2737,6 +2817,7 @@
 
         /* [To-Do 서랍 토글] */
         function toggleDrawer(event) {
+            unlockAudioEngine();
             updateLastActive();
             if (event) {
                 event.stopPropagation(); 
@@ -2858,6 +2939,7 @@
         }
 
         function addTodo() {
+            unlockAudioEngine();
             updateLastActive();
             const input = document.getElementById('todo-input');
             const text = input.value.trim();
@@ -2904,7 +2986,7 @@
             renderTodos();
         }
 
-        /* [전체화면 제어: 홈 화면 PWA vs 일반 브라우저 아이콘 1:1 완벽 대응 유지] */
+        /* [전체화면 제어: 홈 화면 PWA vs 일반 브라우저 아이콘 1:1 완벽 대응 보존] */
         const ICON_ENTER_FULLSCREEN = '<path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" stroke-linecap="round" stroke-linejoin="round"/>';
         const ICON_EXIT_FULLSCREEN = `
             <path d="M4 10h3.5a1.5 1.5 0 0 0 1.5-1.5V5" stroke-linecap="round" stroke-linejoin="round"/>
