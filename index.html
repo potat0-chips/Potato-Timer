@@ -11,9 +11,9 @@
     <link rel="apple-touch-icon" href="./potato.png">
 
     <title>Potato Timer</title>
-    <meta name="potato-build" content="R28-20261110">
+    <meta name="potato-build" content="R29-20261110">
 
-    <!-- [PWA 즉각 감지: 렌더링 전 standalone 클래스 부여] -->
+    <!-- [홈 화면 PWA 즉시 감지] -->
     <script>
         try {
             if (window.navigator.standalone === true || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)) {
@@ -42,13 +42,11 @@
             text-rendering: optimizeLegibility;
         }
 
-        /* [수정: dvh를 제거하고 기기 물리적 끝까지 100% 확장] */
+        /* [기본 뷰포트: 기기 액정 물리적 최외곽까지 100% 덮음] */
         html, body {
             overflow: hidden !important;
             width: 100%;
             height: 100%;
-            min-height: 100vh;
-            min-height: -webkit-fill-available;
             margin: 0;
             padding: 0;
             background-color: #0b1424;
@@ -72,8 +70,7 @@
             position: relative;
         }
 
-        /* [홈 화면 PWA 기본 전체화면: 기기 최하단 바닥에 투두 완벽 밀착] */
-        html.standalone:not(.pseudo-fullscreen), 
+        /* [홈 화면 PWA 기본 전체화면: 여백 없이 기기 바닥에 완벽 밀착] */
         html.standalone:not(.pseudo-fullscreen) body {
             height: 100% !important;
             min-height: 100vh !important;
@@ -85,8 +82,11 @@
         html.standalone:not(.pseudo-fullscreen) .todo-drawer.open {
             bottom: 0px !important;
         }
+        html.standalone:not(.pseudo-fullscreen) .bottom-action-btn {
+            bottom: max(20px, env(safe-area-inset-bottom, 20px)) !important;
+        }
 
-        /* [축소 모드: 하단 여백 형성 (IMG_3922, IMG_1451)] */
+        /* [전체화면 해제 / 축소 모드: 하단 여백 형성 (IMG_3922, IMG_1451)] */
         html.pseudo-fullscreen, body.pseudo-fullscreen {
             position: fixed !important;
             top: 0 !important;
@@ -475,7 +475,7 @@
             transform: translateX(16px);
         }
 
-        /* [투두 버튼 본래 규격 및 바닥 밀착] */
+        /* [투두 버튼 기본 규격 및 바닥 밀착] */
         .todo-toggle-btn {
             background-color: rgba(255, 255, 255, 0.25); 
             border: 1px solid rgba(255, 255, 255, 0.3); 
@@ -548,7 +548,6 @@
         }
         .todo-input::placeholder { line-height: 20px; color: #666666; vertical-align: middle; }
         
-        /* [모바일 추가 터치 시 자판이 닫히거나 흔들리지 않도록 포커스 보호] */
         .todo-add-btn { font-family: inherit; background-color: #6A55C9; color: white; border: none; height: 38px; padding: 0 16px; border-radius: 12px; font-size: 14px; font-weight: bold; cursor: pointer; transition: background 0.1s; -webkit-tap-highlight-color: transparent; }
         
         .todo-list { 
@@ -1114,7 +1113,7 @@
     <button class="top-action-btn settings-btn" id="settings-toggle-btn" onclick="openSettings()" title="설정">
         <svg viewBox="0 0 24 24" width="22" height="22" preserveAspectRatio="xMidYMid meet" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="3"></circle>
-            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
         </svg>
     </button>
 
@@ -1385,7 +1384,7 @@
             if (fadeIn) fadeVolume(volume, 2000, generation);
         }
 
-        /* [요청하신 0.8초(800ms) 페이드아웃 적용 — Focus와 Break 동일] */
+        /* [정확히 0.8초(800ms) 페이드아웃 적용 — Focus와 Break 동일] */
         function stopAudioEngine() {
             if (soundRequest && soundRequest.loop && !isMuted) {
                 const generation = soundGeneration;
@@ -1953,7 +1952,7 @@
             if (curHour > prevHour && curHour >= 1) playHourlyAlert();
         }
 
-        /* [수정: Break의 1초->0초 전환 연산을 Focus와 100% 동일하게 통일] */
+        /* [Break의 1초->0초 전환 연산을 Focus와 100% 동일하게 통일] */
         const TICK_MS = 50;
 
         function timerLoop() {
@@ -2008,7 +2007,6 @@
         }
 
         function toggleTimer() {
-            unlockAudioEngine();
             updateLastActive();
             let state = tabStates[currentMode];
 
@@ -2040,7 +2038,6 @@
         }
 
         function resetTimer() {
-            unlockAudioEngine();
             updateLastActive();
             let state = tabStates[currentMode];
             state.isRunning = false;
@@ -2099,7 +2096,6 @@
         }
 
         function handleManualTabChange(mode) {
-            unlockAudioEngine();
             updateLastActive();
             if (isAutoPomo) {
                 isAutoPomo = false;
@@ -2920,7 +2916,7 @@
             renderTodos();
         }
 
-        /* [전체화면 제어: 홈 화면 PWA vs 일반 브라우저 아이콘 1:1 완벽 대응 보존] */
+        /* [전체화면 제어: 홈 화면 PWA vs 일반 브라우저 아이콘 1:1 완벽 대응] */
         const ICON_ENTER_FULLSCREEN = '<path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" stroke-linecap="round" stroke-linejoin="round"/>';
         const ICON_EXIT_FULLSCREEN = `
             <path d="M4 10h3.5a1.5 1.5 0 0 0 1.5-1.5V5" stroke-linecap="round" stroke-linejoin="round"/>
@@ -2930,9 +2926,10 @@
         `;
 
         const isTouchDevice = (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) || (navigator.maxTouchPoints || 0) > 1;
-        const isSafariBrowser = /Safari/i.test(navigator.userAgent) && !/CriOS|FxiOS|EdgiOS|OPiOS|Chrome|Chromium|Firefox|Edg\//i.test(navigator.userAgent);
+        const isSafariBrowser = !document.documentElement.classList.contains('standalone') && /Safari/i.test(navigator.userAgent) && !/CriOS|FxiOS|EdgiOS|OPiOS|Chrome|Chromium|Firefox|Edg\//i.test(navigator.userAgent);
         const isStandaloneApp = document.documentElement.classList.contains('standalone') || window.navigator.standalone === true || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
 
+        // 홈 화면 PWA는 기본값이 전체화면(true), 일반 브라우저는 기본값이 일반 모드(false)
         let isFullView = isStandaloneApp ? true : false;
 
         function updateFullscreenDisplay(full) {
@@ -2942,25 +2939,26 @@
                 if (full) {
                     document.documentElement.classList.remove('pseudo-fullscreen');
                     document.body.classList.remove('pseudo-fullscreen');
-                    fsIcon.innerHTML = ICON_EXIT_FULLSCREEN; // 축소 아이콘
+                    fsIcon.innerHTML = ICON_EXIT_FULLSCREEN; // 누르면 축소되므로 축소 아이콘 표시
                     document.getElementById('fullscreen-toggle-btn').title = "화면 축소";
                 } else {
+                    // 전체화면 해제(축소 모드): 하단 여백 형성 (IMG_3922, IMG_1451)
                     document.documentElement.classList.add('pseudo-fullscreen');
                     document.body.classList.add('pseudo-fullscreen');
-                    fsIcon.innerHTML = ICON_ENTER_FULLSCREEN; // 확대 아이콘
+                    fsIcon.innerHTML = ICON_ENTER_FULLSCREEN; // 누르면 다시 커지므로 확대 아이콘 표시
                     document.getElementById('fullscreen-toggle-btn').title = "전체화면";
                 }
             } else {
-                // 일반 브라우저: full=false가 기본 축소 화면, full=true가 전체화면
+                // 일반 브라우저: full=true가 전체화면, full=false가 기본 화면
                 if (full) {
                     document.documentElement.classList.add('pseudo-fullscreen');
                     document.body.classList.add('pseudo-fullscreen');
-                    fsIcon.innerHTML = ICON_EXIT_FULLSCREEN; // 축소 아이콘
+                    fsIcon.innerHTML = ICON_EXIT_FULLSCREEN;
                     document.getElementById('fullscreen-toggle-btn').title = "전체화면 종료";
                 } else {
                     document.documentElement.classList.remove('pseudo-fullscreen');
                     document.body.classList.remove('pseudo-fullscreen');
-                    fsIcon.innerHTML = ICON_ENTER_FULLSCREEN; // 확대 아이콘
+                    fsIcon.innerHTML = ICON_ENTER_FULLSCREEN;
                     document.getElementById('fullscreen-toggle-btn').title = "전체화면";
                 }
             }
@@ -2986,7 +2984,7 @@
             if (isTouchDevice) e.preventDefault();
         }, { passive: false });
 
-        /* [초기 구동: PWA는 기본 전체화면(IMG_3921, IMG_1452) 및 축소 아이콘으로 즉시 시작] */
+        /* [초기 구동: 홈 화면 앱은 기본 꽉 찬 전체화면으로 즉시 실행] */
         if (!activeDayKey) activeDayKey = getDateKey(new Date(lastActiveTime));
         lastSavedDate = getFormattedDate(keyToDate(activeDayKey));
         statsDateEl.textContent = lastSavedDate;
