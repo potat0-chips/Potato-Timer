@@ -11,16 +11,7 @@
     <link rel="apple-touch-icon" href="./potato.png">
 
     <title>Potato Timer</title>
-    <meta name="potato-build" content="R33-20261110">
-
-    <!-- [홈 화면 PWA 즉각 감지] -->
-    <script>
-        try {
-            if (window.navigator.standalone === true || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)) {
-                document.documentElement.classList.add('standalone');
-            }
-        } catch (e) {}
-    </script>
+    <meta name="potato-build" content="R34-20261110">
     
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -42,29 +33,18 @@
             text-rendering: optimizeLegibility;
         }
 
-        /* [수정: 최상위 html 자체에 배경 이미지를 직접 씌워 가장자리 빈 영역 원천 차단] */
-        html {
+        /* [기본 뷰포트: 사파리 및 전체화면 모드에서 자연스러운 꽉 찬 화면 유지] */
+        html, body {
             overflow: hidden !important;
             width: 100%;
             height: 100%;
             margin: 0;
             padding: 0;
             background-color: #0b1424;
-            background-image: url('./night.png'), radial-gradient(circle at 50% 30%, #172554 0%, #0b1424 100%);
-            background-size: cover;
-            background-position: center bottom !important; 
-            background-repeat: no-repeat;
         }
 
         body {
             font-family: 'IM_Hyemin', -apple-system, BlinkMacSystemFont, "NanumSquareRound", sans-serif;
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
-            min-height: 100vh;
-            min-height: -webkit-fill-available;
-            background-color: transparent;
             background-image: url('./night.png'), radial-gradient(circle at 50% 30%, #172554 0%, #0b1424 100%);
             background-size: cover;
             background-position: center bottom !important; 
@@ -73,177 +53,25 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            min-height: 100vh;
+            min-height: -webkit-fill-available;
             user-select: none;
             -webkit-user-select: none;
             position: relative;
-            overflow: hidden !important;
         }
 
-        /* [홈 화면 PWA 기본 전체화면: 4방향 고정 및 투두 바닥 완전 밀착] */
-        html.standalone:not(.shrunk-mode), 
-        html.standalone:not(.shrunk-mode) body {
+        /* [전체화면 해제 / 축소 모드: 하단 여백 형성 (IMG_3922, IMG_1451)] */
+        html.pseudo-fullscreen, body.pseudo-fullscreen {
             position: fixed !important;
             top: 0 !important;
             left: 0 !important;
             right: 0 !important;
             bottom: 0 !important;
-            width: 100% !important;
-            height: 100% !important;
-            min-height: 0 !important;
-        }
-        html.standalone:not(.shrunk-mode) .todo-toggle-btn {
-            bottom: 0px !important;
-        }
-        html.standalone:not(.shrunk-mode) .todo-drawer.open {
-            bottom: 0px !important;
-        }
-
-        /* [홈 화면 축소 모드: 전체화면 해제 시에만 남색 여백 띠 형성 및 투두 상향 안착] */
-        html.standalone.shrunk-mode {
-            background-image: none !important;
-            background-color: #0b1424 !important;
-        }
-        html.standalone.shrunk-mode body {
-            position: absolute !important;
-            top: 0 !important;
-            left: 0 !important;
-            right: 0 !important;
-            bottom: env(safe-area-inset-bottom, 34px) !important;
+            width: auto !important;
             height: auto !important;
             min-height: 0 !important;
-        }
-        html.standalone.shrunk-mode .todo-toggle-btn {
-            bottom: env(safe-area-inset-bottom, 34px) !important;
-        }
-        html.standalone.shrunk-mode .todo-toggle-btn.drawer-open {
-            bottom: calc(290px + env(safe-area-inset-bottom, 34px)) !important;
-        }
-        html.standalone.shrunk-mode .todo-drawer.open {
-            bottom: env(safe-area-inset-bottom, 34px) !important;
-        }
-        html.standalone.shrunk-mode .bottom-action-btn {
-            bottom: calc(20px + env(safe-area-inset-bottom, 34px)) !important;
-        }
-
-        @media (min-width: 601px) {
-            html.standalone.shrunk-mode body {
-                bottom: env(safe-area-inset-bottom, 24px) !important;
-            }
-            html.standalone.shrunk-mode .todo-toggle-btn {
-                bottom: env(safe-area-inset-bottom, 24px) !important;
-            }
-            html.standalone.shrunk-mode .todo-toggle-btn.drawer-open {
-                bottom: calc(300px + env(safe-area-inset-bottom, 24px)) !important;
-            }
-            html.standalone.shrunk-mode .todo-drawer.open {
-                bottom: env(safe-area-inset-bottom, 24px) !important;
-            }
-            html.standalone.shrunk-mode .bottom-action-btn {
-                bottom: calc(32px + env(safe-area-inset-bottom, 24px)) !important;
-            }
-        }
-
-        /* [상단 액션 버튼 - 정렬 및 규격 100% 원상 복구] */
-        .top-action-btn {
-            position: fixed;
-            top: max(20px, calc(env(safe-area-inset-top, 0px) + 12px));
-            width: 42px;
-            height: 42px;
-            border-radius: 50%;
-            background-color: rgba(255, 255, 255, 0.15);
-            border: 1px solid rgba(255, 255, 255, 0.25);
-            backdrop-filter: blur(8px); 
-            -webkit-backdrop-filter: blur(8px); 
-            color: #ffffff;
-            cursor: pointer; 
-            display: flex !important; 
-            align-items: center !important; 
-            justify-content: center !important; 
-            z-index: 100;
-            transition: all 0.2s ease;
-            -webkit-tap-highlight-color: transparent;
-            padding: 0 !important;
-            box-sizing: border-box !important;
-            flex-shrink: 0;
-        }
-        .top-action-btn svg { 
-            width: 22px !important; 
-            height: 22px !important; 
-            display: block !important; 
-            margin: auto !important;
-            flex-shrink: 0 !important;
-            stroke: #ffffff;
-        }
-
-        .settings-btn { right: 20px; }
-        .mute-btn { right: 68px; }
-
-        @media (min-width: 601px) {
-            .top-action-btn { top: 32px; }
-            .settings-btn { right: 32px; }
-            .mute-btn { right: 84px; }
-        }
-        .settings-btn svg { width: 22px !important; height: 22px !important; aspect-ratio: 1 / 1; flex: 0 0 22px; }
-
-        /* [투두 토글 버튼 기본 규격] */
-        .todo-toggle-btn {
-            background-color: rgba(255, 255, 255, 0.25); 
-            border: 1px solid rgba(255, 255, 255, 0.3); 
-            backdrop-filter: blur(8px); 
-            -webkit-backdrop-filter: blur(8px);
-            color: #ffffff; 
-            font-family: inherit; 
-            font-size: 15px; 
-            font-weight: bold; 
-            padding: 8px 24px; 
-            border-radius: 20px 20px 0 0; 
-            cursor: pointer;
-            position: fixed !important; 
-            bottom: 0px !important; 
-            left: 50% !important; 
-            transform: translateX(-50%) translateZ(0) !important; 
-            transition: bottom 0.25s cubic-bezier(0.25, 1, 0.5, 1), background-color 0.2s; 
-            box-shadow: 0 -2px 10px rgba(0,0,0,0.15); 
-            z-index: 1000 !important;
-            -webkit-tap-highlight-color: transparent;
-        }
-        .todo-toggle-btn.drawer-open { 
-            bottom: 290px !important; 
-        }
-
-        .todo-drawer {
-            position: fixed !important; 
-            bottom: -320px !important; 
-            left: 50% !important; 
-            transform: translateX(-50%) translateZ(0) !important; 
-            width: 360px; 
-            max-width: 92vw; 
-            height: 290px;
-            background-color: rgba(11, 20, 36, 0.96); 
-            border: 1px solid rgba(255, 255, 255, 0.25);
-            border-radius: 24px 24px 0 0; 
-            box-shadow: 0 -5px 25px rgba(0, 0, 0, 0.5); 
-            transition: bottom 0.25s cubic-bezier(0.25, 1, 0.5, 1); 
-            padding: 20px; 
-            box-sizing: border-box; 
-            display: flex; 
-            flex-direction: column; 
-            z-index: 999 !important;
-            overscroll-behavior: contain !important;
-        }
-        .todo-drawer.open { 
-            bottom: 0px !important; 
-        }
-
-        @media (min-width: 601px) {
-            .todo-drawer {
-                width: 440px;
-                height: 300px;
-                bottom: -330px !important;
-            }
-            .todo-toggle-btn.drawer-open {
-                bottom: 300px !important;
-            }
+            overflow: hidden !important;
+            z-index: 999999 !important;
         }
 
         button, input, textarea, div, span, p {
@@ -619,6 +447,67 @@
         }
         .pomo-toggle-switch.active .pomo-toggle-knob {
             transform: translateX(16px);
+        }
+
+        /* [투두 버튼 원래 규격 및 바닥 밀착] */
+        .todo-toggle-btn {
+            background-color: rgba(255, 255, 255, 0.25); 
+            border: 1px solid rgba(255, 255, 255, 0.3); 
+            backdrop-filter: blur(8px); 
+            -webkit-backdrop-filter: blur(8px);
+            color: #ffffff; 
+            font-family: inherit; 
+            font-size: 15px; 
+            font-weight: bold; 
+            padding: 8px 24px; 
+            border-radius: 20px 20px 0 0; 
+            cursor: pointer;
+            position: fixed !important; 
+            bottom: 0px !important; 
+            left: 50% !important; 
+            transform: translateX(-50%) translateZ(0) !important; 
+            transition: bottom 0.3s cubic-bezier(0.25, 1, 0.5, 1), background-color 0.2s; 
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.15); 
+            z-index: 1000 !important;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .todo-toggle-btn.drawer-open { 
+            bottom: 290px !important; 
+        }
+
+        .todo-drawer {
+            position: fixed !important; 
+            bottom: -320px !important; 
+            left: 50% !important; 
+            transform: translateX(-50%) translateZ(0) !important; 
+            width: 360px; 
+            max-width: 92vw; 
+            height: 290px;
+            background-color: rgba(11, 20, 36, 0.96); 
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            border-radius: 24px 24px 0 0; 
+            box-shadow: 0 -5px 25px rgba(0, 0, 0, 0.5); 
+            transition: bottom 0.3s cubic-bezier(0.25, 1, 0.5, 1); 
+            padding: 20px; 
+            box-sizing: border-box; 
+            display: flex; 
+            flex-direction: column; 
+            z-index: 999 !important;
+            overscroll-behavior: contain !important;
+        }
+        .todo-drawer.open { 
+            bottom: 0px !important; 
+        }
+
+        @media (min-width: 601px) {
+            .todo-drawer {
+                width: 440px;
+                height: 300px;
+                bottom: -330px !important;
+            }
+            .todo-toggle-btn.drawer-open {
+                bottom: 300px !important;
+            }
         }
 
         .todo-form { display: flex; gap: 8px; margin-bottom: 12px; align-items: flex-end; }
@@ -1111,6 +1000,7 @@
             opacity: 1;
         }
 
+        /* [좌측/우측 하단 원형 버튼] */
         .bottom-action-btn {
             position: fixed; 
             bottom: 20px; 
@@ -1127,7 +1017,7 @@
             align-items: center; 
             justify-content: center; 
             z-index: 100;
-            transition: all 0.25s ease;
+            transition: all 0.2s ease;
             -webkit-tap-highlight-color: transparent;
             padding: 0;
             flex-shrink: 0;
@@ -1137,10 +1027,49 @@
         .fullscreen-btn { left: 20px; }
         .stats-btn { right: 20px; }
 
+        /* [우측 상단 버튼 - 오디오/설정 규격 100% 원상 복구] */
+        .top-action-btn {
+            position: fixed;
+            top: max(20px, calc(env(safe-area-inset-top, 0px) + 12px));
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            background-color: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            backdrop-filter: blur(8px); 
+            -webkit-backdrop-filter: blur(8px); 
+            color: #ffffff;
+            cursor: pointer; 
+            display: flex !important; 
+            align-items: center !important; 
+            justify-content: center !important; 
+            z-index: 100;
+            transition: all 0.2s ease;
+            -webkit-tap-highlight-color: transparent;
+            padding: 0 !important;
+            box-sizing: border-box !important;
+            flex-shrink: 0;
+        }
+        .top-action-btn svg { 
+            width: 22px !important; 
+            height: 22px !important; 
+            display: block !important; 
+            margin: auto !important;
+            flex-shrink: 0 !important;
+            stroke: #ffffff;
+        }
+
+        .settings-btn { right: 20px; }
+        .mute-btn { right: 68px; }
+
         @media (min-width: 601px) {
             .fullscreen-btn { left: 32px; bottom: 32px; }
             .stats-btn { right: 32px; bottom: 32px; }
+            .top-action-btn { top: 32px; }
+            .settings-btn { right: 32px; }
+            .mute-btn { right: 84px; }
         }
+        .settings-btn svg { width: 22px !important; height: 22px !important; aspect-ratio: 1 / 1; flex: 0 0 22px; }
         
         html, body, button, input, textarea, div, span { touch-action: manipulation; }
         .todo-drag-handle { touch-action: none; }
@@ -1223,7 +1152,6 @@
     <div class="todo-drawer" id="todo-drawer">
         <div class="todo-form">
             <textarea class="todo-input" id="todo-input" placeholder="오늘의 할 일은 무엇인가요?" rows="1" onkeydown="handleTodoKeyDown(event)" oninput="autoResizeTextarea(this)"></textarea>
-            <!-- [모바일 추가 터치 시 자판 흔들림 방지] -->
             <button type="button" class="todo-add-btn" onpointerdown="event.preventDefault()" onclick="addTodo()">추가</button>
         </div>
         <ul class="todo-list" id="todo-list"></ul>
@@ -1371,7 +1299,7 @@
         const userId = urlParams.get('user') || 'default_local_user';
         const isCloudSyncActive = !!db && urlParams.has('user');
 
-        /* [R8/R23 기반 오디오 시스템: 사파리 100% 호환 & Focus/Break 동일 처리] */
+        /* [오디오 시스템] */
         const AUDIO_FILES = { focus: './focus.mp3', short: './break.mp3', alarm: './alarm.mp3' };
         const alarmPlayer = new Audio();
         alarmPlayer.preload = 'auto';
@@ -1405,7 +1333,6 @@
             }, 30);
         }
 
-        /* [Focus와 Break 둘 다 loop=true이므로 똑같이 0에서 시작해 2초간 서서히 페이드인] */
         function playSound(key, loop, volume) {
             if (key === 'alarm' && soundRequest && soundRequest.loop) return;
             stopAllSound();
@@ -1432,7 +1359,7 @@
             if (fadeIn) fadeVolume(volume, 2000, generation);
         }
 
-        /* [0.8초(800ms) 페이드아웃 적용 — Focus와 Break 동일] */
+        /* [Focus & Break 0.8초 페이드아웃] */
         function stopAudioEngine() {
             if (soundRequest && soundRequest.loop && !isMuted) {
                 const generation = soundGeneration;
@@ -1532,7 +1459,7 @@
 
         let isTooltipPinned = false;
 
-        /* [음소거 로직] */
+        /* [음소거 로직 - 원래의 정갈한 아이콘 복원] */
         let isMuted = false; 
         try { isMuted = localStorage.getItem(`potato-muted-${userId}`) === 'true'; } catch (e) {}
 
@@ -2000,7 +1927,7 @@
             if (curHour > prevHour && curHour >= 1) playHourlyAlert();
         }
 
-        /* [수정: Break의 1초->0초 전환 연산을 Focus와 100% 동일하게 통일] */
+        /* [Break의 1초->0초 전환 연산을 Focus와 동일하게 동기화] */
         const TICK_MS = 50;
 
         function timerLoop() {
@@ -2186,7 +2113,7 @@
             customAlert.classList.add('show');
         }
 
-        /* [완료 확인 버튼: 부드러운 팝업 닫힘 + 0.8초 R8 오디오 페이드아웃] */
+        /* [완료 확인 버튼: 부드러운 팝업 닫힘 + 0.8초 페이드아웃] */
         let isClosingAlert = false;
         function closeCustomAlert() {
             if (!customAlert.classList.contains('show') || isClosingAlert) return;
@@ -2194,7 +2121,6 @@
             
             customAlert.classList.remove('show');
             
-            // Focus & Break 공통 0.8초 페이드아웃 실행
             stopAudioEngine();
             try { updateLastActive(); } catch (e) {}
 
@@ -2973,41 +2899,44 @@
         `;
 
         const isTouchDevice = (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) || (navigator.maxTouchPoints || 0) > 1;
-        const isSafariBrowser = !document.documentElement.classList.contains('standalone') && /Safari/i.test(navigator.userAgent) && !/CriOS|FxiOS|EdgiOS|OPiOS|Chrome|Chromium|Firefox|Edg\//i.test(navigator.userAgent);
-        const isStandaloneApp = document.documentElement.classList.contains('standalone') || window.navigator.standalone === true || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+        const isStandaloneApp = window.navigator.standalone === true || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+        const isSafariBrowser = !isStandaloneApp && /Safari/i.test(navigator.userAgent) && !/CriOS|FxiOS|EdgiOS|OPiOS|Chrome|Chromium|Firefox|Edg\//i.test(navigator.userAgent);
 
-        // 홈 화면 PWA는 기본값이 전체화면(true), 일반 사파리는 기본값이 표준 모드
-        let isFullView = isStandaloneApp ? true : false;
+        // 홈 화면 PWA는 기본값이 전체화면(true), 일반 브라우저는 기본값이 일반 모드(false)
+        let isFullscreenActive = isStandaloneApp ? true : false;
 
-        function updateFullscreenDisplay(full) {
-            isFullView = full;
+        function setFullscreenState(active) {
+            isFullscreenActive = active;
             if (isStandaloneApp) {
-                // 홈 화면 PWA
-                if (full) {
-                    // 전체화면 (기본값): 4방향 고정으로 남색 여백 없이 바닥 밀착
-                    document.documentElement.classList.remove('shrunk-mode');
-                    fsIcon.innerHTML = ICON_EXIT_FULLSCREEN; // 축소 아이콘
+                if (active) {
+                    // 전체화면 (기본값): 여백 없이 액정 끝까지 밀착 (IMG_3921 / IMG_1452)
+                    document.documentElement.classList.remove('pseudo-fullscreen');
+                    document.body.classList.remove('pseudo-fullscreen');
+                    fsIcon.innerHTML = ICON_EXIT_FULLSCREEN; // 축소 아이콘 표시
                     document.getElementById('fullscreen-toggle-btn').title = "화면 축소";
                 } else {
-                    // 전체화면 해제 (축소 모드): 남색 띠 형성 + 투두와 버튼 상향 이동
-                    document.documentElement.classList.add('shrunk-mode');
-                    fsIcon.innerHTML = ICON_ENTER_FULLSCREEN; // 확대 아이콘
+                    // 전체화면 해제 (축소 모드): 남색 띠 형성 + 투두 상향 안착 (IMG_3922 / IMG_1451)
+                    document.documentElement.classList.add('pseudo-fullscreen');
+                    document.body.classList.add('pseudo-fullscreen');
+                    fsIcon.innerHTML = ICON_ENTER_FULLSCREEN; // 확대 아이콘 표시
                     document.getElementById('fullscreen-toggle-btn').title = "전체화면";
                 }
             } else {
-                // 일반 브라우저: 원래 브라우저 뷰포트 그대로 유지
-                document.documentElement.classList.remove('shrunk-mode');
+                // 일반 브라우저: 기본 모드 유지
+                document.documentElement.classList.remove('pseudo-fullscreen');
+                document.body.classList.remove('pseudo-fullscreen');
                 fsIcon.innerHTML = ICON_ENTER_FULLSCREEN;
+                document.getElementById('fullscreen-toggle-btn').title = "전체화면";
             }
             adjustLayoutScale();
         }
 
         function toggleFullScreen(e) {
             if (e) { e.preventDefault(); e.stopPropagation(); }
-            if (isSafariBrowser && !isStandaloneApp) return; 
+            if (isSafariBrowser) return; 
             try { updateLastActive(); } catch (err) {}
-            isFullView = !isFullView;
-            updateFullscreenDisplay(isFullView);
+            isFullscreenActive = !isFullscreenActive;
+            setFullscreenState(isFullscreenActive);
         }
 
         /* 핀치 및 더블탭 줌 방지 */
@@ -3021,7 +2950,7 @@
             if (isTouchDevice) e.preventDefault();
         }, { passive: false });
 
-        /* [초기 구동: 홈 화면 앱은 기본 전체화면으로 즉시 구동] */
+        /* [초기 구동: PWA는 기본 꽉 찬 전체화면으로 즉시 실행] */
         if (!activeDayKey) activeDayKey = getDateKey(new Date(lastActiveTime));
         lastSavedDate = getFormattedDate(keyToDate(activeDayKey));
         statsDateEl.textContent = lastSavedDate;
@@ -3032,7 +2961,7 @@
         adjustLayoutScale();
         updateMuteDisplay();
         renderPomoTracker();
-        updateFullscreenDisplay(isFullView);
+        setFullscreenState(isFullscreenActive);
         setTimeout(triggerShootingStar, 3000);
     </script>
 </body>
