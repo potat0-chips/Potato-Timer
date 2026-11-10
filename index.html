@@ -11,7 +11,7 @@
     <link rel="apple-touch-icon" href="./potato.png">
 
     <title>Potato Timer</title>
-    <meta name="potato-build" content="R34-20261110">
+    <meta name="potato-build" content="R35-CosmicMasterplan-20261110">
     
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -33,7 +33,6 @@
             text-rendering: optimizeLegibility;
         }
 
-        /* [기본 뷰포트: 사파리 및 전체화면 모드에서 자연스러운 꽉 찬 화면 유지] */
         html, body {
             overflow: hidden !important;
             width: 100%;
@@ -79,71 +78,15 @@
             transform: translateZ(0);
         }
 
-        /* [심우주 은하수 & 성운 레이어] */
-        .milky-way-nebula {
-            position: absolute;
-            top: -20%;
-            left: -20%;
-            width: 140%;
-            height: 140%;
-            background: 
-                radial-gradient(ellipse 65% 35% at 45% 45%, rgba(106, 85, 201, 0.32), transparent 70%),
-                radial-gradient(ellipse 55% 25% at 55% 55%, rgba(68, 114, 255, 0.22), transparent 75%),
-                radial-gradient(circle at 50% 50%, rgba(142, 121, 231, 0.18), transparent 60%);
-            transform: rotate(-32deg) translateZ(0);
-            opacity: 0;
+        /* [우주 쇼 전용 풀스크린 Canvas: 60fps 하드웨어 가속] */
+        #cosmic-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
             pointer-events: none;
-            z-index: 1;
-            mix-blend-mode: screen;
-            transition: opacity 1.5s ease;
-            will-change: opacity;
-        }
-        .milky-way-nebula.visible {
-            opacity: 1;
-        }
-
-        .ambient-stars-container {
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            pointer-events: none; z-index: 2;
-        }
-        .ambient-star {
-            position: absolute;
-            width: 2.5px; height: 2.5px;
-            background-color: #ffffff;
-            border-radius: 50%;
-            opacity: 0.15;
-            transition: opacity 2s ease;
-        }
-        .milky-way-nebula.visible + .ambient-stars-container .ambient-star { 
-            opacity: var(--target-opacity, 0.85);
-            animation: pulseStar 2s infinite ease-in-out alternate; 
-        }
-        @keyframes pulseStar { 
-            from { transform: scale(0.7) translateZ(0); opacity: 0.2; } 
-            to { transform: scale(1.3) translateZ(0); opacity: var(--target-opacity, 0.85); } 
-        }
-
-        /* 별똥별 */
-        .shooting-star {
-            position: absolute;
-            display: none;
-            width: var(--star-len, 90px); 
-            height: 2px;
-            background: linear-gradient(90deg, rgba(255, 255, 255, 0), #ffffff);
-            opacity: 0;
-            pointer-events: none;
-            z-index: 3;
-            transform: rotate(45deg) translateZ(0); 
-            transform-origin: right center;
-            will-change: transform, opacity;
-        }
-
-        @keyframes shoot {
-            0% { transform: translate(0, 0) rotate(45deg) scaleX(0) translateZ(0); opacity: 0; }
-            15% { opacity: 1; transform: translate(calc(var(--move-x) * 0.15), calc(var(--move-y) * 0.15)) rotate(45deg) scaleX(1) translateZ(0); }
-            85% { opacity: 1; }
-            100% { transform: translate(var(--move-x), var(--move-y)) rotate(45deg) scaleX(0.1) translateZ(0); opacity: 0; }
+            z-index: 2;
         }
 
         .viewport-scaler {
@@ -271,6 +214,7 @@
             transition: none; 
         }
         
+        /* [시계 텍스트: 카운트다운 절정기 시 야광 네온 광원 극대화] */
         .time-display {
             position: absolute;
             font-size: 46px; 
@@ -283,6 +227,7 @@
             align-items: center;
             justify-content: center;
             z-index: 10;
+            transition: text-shadow 0.3s ease;
         }
 
         .controls { display: flex; gap: 24px; align-items: center; justify-content: center; margin-bottom: 22px; }
@@ -449,7 +394,7 @@
             transform: translateX(16px);
         }
 
-        /* [투두 버튼 원래 규격 및 바닥 밀착] */
+        /* [투두 버튼 본래 규격] */
         .todo-toggle-btn {
             background-color: rgba(255, 255, 255, 0.25); 
             border: 1px solid rgba(255, 255, 255, 0.3); 
@@ -1027,7 +972,7 @@
         .fullscreen-btn { left: 20px; }
         .stats-btn { right: 20px; }
 
-        /* [우측 상단 버튼 - 오디오/설정 규격 100% 원상 복구] */
+        /* [우측 상단 버튼 - 오디오/설정 22px 원본 규격 100% 복원] */
         .top-action-btn {
             position: fixed;
             top: max(20px, calc(env(safe-area-inset-top, 0px) + 12px));
@@ -1077,9 +1022,8 @@
     </style>
 </head>
 <body>
-    <div class="milky-way-nebula" id="milky-way-glow"></div>
-    <div class="ambient-stars-container" id="ambient-container"></div>
-    <div class="shooting-star" id="shooting-star-element"></div>
+    <!-- [우주 쇼 전용 고성능 60fps 캔버스] -->
+    <canvas id="cosmic-canvas"></canvas>
 
     <!-- 우측 상단 음소거 버튼 -->
     <button class="top-action-btn mute-btn" id="mute-toggle-btn" onclick="toggleMute()" title="음소거 켜기/끄기">
@@ -1299,7 +1243,7 @@
         const userId = urlParams.get('user') || 'default_local_user';
         const isCloudSyncActive = !!db && urlParams.has('user');
 
-        /* [오디오 시스템] */
+        /* [R8 기반 오디오 시스템: 100% 보존] */
         const AUDIO_FILES = { focus: './focus.mp3', short: './break.mp3', alarm: './alarm.mp3' };
         const alarmPlayer = new Audio();
         alarmPlayer.preload = 'auto';
@@ -1359,7 +1303,7 @@
             if (fadeIn) fadeVolume(volume, 2000, generation);
         }
 
-        /* [Focus & Break 0.8초 페이드아웃] */
+        /* [Focus & Break 0.8초 페이드아웃 보존] */
         function stopAudioEngine() {
             if (soundRequest && soundRequest.loop && !isMuted) {
                 const generation = soundGeneration;
@@ -1368,13 +1312,321 @@
             } else {
                 stopAllSound();
             }
-            try { stabilizeSkySmoothly(); } catch (e) {}
         }
 
         function playEndAlert(mode) { playSound(mode === 'focus' ? 'focus' : 'short', true, 1); }
         function playHourlyAlert() { playSound('alarm', false, 0.65); }
 
         function unlockAudioEngine() {}
+
+        /* ==============================================================
+           🌌 [COSMIC FX ENGINE: 타이머 종료 연출 마스터플랜 100% 구현]
+           ============================================================== */
+        const CosmicFX = {
+            canvas: null,
+            ctx: null,
+            width: 0,
+            height: 0,
+            dpr: 1,
+            
+            stage: 0,          // 0: idle, 1: intro(15s-10s), 2: climax(10s-0s), 3: sustain, 4: recovery
+            mode: 'focus',     // 'focus' | 'short'
+            
+            dimAlpha: 0,       // 0 ~ 0.90
+            nebulaAlpha: 0,    // 0 ~ 0.90 (은하수 / 오로라 공통 알파)
+            
+            stars: [],
+            maxStars: 70,      // 평상시 70개 -> 2단계 시 300개로 증가
+            
+            meteors: [],
+            meteorTimer: 0,
+            meteorInterval: 3500, // 1단계 3~4초, 2단계 180~280ms
+            
+            auroraPhase: 0,
+            recoveryStartTime: 0,
+            
+            init() {
+                this.canvas = document.getElementById('cosmic-canvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.handleResize();
+                window.addEventListener('resize', () => this.handleResize());
+                
+                // 기본 밤하늘 별 생성 (60-80개)
+                this.stars = [];
+                for (let i = 0; i < 300; i++) {
+                    this.stars.push({
+                        x: Math.random(),
+                        y: Math.random(),
+                        size: Math.random() * 1.8 + 0.8,
+                        alpha: Math.random() * 0.5 + 0.2,
+                        baseAlpha: Math.random() * 0.5 + 0.3,
+                        twinkleSpeed: Math.random() * 0.03 + 0.015,
+                        phase: Math.random() * Math.PI * 2,
+                        activeInIdle: i < 75
+                    });
+                }
+                
+                requestAnimationFrame((t) => this.loop(t));
+            },
+            
+            handleResize() {
+                this.dpr = Math.min(window.devicePixelRatio || 1, 2);
+                this.width = window.innerWidth;
+                this.height = window.innerHeight;
+                this.canvas.width = this.width * this.dpr;
+                this.canvas.height = this.height * this.dpr;
+                this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+                this.ctx.scale(this.dpr, this.dpr);
+            },
+            
+            // 타이머 루프에서 매 프레임 남은 시간에 따라 연출 수치 계산
+            updateState(timeRemaining, currentMode, isRunning) {
+                if (!isRunning || currentMode === 'timer') {
+                    if (this.stage === 1 || this.stage === 2) this.abort();
+                    return;
+                }
+                
+                this.mode = currentMode;
+                const timeEl = document.getElementById('time-text');
+                
+                if (timeRemaining <= 15 && timeRemaining > 10) {
+                    // [1단계: 도입기 (15초 ~ 10초)]
+                    this.stage = 1;
+                    const p = (15 - timeRemaining) / 5; // 0.0 -> 1.0
+                    this.dimAlpha = p * 0.40;          // 0% -> 40%
+                    this.nebulaAlpha = p * 0.30;       // 0% -> 30%
+                    this.maxStars = Math.floor(75 + p * 85);
+                    this.meteorInterval = 3400 - p * 1200; // 3.4초 -> 2.2초
+                    
+                    if (timeEl) {
+                        const col = (this.mode === 'focus') ? '#8E79E7' : '#34d399';
+                        timeEl.style.textShadow = `0 0 14px rgba(255,255,255,0.8), 0 0 25px ${col}`;
+                    }
+                } else if (timeRemaining <= 10 && timeRemaining > 0) {
+                    // [2단계: 절정기 (10초 ~ 0초)]
+                    this.stage = 2;
+                    const p = (10 - timeRemaining) / 10; // 0.0 -> 1.0
+                    this.dimAlpha = 0.40 + p * 0.50;    // 40% -> 90%
+                    this.nebulaAlpha = 0.30 + p * 0.60; // 30% -> 90%
+                    this.maxStars = Math.floor(160 + p * 140); // 160 -> 300개
+                    this.meteorInterval = 600 - p * 380;       // 빗발치는 유성우 (220ms마다 생성)
+                    
+                    if (timeEl) {
+                        const col = (this.mode === 'focus') ? '#c084fc' : '#10b981';
+                        timeEl.style.textShadow = `0 0 20px #ffffff, 0 0 35px ${col}, 0 0 65px ${col}`;
+                    }
+                } else if (timeRemaining <= 0 && this.stage >= 2) {
+                    // [3단계: 유지기 (0초 완료 팝업 유지 중)]
+                    this.stage = 3;
+                    this.dimAlpha = 0.90;
+                    this.nebulaAlpha = 0.90;
+                    this.maxStars = 300;
+                    this.meteorInterval = 240;
+                }
+            },
+            
+            // 완료 팝업의 [확인] 버튼 클릭 시 4단계(복귀기) 트리거
+            dismiss() {
+                if (this.stage === 0) return;
+                this.stage = 4;
+                this.recoveryStartTime = Date.now();
+                const timeEl = document.getElementById('time-text');
+                if (timeEl) {
+                    timeEl.style.textShadow = '0 2px 10px rgba(0, 0, 0, 0.4), 0 0 20px rgba(255, 255, 255, 0.2)';
+                }
+            },
+            
+            // 중도 취소 / 정지 / 시간 증가 시 Fail-safe 복귀
+            abort() {
+                if (this.stage !== 0 && this.stage !== 4) {
+                    this.dismiss();
+                }
+            },
+            
+            spawnMeteor() {
+                const len = Math.random() * 65 + 75; // 75 ~ 140px 길이
+                const startX = Math.random() * (this.width * 1.2) - (this.width * 0.1);
+                const startY = Math.random() * (this.height * 0.6) - 80;
+                const speed = Math.random() * 9 + 13;
+                const angle = (Math.PI / 180) * (Math.random() * 15 + 35); // 35 ~ 50도 각도
+                
+                this.meteors.push({
+                    x: startX,
+                    y: startY,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
+                    len: len,
+                    alpha: 1.0,
+                    width: Math.random() * 1.5 + 1.2
+                });
+            },
+            
+            loop(now) {
+                this.ctx.clearRect(0, 0, this.width, this.height);
+                this.auroraPhase += 0.016;
+                
+                // [4단계: 복귀기 감속 애니메이션 3.5초]
+                if (this.stage === 4) {
+                    const elapsed = Date.now() - this.recoveryStartTime;
+                    const duration = 3500;
+                    if (elapsed >= duration) {
+                        this.stage = 0;
+                        this.dimAlpha = 0;
+                        this.nebulaAlpha = 0;
+                        this.maxStars = 70;
+                        this.meteors = [];
+                    } else {
+                        const progress = elapsed / duration;
+                        const factor = 1 - progress;
+                        this.dimAlpha = 0.90 * factor;
+                        this.nebulaAlpha = 0.90 * factor;
+                        this.maxStars = Math.floor(70 + 230 * factor);
+                    }
+                }
+                
+                // 1. 암전 레이어 드로잉
+                if (this.dimAlpha > 0.005) {
+                    this.ctx.save();
+                    if (this.mode === 'focus') {
+                        this.ctx.fillStyle = `rgba(4, 7, 16, ${this.dimAlpha})`;
+                    } else {
+                        this.ctx.fillStyle = `rgba(3, 16, 12, ${this.dimAlpha})`;
+                    }
+                    this.ctx.fillRect(0, 0, this.width, this.height);
+                    this.ctx.restore();
+                }
+                
+                // 2. 모드별 대형 오브젝트 드로잉
+                if (this.nebulaAlpha > 0.005) {
+                    if (this.mode === 'focus') {
+                        this.drawMilkyWay(this.nebulaAlpha);
+                    } else {
+                        this.drawAurora(this.nebulaAlpha);
+                    }
+                }
+                
+                // 3. 반짝이는 별 드로잉
+                this.drawStars();
+                
+                // 4. 별똥별 제어 및 드로잉
+                if (this.stage >= 1 && this.stage <= 3) {
+                    if (now - this.meteorTimer > this.meteorInterval) {
+                        this.meteorTimer = now;
+                        this.spawnMeteor();
+                        if (this.stage >= 2 && Math.random() < 0.4) {
+                            this.spawnMeteor(); // 절정기에는 동시 다발 유성 생성
+                        }
+                    }
+                }
+                this.drawMeteors();
+                
+                requestAnimationFrame((t) => this.loop(t));
+            },
+            
+            // [Focus: 보랏빛 사선 은하수 성운]
+            drawMilkyWay(alpha) {
+                this.ctx.save();
+                this.ctx.translate(this.width * 0.5, this.height * 0.48);
+                this.ctx.rotate((-32 * Math.PI) / 180);
+                
+                const gradWidth = Math.max(this.width, this.height) * 1.5;
+                const gradHeight = 320;
+                
+                const g = this.ctx.createRadialGradient(0, 0, 40, 0, 0, gradWidth * 0.55);
+                g.addColorStop(0, `rgba(168, 85, 247, ${alpha * 0.42})`);
+                g.addColorStop(0.25, `rgba(106, 85, 201, ${alpha * 0.32})`);
+                g.addColorStop(0.55, `rgba(59, 130, 246, ${alpha * 0.18})`);
+                g.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                
+                this.ctx.fillStyle = g;
+                this.ctx.fillRect(-gradWidth * 0.5, -gradHeight * 0.5, gradWidth, gradHeight);
+                this.ctx.restore();
+            },
+            
+            // [Break: 상단 커튼형 에메랄드 오로라 파형(Sine-wave)]
+            drawAurora(alpha) {
+                this.ctx.save();
+                const colors = [
+                    { r: 52, g: 211, b: 153, a: 0.35, speed: 1.0, freq: 0.003, amp: 45, offset: 0 },
+                    { r: 45, g: 212, b: 191, a: 0.28, speed: 0.8, freq: 0.004, amp: 35, offset: 1.8 },
+                    { r: 16, g: 185, b: 129, a: 0.22, speed: 1.3, freq: 0.0025, amp: 55, offset: 3.4 }
+                ];
+                
+                colors.forEach(col => {
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(0, 0);
+                    
+                    const baseY = this.height * 0.28;
+                    for (let x = 0; x <= this.width; x += 15) {
+                        const y = Math.sin(x * col.freq + this.auroraPhase * col.speed + col.offset) * col.amp +
+                                  Math.sin(x * col.freq * 2.1 - this.auroraPhase * 0.5) * (col.amp * 0.4) + baseY;
+                        this.ctx.lineTo(x, y);
+                    }
+                    
+                    this.ctx.lineTo(this.width, 0);
+                    this.ctx.closePath();
+                    
+                    const g = this.ctx.createLinearGradient(0, 0, 0, baseY + 60);
+                    g.addColorStop(0, `rgba(${col.r}, ${col.g}, ${col.b}, ${alpha * col.a})`);
+                    g.addColorStop(0.65, `rgba(${col.r}, ${col.g}, ${col.b}, ${alpha * col.a * 0.6})`);
+                    g.addColorStop(1, `rgba(${col.r}, ${col.g}, ${col.b}, 0)`);
+                    
+                    this.ctx.fillStyle = g;
+                    this.ctx.fill();
+                });
+                this.ctx.restore();
+            },
+            
+            drawStars() {
+                const count = Math.min(this.maxStars, this.stars.length);
+                for (let i = 0; i < count; i++) {
+                    const s = this.stars[i];
+                    s.phase += s.twinkleSpeed;
+                    const twinkle = (Math.sin(s.phase) + 1) * 0.5; // 0 ~ 1
+                    const currentAlpha = s.baseAlpha * (0.4 + twinkle * 0.6);
+                    
+                    this.ctx.fillStyle = `rgba(255, 255, 255, ${currentAlpha})`;
+                    this.ctx.beginPath();
+                    this.ctx.arc(s.x * this.width, s.y * this.height, s.size, 0, Math.PI * 2);
+                    this.ctx.fill();
+                }
+            },
+            
+            drawMeteors() {
+                for (let i = this.meteors.length - 1; i >= 0; i--) {
+                    const m = this.meteors[i];
+                    m.x += m.vx;
+                    m.y += m.vy;
+                    
+                    if (this.stage === 4) {
+                        m.alpha *= 0.94; // 복귀기 시 잔상 부드럽게 소멸
+                    }
+                    
+                    const tailX = m.x - (m.vx / Math.hypot(m.vx, m.vy)) * m.len;
+                    const tailY = m.y - (m.vy / Math.hypot(m.vx, m.vy)) * m.len;
+                    
+                    const g = this.ctx.createLinearGradient(tailX, tailY, m.x, m.y);
+                    g.addColorStop(0, 'rgba(255, 255, 255, 0)');
+                    g.addColorStop(0.7, `rgba(255, 255, 255, ${m.alpha * 0.4})`);
+                    g.addColorStop(1, `rgba(255, 255, 255, ${m.alpha})`);
+                    
+                    this.ctx.save();
+                    this.ctx.strokeStyle = g;
+                    this.ctx.lineWidth = m.width;
+                    this.ctx.lineCap = 'round';
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(tailX, tailY);
+                    this.ctx.lineTo(m.x, m.y);
+                    this.ctx.stroke();
+                    this.ctx.restore();
+                    
+                    // 화면 밖으로 나가거나 투명해지면 제거
+                    if (m.x > this.width + 120 || m.y > this.height + 120 || m.alpha <= 0.02) {
+                        this.meteors.splice(i, 1);
+                    }
+                }
+            }
+        };
 
         const HARD_DEFAULTS = {
             focus: { min: 25, sec: 0 },
@@ -1439,9 +1691,6 @@
         const todoDrawer = document.getElementById('todo-drawer');
         const todoToggleBtn = document.getElementById('todo-toggle-btn');
         const todoListEl = document.getElementById('todo-list');
-        const starElement = document.getElementById('shooting-star-element');
-        const ambientContainer = document.getElementById('ambient-container');
-        const milkyWayGlow = document.getElementById('milky-way-glow');
         const customAlert = document.getElementById('custom-alert');
         const customAlertBox = document.getElementById('custom-alert-box');
         const customAlertMsg = document.getElementById('custom-alert-msg');
@@ -1459,7 +1708,7 @@
 
         let isTooltipPinned = false;
 
-        /* [음소거 로직 - 원래의 정갈한 아이콘 복원] */
+        /* [음소거 로직: 100% 원본 복원] */
         let isMuted = false; 
         try { isMuted = localStorage.getItem(`potato-muted-${userId}`) === 'true'; } catch (e) {}
 
@@ -1699,65 +1948,6 @@
             }, (err) => console.error("Firestore Listen Error:", err));
         }
 
-        for (let i = 0; i < 80; i++) {
-            const star = document.createElement('div');
-            star.className = 'ambient-star';
-            star.style.left = `${Math.random() * 100}%`;
-            star.style.top = `${Math.random() * 100}%`;
-            star.style.setProperty('--target-opacity', (Math.random() * 0.55 + 0.35).toFixed(2));
-            ambientContainer.appendChild(star);
-        }
-
-        let isCelebrationActive = false;
-        let starTimeoutId = null;
-
-        function triggerShootingStar() {
-            const screenW = window.innerWidth || 800;
-            const screenH = window.innerHeight || 600;
-            
-            const startX = Math.floor(Math.random() * screenW); 
-            const startY = Math.floor(Math.random() * (screenH * 0.8)); 
-            
-            const rotateAngle = Math.floor(Math.random() * 20) + 35; 
-            const diagonalMove = Math.floor(Math.random() * 300) + 200; 
-            const starLen = Math.floor(Math.random() * 45) + 60; 
-
-            starElement.style.setProperty('--move-x', `${diagonalMove}px`);
-            starElement.style.setProperty('--move-y', `${diagonalMove}px`);
-            starElement.style.setProperty('--star-len', `${starLen}px`);
-            starElement.style.transform = `rotate(${rotateAngle}deg) translateZ(0)`;
-            starElement.style.left = `${startX}px`;
-            starElement.style.top = `${startY}px`;
-            
-            const duration = (Math.random() * 0.25 + 0.32).toFixed(2);
-            
-            starElement.style.display = 'block';
-            starElement.style.animation = `shoot ${duration}s linear forwards`;
-            
-            clearTimeout(starTimeoutId);
-            starTimeoutId = setTimeout(() => {
-                starElement.style.animation = 'none';
-                starElement.style.display = 'none';
-                const nextDelay = isCelebrationActive ? 800 : (Math.floor(Math.random() * 6000) + 8000);
-                starTimeoutId = setTimeout(triggerShootingStar, nextDelay);
-            }, duration * 1000 + 40);
-        }
-
-        function startCelebrationVFX() {
-            if (isCelebrationActive) return;
-            isCelebrationActive = true;
-            milkyWayGlow.classList.add('visible');
-            clearTimeout(starTimeoutId);
-            triggerShootingStar();
-        }
-
-        function stabilizeSkySmoothly() {
-            isCelebrationActive = false;
-            milkyWayGlow.classList.remove('visible');
-            clearTimeout(starTimeoutId);
-            starTimeoutId = setTimeout(triggerShootingStar, 5000);
-        }
-
         function getFormattedDate(d = new Date()) {
             const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
             const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -1818,7 +2008,6 @@
             if (statsCounterEl.textContent !== label) statsCounterEl.textContent = label;
         }
 
-        /* [Focus & Break 완전 동일한 화면 렌더링 동기화] */
         function updateDisplay() {
             let state = tabStates[currentMode];
             const displaySecs = currentMode === 'timer' ? Math.floor(state.timeRemaining) : Math.ceil(state.timeRemaining);
@@ -1870,6 +2059,11 @@
             
             state.totalSeconds = state.isRunning ? (state.totalSeconds + delta) : state.timeRemaining;
             if (state.totalSeconds < state.timeRemaining) state.totalSeconds = state.timeRemaining;
+            
+            // 15초 이상으로 늘어나면 우주 쇼 안전 복귀
+            if (state.timeRemaining > 15) {
+                CosmicFX.abort();
+            }
             
             updateDisplay();
         }
@@ -1927,7 +2121,7 @@
             if (curHour > prevHour && curHour >= 1) playHourlyAlert();
         }
 
-        /* [Break의 1초->0초 전환 연산을 Focus와 동일하게 동기화] */
+        /* [타이머 엔진 & 우주 쇼 타임라인 연동] */
         const TICK_MS = 50;
 
         function timerLoop() {
@@ -1945,6 +2139,9 @@
                 addFocusSeconds(consumed, now);
                 actualFocusSecondsCompleted += consumed;
 
+                // 15초 카운트다운 연출 실시간 동기화
+                CosmicFX.updateState(tabStates.focus.timeRemaining, 'focus', true);
+
                 if (tabStates.focus.timeRemaining <= 0) {
                     tabStates.focus.timeRemaining = 0;
                     stopTimerWithAlert('focus');
@@ -1955,6 +2152,9 @@
                 anyRunning = true;
                 const consumed = Math.min(Math.max(0, elapsedSeconds), tabStates.short.timeRemaining);
                 tabStates.short.timeRemaining = Math.max(0, tabStates.short.timeRemaining - consumed);
+
+                // 15초 카운트다운 연출 실시간 동기화
+                CosmicFX.updateState(tabStates.short.timeRemaining, 'short', true);
 
                 if (tabStates.short.timeRemaining <= 0) {
                     tabStates.short.timeRemaining = 0;
@@ -1990,10 +2190,12 @@
                 startBtn.textContent = 'START';
                 saveState();
                 
+                // 중도 정지 시 우주 쇼 즉시 4단계 복귀
+                CosmicFX.abort();
+                
                 if (!tabStates.focus.isRunning && !tabStates.short.isRunning && !tabStates.timer.isRunning) {
                     if (timerAnimationId) clearTimeout(timerAnimationId);
                     timerAnimationId = null;
-                    stabilizeSkySmoothly();
                 }
             } else {
                 if (currentMode !== 'timer' && state.timeRemaining <= 0) return;
@@ -2016,6 +2218,9 @@
             updateLastActive();
             let state = tabStates[currentMode];
             state.isRunning = false;
+            
+            // 리셋 시 우주 쇼 즉시 복귀
+            CosmicFX.abort();
             
             if (currentMode === 'timer') {
                 state.timeRemaining = 0;
@@ -2044,6 +2249,8 @@
                 tabStates[currentMode].isRunning = false;
             }
 
+            CosmicFX.abort();
+
             currentMode = mode;
             tabButtons.forEach(btn => btn.classList.remove('active'));
             document.getElementById('btn-' + (mode === 'short' ? 'short' : mode)).classList.add('active'); 
@@ -2064,7 +2271,6 @@
                 if (timerAnimationId) clearTimeout(timerAnimationId);
                 timerAnimationId = null;
                 lastTimestamp = null;
-                stabilizeSkySmoothly();
             }
 
             updateDisplay(); 
@@ -2080,6 +2286,7 @@
             setMode(mode);
         }
 
+        /* [타이머 0초 도달: 3단계 고요한 축하 모드 진입] */
         function stopTimerWithAlert(completedMode) {
             try { updateLastActive(); } catch (e) { console.warn('completion-activity', e); }
             tabStates[completedMode].isRunning = false;
@@ -2106,14 +2313,18 @@
 
             lastCompletedMode = completedMode;
             customAlert.classList.add('show');
-            try { startCelebrationVFX(); } catch (e) {}
+            
+            // 3단계 유지기 확정 (팝업 뒤로 우주 쇼 계속 진행)
+            CosmicFX.stage = 3;
+            CosmicFX.dimAlpha = 0.90;
+            CosmicFX.nebulaAlpha = 0.90;
         }
 
         function showCompletionDialog() {
             customAlert.classList.add('show');
         }
 
-        /* [완료 확인 버튼: 부드러운 팝업 닫힘 + 0.8초 페이드아웃] */
+        /* [완료 확인 버튼: 4단계 복귀기 시작 + 0.8초 오디오 페이드아웃] */
         let isClosingAlert = false;
         function closeCustomAlert() {
             if (!customAlert.classList.contains('show') || isClosingAlert) return;
@@ -2121,6 +2332,10 @@
             
             customAlert.classList.remove('show');
             
+            // 4단계 복귀기 가동 (3.5초간 서서히 암전/은하수 페이드아웃)
+            CosmicFX.dismiss();
+            
+            // Focus & Break 공통 0.8초 페이드아웃 실행
             stopAudioEngine();
             try { updateLastActive(); } catch (e) {}
 
@@ -2902,7 +3117,6 @@
         const isStandaloneApp = window.navigator.standalone === true || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
         const isSafariBrowser = !isStandaloneApp && /Safari/i.test(navigator.userAgent) && !/CriOS|FxiOS|EdgiOS|OPiOS|Chrome|Chromium|Firefox|Edg\//i.test(navigator.userAgent);
 
-        // 홈 화면 PWA는 기본값이 전체화면(true), 일반 브라우저는 기본값이 일반 모드(false)
         let isFullscreenActive = isStandaloneApp ? true : false;
 
         function setFullscreenState(active) {
@@ -2950,7 +3164,8 @@
             if (isTouchDevice) e.preventDefault();
         }, { passive: false });
 
-        /* [초기 구동: PWA는 기본 꽉 찬 전체화면으로 즉시 실행] */
+        /* [초기 구동 & 우주 쇼 캔버스 활성화] */
+        CosmicFX.init();
         if (!activeDayKey) activeDayKey = getDateKey(new Date(lastActiveTime));
         lastSavedDate = getFormattedDate(keyToDate(activeDayKey));
         statsDateEl.textContent = lastSavedDate;
@@ -2962,7 +3177,6 @@
         updateMuteDisplay();
         renderPomoTracker();
         setFullscreenState(isFullscreenActive);
-        setTimeout(triggerShootingStar, 3000);
     </script>
 </body>
 </html>
