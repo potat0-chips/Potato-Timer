@@ -11,7 +11,7 @@
     <link rel="apple-touch-icon" href="./potato.png">
 
     <title>Potato Timer</title>
-    <meta name="potato-build" content="R21-20261110">
+    <meta name="potato-build" content="R25-20261110">
     
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -521,6 +521,8 @@
             -webkit-tap-highlight-color: transparent;
         }
         .todo-input::placeholder { line-height: 20px; color: #666666; vertical-align: middle; }
+        
+        /* [모바일 추가 터치 시 자판이 닫히거나 흔들리지 않도록 포커스 보호] */
         .todo-add-btn { font-family: inherit; background-color: #6A55C9; color: white; border: none; height: 38px; padding: 0 16px; border-radius: 12px; font-size: 14px; font-weight: bold; cursor: pointer; transition: background 0.1s; -webkit-tap-highlight-color: transparent; }
         
         .todo-list { 
@@ -1148,7 +1150,8 @@
     <div class="todo-drawer" id="todo-drawer">
         <div class="todo-form">
             <textarea class="todo-input" id="todo-input" placeholder="오늘의 할 일은 무엇인가요?" rows="1" onkeydown="handleTodoKeyDown(event)" oninput="autoResizeTextarea(this)"></textarea>
-            <button type="button" class="todo-add-btn" onclick="addTodo()">추가</button>
+            <!-- [모바일 추가 터치 시 자판이 닫히거나 흔들리지 않도록 포커스 보호] -->
+            <button type="button" class="todo-add-btn" onpointerdown="event.preventDefault()" onclick="addTodo()">추가</button>
         </div>
         <ul class="todo-list" id="todo-list"></ul>
     </div>
@@ -1177,7 +1180,7 @@
                     <div class="settings-inputs-wrapper">
                         <input type="number" inputmode="numeric" class="settings-num-input" id="input-focus-min" min="0" max="999" onblur="validateInput(this, 999)">
                         <span class="settings-unit-label">min</span>
-                        <input type="number" inputmode="numeric" class="settings-num-input" id="input-focus-sec" min="0" max="59" oninput="validateInput(this, 59)" onblur="validateInput(this, 59)">
+                        <input type="number" inputmode="numeric" class="settings-num-input" id="input-focus-sec" min="0" max="59" onblur="validateInput(this, 59)">
                         <span class="settings-unit-label">sec</span>
                     </div>
                 </div>
@@ -1187,7 +1190,7 @@
                     <div class="settings-inputs-wrapper">
                         <input type="number" inputmode="numeric" class="settings-num-input" id="input-short-min" min="0" max="999" onblur="validateInput(this, 999)">
                         <span class="settings-unit-label">min</span>
-                        <input type="number" inputmode="numeric" class="settings-num-input" id="input-short-sec" min="0" max="59" oninput="validateInput(this, 59)" onblur="validateInput(this, 59)">
+                        <input type="number" inputmode="numeric" class="settings-num-input" id="input-short-sec" min="0" max="59" onblur="validateInput(this, 59)">
                         <span class="settings-unit-label">sec</span>
                     </div>
                 </div>
@@ -1295,7 +1298,7 @@
         const userId = urlParams.get('user') || 'default_local_user';
         const isCloudSyncActive = !!db && urlParams.has('user');
 
-        /* [R8 오디오 시스템: 정확한 구조 및 시간(1500ms) 복원, Focus/Break 100% 동일 적용] */
+        /* [R8/R23 기반 오디오 시스템: 사파리 100% 호환 & Focus/Break 동일 처리] */
         const AUDIO_FILES = { focus: './focus.mp3', short: './break.mp3', alarm: './alarm.mp3' };
         const alarmPlayer = new Audio();
         alarmPlayer.preload = 'auto';
@@ -1326,9 +1329,10 @@
                 const p = Math.min(1, (Date.now() - t0) / ms);
                 alarmPlayer.volume = start + (target - start) * p;
                 if (p >= 1) { clearInterval(fadeTimer); fadeTimer = null; }
-            }, 50);
+            }, 30);
         }
 
+        /* [Focus와 Break 둘 다 loop=true이므로 똑같이 0에서 시작해 2초간 서서히 페이드인] */
         function playSound(key, loop, volume) {
             if (key === 'alarm' && soundRequest && soundRequest.loop) return;
             stopAllSound();
@@ -1341,7 +1345,8 @@
             alarmPlayer.src = AUDIO_FILES[key];
             alarmPlayer.muted = false;
             alarmPlayer.loop = !!loop;
-            const fadeIn = (key === 'focus');
+            
+            const fadeIn = !!loop;
             alarmPlayer.volume = fadeIn ? 0 : volume;
             try {
                 const p = alarmPlayer.play();
@@ -1351,15 +1356,15 @@
             } catch (e) {
                 if (generation === soundGeneration) soundRequest = null;
             }
-            if (fadeIn) fadeVolume(volume, 4000, generation);
+            if (fadeIn) fadeVolume(volume, 2000, generation);
         }
 
-        /* [R8 페이드아웃 원형 복원: Focus와 Break 둘 다 똑같이 1500ms 페이드아웃 보장] */
+        /* [수정: 정확히 요청하신 0.5초(500ms) 페이드아웃 적용 — Focus와 Break 동일] */
         function stopAudioEngine() {
             if (soundRequest && soundRequest.loop && !isMuted) {
                 const generation = soundGeneration;
-                fadeVolume(0, 1500, generation);
-                setTimeout(() => { if (generation === soundGeneration) stopAllSound(); }, 1500);
+                fadeVolume(0, 500, generation);
+                setTimeout(() => { if (generation === soundGeneration) stopAllSound(); }, 500);
             } else {
                 stopAllSound();
             }
@@ -1813,7 +1818,7 @@
             if (statsCounterEl.textContent !== label) statsCounterEl.textContent = label;
         }
 
-        /* [Focus & Break 100% 동일한 화면 렌더링 동기화] */
+        /* [Focus & Break 완전 동일한 화면 렌더링 동기화] */
         function updateDisplay() {
             let state = tabStates[currentMode];
             const displaySecs = currentMode === 'timer' ? Math.floor(state.timeRemaining) : Math.ceil(state.timeRemaining);
@@ -1922,7 +1927,7 @@
             if (curHour > prevHour && curHour >= 1) playHourlyAlert();
         }
 
-        /* [Break의 1초->0초 진입과 Focus의 연산을 100% 동일하게 통일] */
+        /* [Break와 Focus 연산 100% 동일 동기화] */
         const TICK_MS = 50;
 
         function timerLoop() {
@@ -2108,16 +2113,15 @@
             customAlert.classList.add('show');
         }
 
-        /* [완료 확인 버튼: 부드러운 팝업 닫힘 + R8 기준 1.5초 오디오 페이드아웃] */
+        /* [완료 확인 버튼: 부드러운 팝업 닫힘 + 0.5초 R8 오디오 페이드아웃] */
         let isClosingAlert = false;
         function closeCustomAlert() {
             if (!customAlert.classList.contains('show') || isClosingAlert) return;
             isClosingAlert = true;
             
-            // 팝업 부드러운 페이드아웃 (0.25초)
             customAlert.classList.remove('show');
             
-            // R8 방식 1500ms 페이드아웃 실행 (Focus & Break 동일 적용)
+            // Focus & Break 공통 0.5초(500ms) 페이드아웃 실행
             stopAudioEngine();
             try { updateLastActive(); } catch (e) {}
 
@@ -2726,6 +2730,7 @@
             }, { passive: true });
         });
 
+        /* [서랍 밖을 터치했을 때만 키보드와 서랍이 자연스럽게 닫히도록 blur 연결] */
         document.addEventListener('click', (event) => {
             const path = event.composedPath ? event.composedPath() : [];
             const isInsideDrawer = path.includes(todoDrawer) || todoDrawer.contains(event.target);
@@ -2736,13 +2741,19 @@
             if (isInsideDrawer || isToggleBtn || isFsBtn || isModal) return;
 
             if (todoDrawer.classList.contains('open')) {
+                const activeEl = document.activeElement;
+                if (activeEl && (activeEl.tagName === 'TEXTAREA' || activeEl.tagName === 'INPUT')) {
+                    activeEl.blur();
+                }
                 todoDrawer.classList.remove('open');
                 todoToggleBtn.classList.remove('drawer-open');
             }
         });
 
+        /* [높이 재계산 시 레이아웃 덜컹거림 방지] */
         function autoResizeTextarea(textarea) {
-            textarea.style.height = 'auto';
+            if (!textarea) return;
+            textarea.style.height = '38px';
             textarea.style.height = Math.max(38, Math.min(textarea.scrollHeight, 80)) + 'px';
             textarea.scrollTop = 0; 
         }
@@ -2832,6 +2843,7 @@
             });
         }
 
+        /* [수정: 모바일에서 투두 추가 시 자판 위치가 위아래로 흔들리지 않고 완전히 고정되도록 개선] */
         function addTodo() {
             updateLastActive();
             const input = document.getElementById('todo-input');
@@ -2849,12 +2861,13 @@
 
             input.value = '';
             input.style.height = '38px';
-            
-            setTimeout(() => {
-                input.scrollTop = 0;
-                autoResizeTextarea(input);
-            }, 0);
-            
+            input.scrollTop = 0;
+
+            // 이미 포커스된 상태면 추가적인 .focus() 호출을 생략하여 모바일 사파리 화면 울렁거림 방지
+            if (document.activeElement !== input) {
+                input.focus({ preventScroll: true });
+            }
+
             saveState();
             renderTodos();
         }
