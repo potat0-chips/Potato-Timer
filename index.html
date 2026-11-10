@@ -11,7 +11,7 @@
     <link rel="apple-touch-icon" href="./potato.png">
 
     <title>Potato Timer</title>
-    <meta name="potato-build" content="R29-20261110">
+    <meta name="potato-build" content="R30-20261110">
 
     <!-- [홈 화면 PWA 즉시 감지] -->
     <script>
@@ -42,11 +42,13 @@
             text-rendering: optimizeLegibility;
         }
 
-        /* [기본 뷰포트: 기기 액정 물리적 최외곽까지 100% 덮음] */
+        /* [기본 뷰포트: 기기 액정 물리적 끝까지 100% 덮음] */
         html, body {
             overflow: hidden !important;
             width: 100%;
             height: 100%;
+            min-height: 100vh;
+            min-height: -webkit-fill-available;
             margin: 0;
             padding: 0;
             background-color: #0b1424;
@@ -62,42 +64,116 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            width: 100%;
             height: 100%;
             min-height: 100vh;
             min-height: -webkit-fill-available;
             user-select: none;
             -webkit-user-select: none;
             position: relative;
+            transition: bottom 0.25s ease, height 0.25s ease;
         }
 
-        /* [홈 화면 PWA 기본 전체화면: 여백 없이 기기 바닥에 완벽 밀착] */
-        html.standalone:not(.pseudo-fullscreen) body {
-            height: 100% !important;
-            min-height: 100vh !important;
-            min-height: -webkit-fill-available !important;
+        /* [전체화면 기본 상태: 투두 버튼 바닥 완전 밀착 (IMG_3921, IMG_1452)] */
+        .todo-toggle-btn {
+            background-color: rgba(255, 255, 255, 0.25); 
+            border: 1px solid rgba(255, 255, 255, 0.3); 
+            backdrop-filter: blur(8px); 
+            -webkit-backdrop-filter: blur(8px);
+            color: #ffffff; 
+            font-family: inherit; 
+            font-size: 15px; 
+            font-weight: bold; 
+            padding: 8px 24px; 
+            border-radius: 20px 20px 0 0; 
+            cursor: pointer;
+            position: fixed !important; 
+            bottom: 0px !important; 
+            left: 50% !important; 
+            transform: translateX(-50%) translateZ(0) !important; 
+            transition: bottom 0.25s cubic-bezier(0.25, 1, 0.5, 1), background-color 0.2s; 
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.15); 
+            z-index: 1000 !important;
+            -webkit-tap-highlight-color: transparent;
         }
-        html.standalone:not(.pseudo-fullscreen) .todo-toggle-btn {
-            bottom: 0px !important;
-        }
-        html.standalone:not(.pseudo-fullscreen) .todo-drawer.open {
-            bottom: 0px !important;
-        }
-        html.standalone:not(.pseudo-fullscreen) .bottom-action-btn {
-            bottom: max(20px, env(safe-area-inset-bottom, 20px)) !important;
+        .todo-toggle-btn.drawer-open { 
+            bottom: 290px !important; 
         }
 
-        /* [전체화면 해제 / 축소 모드: 하단 여백 형성 (IMG_3922, IMG_1451)] */
-        html.pseudo-fullscreen, body.pseudo-fullscreen {
-            position: fixed !important;
+        .todo-drawer {
+            position: fixed !important; 
+            bottom: -320px !important; 
+            left: 50% !important; 
+            transform: translateX(-50%) translateZ(0) !important; 
+            width: 360px; 
+            max-width: 92vw; 
+            height: 290px;
+            background-color: rgba(11, 20, 36, 0.96); 
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            border-radius: 24px 24px 0 0; 
+            box-shadow: 0 -5px 25px rgba(0, 0, 0, 0.5); 
+            transition: bottom 0.25s cubic-bezier(0.25, 1, 0.5, 1); 
+            padding: 20px; 
+            box-sizing: border-box; 
+            display: flex; 
+            flex-direction: column; 
+            z-index: 999 !important;
+            overscroll-behavior: contain !important;
+        }
+        .todo-drawer.open { 
+            bottom: 0px !important; 
+        }
+
+        @media (min-width: 601px) {
+            .todo-drawer {
+                width: 440px;
+                height: 300px;
+                bottom: -330px !important;
+            }
+            .todo-toggle-btn.drawer-open {
+                bottom: 300px !important;
+            }
+        }
+
+        /* [축소 모드 (전체화면 해제): 남색 여백 띠 형성 및 투두/버튼 일제히 상향 안착 (IMG_3922, IMG_1451)] */
+        html.shrunk-mode body {
+            position: absolute !important;
             top: 0 !important;
             left: 0 !important;
             right: 0 !important;
-            bottom: 0 !important;
-            width: auto !important;
+            bottom: env(safe-area-inset-bottom, 34px) !important;
             height: auto !important;
             min-height: 0 !important;
-            overflow: hidden !important;
-            z-index: 999999 !important;
+        }
+        html.shrunk-mode .todo-toggle-btn {
+            bottom: env(safe-area-inset-bottom, 34px) !important;
+        }
+        html.shrunk-mode .todo-toggle-btn.drawer-open {
+            bottom: calc(290px + env(safe-area-inset-bottom, 34px)) !important;
+        }
+        html.shrunk-mode .todo-drawer.open {
+            bottom: env(safe-area-inset-bottom, 34px) !important;
+        }
+        html.shrunk-mode .bottom-action-btn {
+            bottom: calc(20px + env(safe-area-inset-bottom, 34px)) !important;
+        }
+
+        @media (min-width: 601px) {
+            html.shrunk-mode body {
+                bottom: env(safe-area-inset-bottom, 24px) !important;
+            }
+            html.shrunk-mode .todo-toggle-btn {
+                bottom: env(safe-area-inset-bottom, 24px) !important;
+            }
+            html.shrunk-mode .todo-toggle-btn.drawer-open {
+                bottom: calc(300px + env(safe-area-inset-bottom, 24px)) !important;
+            }
+            html.shrunk-mode .todo-drawer.open {
+                bottom: env(safe-area-inset-bottom, 24px) !important;
+            }
+            html.shrunk-mode .bottom-action-btn {
+                bottom: calc(32px + env(safe-area-inset-bottom, 24px)) !important;
+            }
         }
 
         button, input, textarea, div, span, p {
@@ -475,67 +551,6 @@
             transform: translateX(16px);
         }
 
-        /* [투두 버튼 기본 규격 및 바닥 밀착] */
-        .todo-toggle-btn {
-            background-color: rgba(255, 255, 255, 0.25); 
-            border: 1px solid rgba(255, 255, 255, 0.3); 
-            backdrop-filter: blur(8px); 
-            -webkit-backdrop-filter: blur(8px);
-            color: #ffffff; 
-            font-family: inherit; 
-            font-size: 15px; 
-            font-weight: bold; 
-            padding: 8px 24px; 
-            border-radius: 20px 20px 0 0; 
-            cursor: pointer;
-            position: fixed !important; 
-            bottom: 0px !important; 
-            left: 50% !important; 
-            transform: translateX(-50%) translateZ(0) !important; 
-            transition: bottom 0.3s cubic-bezier(0.25, 1, 0.5, 1), background-color 0.2s; 
-            box-shadow: 0 -2px 10px rgba(0,0,0,0.15); 
-            z-index: 1000 !important;
-            -webkit-tap-highlight-color: transparent;
-        }
-        .todo-toggle-btn.drawer-open { 
-            bottom: 290px !important; 
-        }
-
-        .todo-drawer {
-            position: fixed !important; 
-            bottom: -320px !important; 
-            left: 50% !important; 
-            transform: translateX(-50%) translateZ(0) !important; 
-            width: 360px; 
-            max-width: 92vw; 
-            height: 290px;
-            background-color: rgba(11, 20, 36, 0.96); 
-            border: 1px solid rgba(255, 255, 255, 0.25);
-            border-radius: 24px 24px 0 0; 
-            box-shadow: 0 -5px 25px rgba(0, 0, 0, 0.5); 
-            transition: bottom 0.3s cubic-bezier(0.25, 1, 0.5, 1); 
-            padding: 20px; 
-            box-sizing: border-box; 
-            display: flex; 
-            flex-direction: column; 
-            z-index: 999 !important;
-            overscroll-behavior: contain !important;
-        }
-        .todo-drawer.open { 
-            bottom: 0px !important; 
-        }
-
-        @media (min-width: 601px) {
-            .todo-drawer {
-                width: 440px;
-                height: 300px;
-                bottom: -330px !important;
-            }
-            .todo-toggle-btn.drawer-open {
-                bottom: 300px !important;
-            }
-        }
-
         .todo-form { display: flex; gap: 8px; margin-bottom: 12px; align-items: flex-end; }
         
         .todo-input { 
@@ -548,6 +563,7 @@
         }
         .todo-input::placeholder { line-height: 20px; color: #666666; vertical-align: middle; }
         
+        /* [모바일 추가 터치 시 자판 흔들림 방지] */
         .todo-add-btn { font-family: inherit; background-color: #6A55C9; color: white; border: none; height: 38px; padding: 0 16px; border-radius: 12px; font-size: 14px; font-weight: bold; cursor: pointer; transition: background 0.1s; -webkit-tap-highlight-color: transparent; }
         
         .todo-list { 
@@ -1041,7 +1057,7 @@
             align-items: center; 
             justify-content: center; 
             z-index: 100;
-            transition: all 0.2s ease;
+            transition: all 0.25s ease;
             -webkit-tap-highlight-color: transparent;
             padding: 0;
             flex-shrink: 0;
@@ -1113,7 +1129,7 @@
     <button class="top-action-btn settings-btn" id="settings-toggle-btn" onclick="openSettings()" title="설정">
         <svg viewBox="0 0 24 24" width="22" height="22" preserveAspectRatio="xMidYMid meet" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="3"></circle>
-            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
         </svg>
     </button>
 
@@ -1175,7 +1191,6 @@
     <div class="todo-drawer" id="todo-drawer">
         <div class="todo-form">
             <textarea class="todo-input" id="todo-input" placeholder="오늘의 할 일은 무엇인가요?" rows="1" onkeydown="handleTodoKeyDown(event)" oninput="autoResizeTextarea(this)"></textarea>
-            <!-- [모바일 추가 터치 시 자판이 닫히거나 흔들리지 않도록 포커스 보호] -->
             <button type="button" class="todo-add-btn" onpointerdown="event.preventDefault()" onclick="addTodo()">추가</button>
         </div>
         <ul class="todo-list" id="todo-list"></ul>
@@ -1384,7 +1399,7 @@
             if (fadeIn) fadeVolume(volume, 2000, generation);
         }
 
-        /* [정확히 0.8초(800ms) 페이드아웃 적용 — Focus와 Break 동일] */
+        /* [요청하신 0.8초(800ms) 페이드아웃 적용 — Focus와 Break 동일] */
         function stopAudioEngine() {
             if (soundRequest && soundRequest.loop && !isMuted) {
                 const generation = soundGeneration;
@@ -2755,7 +2770,7 @@
             }, { passive: true });
         });
 
-        /* [서랍 밖을 터치했을 때만 키보드와 서랍이 자연스럽게 닫히도록 blur 연결] */
+        /* [서랍 밖 터치 시 blur 처리] */
         document.addEventListener('click', (event) => {
             const path = event.composedPath ? event.composedPath() : [];
             const isInsideDrawer = path.includes(todoDrawer) || todoDrawer.contains(event.target);
@@ -2775,7 +2790,6 @@
             }
         });
 
-        /* [높이 재계산 시 레이아웃 덜컹거림 방지] */
         function autoResizeTextarea(textarea) {
             if (!textarea) return;
             textarea.style.height = '38px';
@@ -2916,7 +2930,7 @@
             renderTodos();
         }
 
-        /* [전체화면 제어: 홈 화면 PWA vs 일반 브라우저 아이콘 1:1 완벽 대응] */
+        /* [전체화면 제어: 홈 화면 PWA ↔ 일반 브라우저 아이콘 1:1 완벽 대응] */
         const ICON_ENTER_FULLSCREEN = '<path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" stroke-linecap="round" stroke-linejoin="round"/>';
         const ICON_EXIT_FULLSCREEN = `
             <path d="M4 10h3.5a1.5 1.5 0 0 0 1.5-1.5V5" stroke-linecap="round" stroke-linejoin="round"/>
@@ -2929,35 +2943,36 @@
         const isSafariBrowser = !document.documentElement.classList.contains('standalone') && /Safari/i.test(navigator.userAgent) && !/CriOS|FxiOS|EdgiOS|OPiOS|Chrome|Chromium|Firefox|Edg\//i.test(navigator.userAgent);
         const isStandaloneApp = document.documentElement.classList.contains('standalone') || window.navigator.standalone === true || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
 
-        // 홈 화면 PWA는 기본값이 전체화면(true), 일반 브라우저는 기본값이 일반 모드(false)
+        // 홈 화면 PWA는 기본값이 전체화면(true)
         let isFullView = isStandaloneApp ? true : false;
 
         function updateFullscreenDisplay(full) {
             isFullView = full;
             if (isStandaloneApp) {
-                // 홈 화면 PWA: full=true가 기본 꽉 찬 전체화면(IMG_3921, IMG_1452)
+                // 홈 화면 PWA
                 if (full) {
-                    document.documentElement.classList.remove('pseudo-fullscreen');
-                    document.body.classList.remove('pseudo-fullscreen');
-                    fsIcon.innerHTML = ICON_EXIT_FULLSCREEN; // 누르면 축소되므로 축소 아이콘 표시
+                    // 전체화면 (기본값): 여백 없이 바닥 밀착
+                    document.documentElement.classList.remove('shrunk-mode');
+                    document.body.classList.remove('shrunk-mode');
+                    fsIcon.innerHTML = ICON_EXIT_FULLSCREEN; // 축소 아이콘
                     document.getElementById('fullscreen-toggle-btn').title = "화면 축소";
                 } else {
-                    // 전체화면 해제(축소 모드): 하단 여백 형성 (IMG_3922, IMG_1451)
-                    document.documentElement.classList.add('pseudo-fullscreen');
-                    document.body.classList.add('pseudo-fullscreen');
-                    fsIcon.innerHTML = ICON_ENTER_FULLSCREEN; // 누르면 다시 커지므로 확대 아이콘 표시
+                    // 전체화면 해제 (축소 모드): 남색 띠 형성 + 투두와 버튼 상향 이동
+                    document.documentElement.classList.add('shrunk-mode');
+                    document.body.classList.add('shrunk-mode');
+                    fsIcon.innerHTML = ICON_ENTER_FULLSCREEN; // 확대 아이콘
                     document.getElementById('fullscreen-toggle-btn').title = "전체화면";
                 }
             } else {
-                // 일반 브라우저: full=true가 전체화면, full=false가 기본 화면
+                // 일반 브라우저
                 if (full) {
-                    document.documentElement.classList.add('pseudo-fullscreen');
-                    document.body.classList.add('pseudo-fullscreen');
+                    document.documentElement.classList.remove('shrunk-mode');
+                    document.body.classList.remove('shrunk-mode');
                     fsIcon.innerHTML = ICON_EXIT_FULLSCREEN;
                     document.getElementById('fullscreen-toggle-btn').title = "전체화면 종료";
                 } else {
-                    document.documentElement.classList.remove('pseudo-fullscreen');
-                    document.body.classList.remove('pseudo-fullscreen');
+                    document.documentElement.classList.add('shrunk-mode');
+                    document.body.classList.add('shrunk-mode');
                     fsIcon.innerHTML = ICON_ENTER_FULLSCREEN;
                     document.getElementById('fullscreen-toggle-btn').title = "전체화면";
                 }
@@ -2984,7 +2999,7 @@
             if (isTouchDevice) e.preventDefault();
         }, { passive: false });
 
-        /* [초기 구동: 홈 화면 앱은 기본 꽉 찬 전체화면으로 즉시 실행] */
+        /* [초기 구동: 홈 화면 앱은 기본 전체화면으로 즉시 구동] */
         if (!activeDayKey) activeDayKey = getDateKey(new Date(lastActiveTime));
         lastSavedDate = getFormattedDate(keyToDate(activeDayKey));
         statsDateEl.textContent = lastSavedDate;
