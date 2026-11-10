@@ -11,7 +11,7 @@
     <link rel="apple-touch-icon" href="./potato.png">
 
     <title>Potato Timer</title>
-    <meta name="potato-build" content="R23-20261110">
+    <meta name="potato-build" content="R21-20261110">
     
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -521,8 +521,6 @@
             -webkit-tap-highlight-color: transparent;
         }
         .todo-input::placeholder { line-height: 20px; color: #666666; vertical-align: middle; }
-        
-        /* [수정: 모바일에서 추가 버튼 터치 시 자판이 내려가지 않도록 onpointerdown 제어] */
         .todo-add-btn { font-family: inherit; background-color: #6A55C9; color: white; border: none; height: 38px; padding: 0 16px; border-radius: 12px; font-size: 14px; font-weight: bold; cursor: pointer; transition: background 0.1s; -webkit-tap-highlight-color: transparent; }
         
         .todo-list { 
@@ -1150,8 +1148,7 @@
     <div class="todo-drawer" id="todo-drawer">
         <div class="todo-form">
             <textarea class="todo-input" id="todo-input" placeholder="오늘의 할 일은 무엇인가요?" rows="1" onkeydown="handleTodoKeyDown(event)" oninput="autoResizeTextarea(this)"></textarea>
-            <!-- [수정: 모바일 추가 터치 시 자판이 닫히지 않고 그대로 위로 올라와 있도록 포커스 보호] -->
-            <button type="button" class="todo-add-btn" onpointerdown="event.preventDefault()" onclick="addTodo()">추가</button>
+            <button type="button" class="todo-add-btn" onclick="addTodo()">추가</button>
         </div>
         <ul class="todo-list" id="todo-list"></ul>
     </div>
@@ -1180,7 +1177,7 @@
                     <div class="settings-inputs-wrapper">
                         <input type="number" inputmode="numeric" class="settings-num-input" id="input-focus-min" min="0" max="999" onblur="validateInput(this, 999)">
                         <span class="settings-unit-label">min</span>
-                        <input type="number" inputmode="numeric" class="settings-num-input" id="input-focus-sec" min="0" max="59" onblur="validateInput(this, 59)">
+                        <input type="number" inputmode="numeric" class="settings-num-input" id="input-focus-sec" min="0" max="59" oninput="validateInput(this, 59)" onblur="validateInput(this, 59)">
                         <span class="settings-unit-label">sec</span>
                     </div>
                 </div>
@@ -1190,7 +1187,7 @@
                     <div class="settings-inputs-wrapper">
                         <input type="number" inputmode="numeric" class="settings-num-input" id="input-short-min" min="0" max="999" onblur="validateInput(this, 999)">
                         <span class="settings-unit-label">min</span>
-                        <input type="number" inputmode="numeric" class="settings-num-input" id="input-short-sec" min="0" max="59" onblur="validateInput(this, 59)">
+                        <input type="number" inputmode="numeric" class="settings-num-input" id="input-short-sec" min="0" max="59" oninput="validateInput(this, 59)" onblur="validateInput(this, 59)">
                         <span class="settings-unit-label">sec</span>
                     </div>
                 </div>
@@ -1298,7 +1295,7 @@
         const userId = urlParams.get('user') || 'default_local_user';
         const isCloudSyncActive = !!db && urlParams.has('user');
 
-        /* [R8 기반 오디오 시스템: 사파리 100% 호환 원본 복원 & Focus/Break 100% 동일 페이드인/페이드아웃] */
+        /* [R8 오디오 시스템: 정확한 구조 및 시간(1500ms) 복원, Focus/Break 100% 동일 적용] */
         const AUDIO_FILES = { focus: './focus.mp3', short: './break.mp3', alarm: './alarm.mp3' };
         const alarmPlayer = new Audio();
         alarmPlayer.preload = 'auto';
@@ -1332,7 +1329,6 @@
             }, 50);
         }
 
-        /* [Focus와 Break 둘 다 loop=true이므로 똑같이 0에서 시작해 2초간 서서히 페이드인] */
         function playSound(key, loop, volume) {
             if (key === 'alarm' && soundRequest && soundRequest.loop) return;
             stopAllSound();
@@ -1345,9 +1341,7 @@
             alarmPlayer.src = AUDIO_FILES[key];
             alarmPlayer.muted = false;
             alarmPlayer.loop = !!loop;
-            
-            // Focus와 Break 둘 다 동일하게 페이드인 적용
-            const fadeIn = !!loop;
+            const fadeIn = (key === 'focus');
             alarmPlayer.volume = fadeIn ? 0 : volume;
             try {
                 const p = alarmPlayer.play();
@@ -1357,10 +1351,10 @@
             } catch (e) {
                 if (generation === soundGeneration) soundRequest = null;
             }
-            if (fadeIn) fadeVolume(volume, 2000, generation);
+            if (fadeIn) fadeVolume(volume, 4000, generation);
         }
 
-        /* [R8/R10 정밀 복원: Focus와 Break 둘 다 1.5초(1500ms) 동안 서서히 줄어드는 페이드아웃 보장] */
+        /* [R8 페이드아웃 원형 복원: Focus와 Break 둘 다 똑같이 1500ms 페이드아웃 보장] */
         function stopAudioEngine() {
             if (soundRequest && soundRequest.loop && !isMuted) {
                 const generation = soundGeneration;
@@ -1928,7 +1922,7 @@
             if (curHour > prevHour && curHour >= 1) playHourlyAlert();
         }
 
-        /* [수정: Break의 1초->0초 전환 연산을 Focus와 100% 동일하게 통일] */
+        /* [Break의 1초->0초 진입과 Focus의 연산을 100% 동일하게 통일] */
         const TICK_MS = 50;
 
         function timerLoop() {
@@ -2120,9 +2114,10 @@
             if (!customAlert.classList.contains('show') || isClosingAlert) return;
             isClosingAlert = true;
             
+            // 팝업 부드러운 페이드아웃 (0.25초)
             customAlert.classList.remove('show');
             
-            // Focus & Break 공통 1.5초(1500ms) 페이드아웃 실행
+            // R8 방식 1500ms 페이드아웃 실행 (Focus & Break 동일 적용)
             stopAudioEngine();
             try { updateLastActive(); } catch (e) {}
 
@@ -2837,7 +2832,6 @@
             });
         }
 
-        /* [수정: 모바일에서도 태블릿처럼 투두 추가 시 자판이 닫히지 않고 포커스 유지] */
         function addTodo() {
             updateLastActive();
             const input = document.getElementById('todo-input');
@@ -2859,7 +2853,6 @@
             setTimeout(() => {
                 input.scrollTop = 0;
                 autoResizeTextarea(input);
-                input.focus();
             }, 0);
             
             saveState();
