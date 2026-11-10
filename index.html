@@ -10,8 +10,8 @@
     <link rel="icon" type="image/png" href="./potato.png">
     <link rel="apple-touch-icon" href="./potato.png">
 
-    <title>Potato Timer · R15</title>
-    <meta name="potato-build" content="R15-20261110">
+    <title>Potato Timer · R16</title>
+    <meta name="potato-build" content="R16-20261110">
     
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -1761,8 +1761,14 @@
             starTimeoutId = setTimeout(triggerShootingStar, 5000);
         }
 
+        /* [수정: 루프 사운드 종료 시 1.5초(1500ms) 부드러운 페이드아웃 복원] */
         function stopAudioEngine() {
-            stopAllSound();
+            if (soundRequest && soundRequest.loop && !isMuted) {
+                const generation = soundGeneration;
+                fadeVolume(0, 1500, generation);
+            } else {
+                stopAllSound();
+            }
             try { stabilizeSkySmoothly(); } catch (e) {}
         }
         function playEndAlert(mode) { playSound(mode === 'focus' ? 'focus' : 'short', true, 1); }
@@ -1828,6 +1834,7 @@
             if (statsCounterEl.textContent !== label) statsCounterEl.textContent = label;
         }
 
+        /* [수정: 게이지 비율 0~1 클램핑으로 끝부분 튐 완전 방지] */
         function updateDisplay() {
             let state = tabStates[currentMode];
             const displaySecs = currentMode === 'timer' ? Math.floor(state.timeRemaining) : Math.ceil(state.timeRemaining);
@@ -1851,7 +1858,8 @@
                     progressCircle.style.strokeDasharray = `${fillLen} ${totalLength}`;
                 }
             } else {
-                const offset = totalLength - (state.timeRemaining / state.totalSeconds) * totalLength;
+                const progressRatio = Math.max(0, Math.min(1, state.timeRemaining / (state.totalSeconds || 1)));
+                const offset = totalLength - progressRatio * totalLength;
                 const offStr = (isNaN(offset) ? 0 : offset).toFixed(2);
                 if (progressCircle.__lastDash !== 'full') { progressCircle.style.strokeDasharray = `${totalLength} ${totalLength}`; progressCircle.__lastDash = 'full'; }
                 if (progressCircle.__lastOff !== offStr) { progressCircle.style.strokeDashoffset = offStr; progressCircle.__lastOff = offStr; }
@@ -1937,6 +1945,8 @@
         }
 
         const TICK_MS = 50;
+
+        /* [수정: Break 타이머 끝 도달 시 정밀 클램핑으로 튀는 현상 완벽 방지] */
         function timerLoop() {
             const now = Date.now();
             if (!lastTimestamp) lastTimestamp = now;
@@ -1951,15 +1961,18 @@
 
                 if (tabStates.focus.timeRemaining <= 0) {
                     tabStates.focus.timeRemaining = 0;
+                    updateDisplay();
                     stopTimerWithAlert('focus');
                 }
             }
 
             if (tabStates.short.isRunning) {
-                tabStates.short.timeRemaining -= elapsedSeconds;
+                const consumed = Math.min(Math.max(0, elapsedSeconds), tabStates.short.timeRemaining);
+                tabStates.short.timeRemaining = Math.max(0, tabStates.short.timeRemaining - consumed);
 
                 if (tabStates.short.timeRemaining <= 0) {
                     tabStates.short.timeRemaining = 0;
+                    updateDisplay();
                     stopTimerWithAlert('short');
                 }
             }
@@ -2114,7 +2127,7 @@
             customAlert.classList.add('show');
         }
 
-        /* [완료 확인 버튼: 부드러운 0.25초 페이드아웃 + 더블클릭 방지] */
+        /* [완료 확인 버튼: 부드러운 0.25초 닫힘 + 1.5초 오디오 페이드아웃] */
         let isClosingAlert = false;
         function closeCustomAlert() {
             if (!customAlert.classList.contains('show') || isClosingAlert) return;
@@ -2123,8 +2136,8 @@
             // 팝업 부드럽게 페이드아웃
             customAlert.classList.remove('show');
             
-            stopAllSound();
-            try { stabilizeSkySmoothly(); } catch (e) {}
+            // 1.5초 오디오 페이드아웃 실행
+            stopAudioEngine();
             try { updateLastActive(); } catch (e) {}
 
             try {
@@ -2173,12 +2186,14 @@
             ['focus', 'short'].forEach(m => {
                 const st = tabStates[m];
                 if (!st.isRunning) return;
-                if (m === 'focus' && lastTimestamp) {
+                if (lastTimestamp) {
                     const e = Math.min(1, Math.max(0, (now - lastTimestamp) / 1000));
                     if (e > 0) {
                         st.timeRemaining = Math.max(0.001, st.timeRemaining - e);
-                        addFocusSeconds(e, now);
-                        actualFocusSecondsCompleted += e;
+                        if (m === 'focus') {
+                            addFocusSeconds(e, now);
+                            actualFocusSecondsCompleted += e;
+                        }
                     }
                 }
                 st.isRunning = false;
