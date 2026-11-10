@@ -10,8 +10,8 @@
     <link rel="icon" type="image/png" href="./potato.png">
     <link rel="apple-touch-icon" href="./potato.png">
 
-    <title>Potato Timer · R12</title>
-    <meta name="potato-build" content="R12-20261110">
+    <title>Potato Timer · R13</title>
+    <meta name="potato-build" content="R13-20261110">
     
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -453,7 +453,7 @@
             transform: translateX(16px);
         }
 
-        /* [투두 버튼: 기본 설정] */
+        /* [투두 버튼 기본 서식] */
         .todo-toggle-btn {
             background-color: rgba(255, 255, 255, 0.25); 
             border: 1px solid rgba(255, 255, 255, 0.3); 
@@ -514,31 +514,31 @@
             }
         }
 
-        /* [수정: '홈 화면에 추가' PWA 환경 바닥 밀착 보정 (-6px 하향 적용)] */
+        /* [수정 핵심: iPadOS 33pt Safe Area 갭 완전 상쇄 바닥 고정] */
         html.standalone .todo-toggle-btn {
-            bottom: -6px !important;
-            padding-bottom: 14px !important;
+            bottom: -32px !important;
+            padding-bottom: 40px !important;
         }
         html.standalone .todo-toggle-btn.drawer-open {
-            bottom: 284px !important;
+            bottom: 258px !important;
         }
         html.standalone .todo-drawer {
-            bottom: -330px !important;
+            bottom: -350px !important;
         }
         html.standalone .todo-drawer.open {
-            bottom: -6px !important;
-            padding-bottom: 26px !important;
+            bottom: -32px !important;
+            padding-bottom: 52px !important;
         }
         @media (min-width: 601px) {
             html.standalone .todo-toggle-btn.drawer-open {
-                bottom: 294px !important;
+                bottom: 268px !important;
             }
             html.standalone .todo-drawer {
-                bottom: -340px !important;
+                bottom: -360px !important;
             }
             html.standalone .todo-drawer.open {
-                bottom: -6px !important;
-                padding-bottom: 26px !important;
+                bottom: -32px !important;
+                padding-bottom: 52px !important;
             }
         }
 
@@ -1178,7 +1178,7 @@
     <div class="custom-alert-overlay" id="custom-alert">
         <div class="custom-alert-box" id="custom-alert-box">
             <div class="custom-alert-text" id="custom-alert-msg">시간이 다 되었습니다! 고생하셨어요 🎉</div>
-            <button class="custom-alert-btn" id="completion-confirm" type="button" onclick="acknowledgeCompletion(event)">확인</button>
+            <button class="custom-alert-btn" id="completion-confirm" type="button" onclick="closeCustomAlert()">확인</button>
         </div>
     </div>
 
@@ -1318,26 +1318,40 @@
         const userId = urlParams.get('user') || 'default_local_user';
         const isCloudSyncActive = !!db && urlParams.has('user');
 
-        /* [오디오 시스템: 사파리 권한 사전 언락 + 외부 음악 일시정지 후 자동 재개] */
+        /* [개선된 오디오 엔진: 사파리 Web Audio API 잠금 해제 + 외부 음악 일시정지 후 자동 재개] */
         const AUDIO_FILES = { focus: './focus.mp3', short: './break.mp3', alarm: './alarm.mp3' };
         
+        let audioCtx = null;
+        let isAudioUnlocked = false;
+
         const alarmPlayer = new Audio();
-        alarmPlayer.preload = 'auto';
         alarmPlayer.playsInline = true;
         alarmPlayer.setAttribute('playsinline', '');
         
         let soundGeneration = 0;
         let soundRequest = null;
         let fadeTimer = null;
-        let isAudioUnlocked = false;
 
-        // 첫 제스처(START 등) 시 사파리 오디오 채널 무음 언락 (비동기 재생 허용 획득)
+        // 첫 사용자 터치(START 버튼, 탭 전환 등) 시 사파리 오디오 파이프라인 무음 언락
         function unlockAudioEngine() {
             if (isAudioUnlocked) return;
             isAudioUnlocked = true;
 
-            if ('audioSession' in navigator) {
-                try { navigator.audioSession.type = 'ambient'; } catch (e) {}
+            const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+            if (AudioContextClass) {
+                try {
+                    if (!audioCtx) audioCtx = new AudioContextClass();
+                    if (audioCtx.state === 'suspended') {
+                        audioCtx.resume();
+                    }
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    gain.gain.value = 0; // 완전 무음
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start(0);
+                    osc.stop(audioCtx.currentTime + 0.001);
+                } catch (e) {}
             }
 
             try {
@@ -1354,7 +1368,7 @@
             } catch (e) {}
         }
 
-        // 오디오 정지 및 채널 반환 (렉 원인이던 동기식 load() 호출 제거)
+        // 오디오 정지 및 사운드 채널 반환 (외부 음악 자동 재개 신호)
         function stopAllSound() {
             soundGeneration++;
             soundRequest = null;
@@ -1401,7 +1415,12 @@
             stopAllSound();
             if (isMuted) return;
 
-            // 음악 앱 일시 정지 및 알람 후 자동 재개를 위한 transient-solo 모드
+            // AudioContext 활성화 상태 보장
+            if (audioCtx && audioCtx.state === 'suspended') {
+                audioCtx.resume().catch(() => {});
+            }
+
+            // 외부 음악 앱을 잠시 멈추고 알람 재생, 종료 시 자동 재개
             if ('audioSession' in navigator) {
                 try { navigator.audioSession.type = 'transient-solo'; } catch (e) {}
             }
@@ -2221,14 +2240,8 @@
             customAlert.classList.add('show');
         }
 
-        /* [수정: 완료 확인 버튼 더블클릭 방지 및 렉 제거 락] */
+        /* [완료 확인 버튼 단일화 및 프리징 방지 락] */
         let isClosingAlert = false;
-        function acknowledgeCompletion(e) {
-            if (e) { e.preventDefault(); e.stopPropagation(); }
-            if (isClosingAlert) return;
-            closeCustomAlert();
-        }
-
         function closeCustomAlert() {
             if (!customAlert.classList.contains('show') || isClosingAlert) return;
             isClosingAlert = true;
@@ -2275,7 +2288,7 @@
                 }
             } catch (e) { console.warn('completion-bookkeeping', e); }
 
-            setTimeout(() => { isClosingAlert = false; }, 350);
+            setTimeout(() => { isClosingAlert = false; }, 300);
         }
 
         function pauseFocusBreakForBackground() {
@@ -2332,7 +2345,7 @@
             pauseFocusBreakForBackground();
         });
 
-        /* [수정: sec도 min과 완전히 동일하게 1자리 입력 시 앞에 0 자동 추가 패딩] */
+        /* [수정: sec 및 min 입력값 1자리 입력 시 자동으로 0 채움 통일] */
         let settingsSnapshot = null;
 
         function validateInput(input, maxVal, minVal = 0) {
