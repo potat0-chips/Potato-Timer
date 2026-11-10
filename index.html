@@ -11,7 +11,16 @@
     <link rel="apple-touch-icon" href="./potato.png">
 
     <title>Potato Timer</title>
-    <meta name="potato-build" content="R27-20261110">
+    <meta name="potato-build" content="R28-20261110">
+
+    <!-- [PWA 즉각 감지: 렌더링 전 standalone 클래스 부여] -->
+    <script>
+        try {
+            if (window.navigator.standalone === true || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)) {
+                document.documentElement.classList.add('standalone');
+            }
+        } catch (e) {}
+    </script>
     
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -33,10 +42,13 @@
             text-rendering: optimizeLegibility;
         }
 
+        /* [수정: dvh를 제거하고 기기 물리적 끝까지 100% 확장] */
         html, body {
             overflow: hidden !important;
             width: 100%;
             height: 100%;
+            min-height: 100vh;
+            min-height: -webkit-fill-available;
             margin: 0;
             padding: 0;
             background-color: #0b1424;
@@ -52,6 +64,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            height: 100%;
             min-height: 100vh;
             min-height: -webkit-fill-available;
             user-select: none;
@@ -59,7 +72,7 @@
             position: relative;
         }
 
-        /* [홈 화면 기본 전체화면: 기기 최하단 바닥에 투두 완벽 밀착 (IMG_3921, IMG_1452)] */
+        /* [홈 화면 PWA 기본 전체화면: 기기 최하단 바닥에 투두 완벽 밀착] */
         html.standalone:not(.pseudo-fullscreen), 
         html.standalone:not(.pseudo-fullscreen) body {
             height: 100% !important;
@@ -462,7 +475,7 @@
             transform: translateX(16px);
         }
 
-        /* [투두 버튼 본래 규격] */
+        /* [투두 버튼 본래 규격 및 바닥 밀착] */
         .todo-toggle-btn {
             background-color: rgba(255, 255, 255, 0.25); 
             border: 1px solid rgba(255, 255, 255, 0.3); 
@@ -1290,13 +1303,6 @@
     </button>
 
     <script>
-        /* [중요] 홈 화면 PWA 감지 즉시 최상단 html에 standalone 클래스 부여 */
-        try {
-            if (window.navigator.standalone === true || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)) {
-                document.documentElement.classList.add('standalone');
-            }
-        } catch (e) {}
-
         const firebaseConfig = {
             apiKey: "AIzaSyDUQR8UdbWhyBZHUqegvd6ZSjfXuGiNYpI",
             authDomain: "potato-timer-402f8.firebaseapp.com",
@@ -1318,7 +1324,7 @@
         const userId = urlParams.get('user') || 'default_local_user';
         const isCloudSyncActive = !!db && urlParams.has('user');
 
-        /* [R8/R23 기반 오디오 시스템: Focus/Break 100% 동일 처리] */
+        /* [R8/R23 기반 오디오 시스템: 사파리 100% 호환 & Focus/Break 동일 처리] */
         const AUDIO_FILES = { focus: './focus.mp3', short: './break.mp3', alarm: './alarm.mp3' };
         const alarmPlayer = new Audio();
         alarmPlayer.preload = 'auto';
@@ -1379,7 +1385,7 @@
             if (fadeIn) fadeVolume(volume, 2000, generation);
         }
 
-        /* [요청하신 0.8초(800ms) 페이드아웃: Focus와 Break 동일 적용] */
+        /* [요청하신 0.8초(800ms) 페이드아웃 적용 — Focus와 Break 동일] */
         function stopAudioEngine() {
             if (soundRequest && soundRequest.loop && !isMuted) {
                 const generation = soundGeneration;
@@ -1947,7 +1953,7 @@
             if (curHour > prevHour && curHour >= 1) playHourlyAlert();
         }
 
-        /* [Break와 Focus 연산 100% 동일 동기화] */
+        /* [수정: Break의 1초->0초 전환 연산을 Focus와 100% 동일하게 통일] */
         const TICK_MS = 50;
 
         function timerLoop() {
@@ -2002,6 +2008,7 @@
         }
 
         function toggleTimer() {
+            unlockAudioEngine();
             updateLastActive();
             let state = tabStates[currentMode];
 
@@ -2033,6 +2040,7 @@
         }
 
         function resetTimer() {
+            unlockAudioEngine();
             updateLastActive();
             let state = tabStates[currentMode];
             state.isRunning = false;
@@ -2091,6 +2099,7 @@
         }
 
         function handleManualTabChange(mode) {
+            unlockAudioEngine();
             updateLastActive();
             if (isAutoPomo) {
                 isAutoPomo = false;
