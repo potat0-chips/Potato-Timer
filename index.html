@@ -11,7 +11,7 @@
     <link rel="apple-touch-icon" href="./potato.png">
 
     <title>Potato Timer</title>
-    <meta name="potato-build" content="R35-CosmicMasterplan-20261110">
+    <meta name="potato-build" content="R36-ArtisticCosmic-20261110">
     
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -78,7 +78,7 @@
             transform: translateZ(0);
         }
 
-        /* [우주 쇼 전용 풀스크린 Canvas: 60fps 하드웨어 가속] */
+        /* [우주 쇼 전용 고성능 60fps 캔버스] */
         #cosmic-canvas {
             position: fixed;
             top: 0;
@@ -214,7 +214,7 @@
             transition: none; 
         }
         
-        /* [시계 텍스트: 카운트다운 절정기 시 야광 네온 광원 극대화] */
+        /* [요청 반영: 시계 숫자에 테두리/빛무리 넣지 않고 원래의 깔끔한 기본 상태 유지] */
         .time-display {
             position: absolute;
             font-size: 46px; 
@@ -227,7 +227,6 @@
             align-items: center;
             justify-content: center;
             z-index: 10;
-            transition: text-shadow 0.3s ease;
         }
 
         .controls { display: flex; gap: 24px; align-items: center; justify-content: center; margin-bottom: 22px; }
@@ -394,7 +393,7 @@
             transform: translateX(16px);
         }
 
-        /* [투두 버튼 본래 규격] */
+        /* [투두 버튼 원래 규격 및 바닥 밀착] */
         .todo-toggle-btn {
             background-color: rgba(255, 255, 255, 0.25); 
             border: 1px solid rgba(255, 255, 255, 0.3); 
@@ -1022,7 +1021,7 @@
     </style>
 </head>
 <body>
-    <!-- [우주 쇼 전용 고성능 60fps 캔버스] -->
+    <!-- [사진 1, 2, 3 정밀 모사 고성능 60fps 캔버스 레이어] -->
     <canvas id="cosmic-canvas"></canvas>
 
     <!-- 우측 상단 음소거 버튼 -->
@@ -1320,7 +1319,7 @@
         function unlockAudioEngine() {}
 
         /* ==============================================================
-           🌌 [COSMIC FX ENGINE: 타이머 종료 연출 마스터플랜 100% 구현]
+           🌌 [COSMIC FX ENGINE: 사진 1, 2, 3 정밀 구현 모사]
            ============================================================== */
         const CosmicFX = {
             canvas: null,
@@ -1333,14 +1332,18 @@
             mode: 'focus',     // 'focus' | 'short'
             
             dimAlpha: 0,       // 0 ~ 0.90
-            nebulaAlpha: 0,    // 0 ~ 0.90 (은하수 / 오로라 공통 알파)
+            nebulaAlpha: 0,    // 0 ~ 0.90
             
             stars: [],
-            maxStars: 70,      // 평상시 70개 -> 2단계 시 300개로 증가
+            maxStars: 70,
+            
+            // Focus: IMG_3930 & IMG_3931 정밀 모사용 성간 먼지 및 다이아몬드 별빛
+            stardust: [],
+            sparkles: [],
             
             meteors: [],
             meteorTimer: 0,
-            meteorInterval: 3500, // 1단계 3~4초, 2단계 180~280ms
+            meteorInterval: 3500,
             
             auroraPhase: 0,
             recoveryStartTime: 0,
@@ -1351,18 +1354,45 @@
                 this.handleResize();
                 window.addEventListener('resize', () => this.handleResize());
                 
-                // 기본 밤하늘 별 생성 (60-80개)
+                // 1. 기본 밤하늘 배경 별
                 this.stars = [];
                 for (let i = 0; i < 300; i++) {
                     this.stars.push({
                         x: Math.random(),
                         y: Math.random(),
-                        size: Math.random() * 1.8 + 0.8,
-                        alpha: Math.random() * 0.5 + 0.2,
-                        baseAlpha: Math.random() * 0.5 + 0.3,
+                        size: Math.random() * 1.6 + 0.6,
+                        baseAlpha: Math.random() * 0.45 + 0.25,
                         twinkleSpeed: Math.random() * 0.03 + 0.015,
-                        phase: Math.random() * Math.PI * 2,
-                        activeInIdle: i < 75
+                        phase: Math.random() * Math.PI * 2
+                    });
+                }
+                
+                // 2. IMG_3930 & IMG_3931: S자 곡선을 따라 흩뿌려진 고밀도 성간 먼지(Stardust) 320개
+                this.stardust = [];
+                for (let i = 0; i < 320; i++) {
+                    const t = Math.random(); // 0(상단) ~ 1(하단)
+                    const spread = (Math.random() - 0.5) * (Math.random() - 0.5) * 160; // 중심선에 집중된 분산
+                    const palette = ['#ffffff', '#f5d0fe', '#e9d5ff', '#c4b5fd', '#bae6fd'];
+                    this.stardust.push({
+                        t: t,
+                        spread: spread,
+                        size: Math.random() * 1.7 + 0.4,
+                        color: palette[Math.floor(Math.random() * palette.length)],
+                        alpha: Math.random() * 0.7 + 0.3,
+                        twinkle: Math.random() * 0.04 + 0.01,
+                        phase: Math.random() * Math.PI * 2
+                    });
+                }
+                
+                // 3. IMG_3931: 은하수 줄기를 따라 반짝이는 다이아몬드 글린트 별빛 (Hero Sparkle Stars)
+                this.sparkles = [];
+                for (let i = 0; i < 14; i++) {
+                    this.sparkles.push({
+                        t: (i / 13) * 0.88 + 0.06 + (Math.random() - 0.5) * 0.08,
+                        spread: (Math.random() - 0.5) * 50,
+                        size: Math.random() * 3.5 + 4.5,
+                        twinkleSpeed: Math.random() * 0.05 + 0.02,
+                        phase: Math.random() * Math.PI * 2
                     });
                 }
                 
@@ -1379,7 +1409,26 @@
                 this.ctx.scale(this.dpr, this.dpr);
             },
             
-            // 타이머 루프에서 매 프레임 남은 시간에 따라 연출 수치 계산
+            // 은하수 S-커브 궤적 함수 (t: 0 ~ 1)
+            getMilkyWayPoint(t) {
+                // 상단 좌측에서 중앙을 지나 하단 우측으로 부드럽게 흐르는 궤적
+                const p0 = { x: this.width * 0.15, y: -40 };
+                const p1 = { x: this.width * 0.35, y: this.height * 0.32 };
+                const p2 = { x: this.width * 0.65, y: this.height * 0.68 };
+                const p3 = { x: this.width * 0.85, y: this.height + 40 };
+                
+                const u = 1 - t;
+                const tt = t * t;
+                const uu = u * u;
+                const uuu = uu * u;
+                const ttt = tt * t;
+                
+                return {
+                    x: uuu * p0.x + 3 * uu * t * p1.x + 3 * u * tt * p2.x + ttt * p3.x,
+                    y: uuu * p0.y + 3 * uu * t * p1.y + 3 * u * tt * p2.y + ttt * p3.y
+                };
+            },
+            
             updateState(timeRemaining, currentMode, isRunning) {
                 if (!isRunning || currentMode === 'timer') {
                     if (this.stage === 1 || this.stage === 2) this.abort();
@@ -1387,36 +1436,22 @@
                 }
                 
                 this.mode = currentMode;
-                const timeEl = document.getElementById('time-text');
                 
                 if (timeRemaining <= 15 && timeRemaining > 10) {
-                    // [1단계: 도입기 (15초 ~ 10초)]
                     this.stage = 1;
                     const p = (15 - timeRemaining) / 5; // 0.0 -> 1.0
                     this.dimAlpha = p * 0.40;          // 0% -> 40%
                     this.nebulaAlpha = p * 0.30;       // 0% -> 30%
                     this.maxStars = Math.floor(75 + p * 85);
-                    this.meteorInterval = 3400 - p * 1200; // 3.4초 -> 2.2초
-                    
-                    if (timeEl) {
-                        const col = (this.mode === 'focus') ? '#8E79E7' : '#34d399';
-                        timeEl.style.textShadow = `0 0 14px rgba(255,255,255,0.8), 0 0 25px ${col}`;
-                    }
+                    this.meteorInterval = 3400 - p * 1200;
                 } else if (timeRemaining <= 10 && timeRemaining > 0) {
-                    // [2단계: 절정기 (10초 ~ 0초)]
                     this.stage = 2;
                     const p = (10 - timeRemaining) / 10; // 0.0 -> 1.0
                     this.dimAlpha = 0.40 + p * 0.50;    // 40% -> 90%
                     this.nebulaAlpha = 0.30 + p * 0.60; // 30% -> 90%
-                    this.maxStars = Math.floor(160 + p * 140); // 160 -> 300개
-                    this.meteorInterval = 600 - p * 380;       // 빗발치는 유성우 (220ms마다 생성)
-                    
-                    if (timeEl) {
-                        const col = (this.mode === 'focus') ? '#c084fc' : '#10b981';
-                        timeEl.style.textShadow = `0 0 20px #ffffff, 0 0 35px ${col}, 0 0 65px ${col}`;
-                    }
+                    this.maxStars = Math.floor(160 + p * 140);
+                    this.meteorInterval = 600 - p * 380;
                 } else if (timeRemaining <= 0 && this.stage >= 2) {
-                    // [3단계: 유지기 (0초 완료 팝업 유지 중)]
                     this.stage = 3;
                     this.dimAlpha = 0.90;
                     this.nebulaAlpha = 0.90;
@@ -1425,18 +1460,12 @@
                 }
             },
             
-            // 완료 팝업의 [확인] 버튼 클릭 시 4단계(복귀기) 트리거
             dismiss() {
                 if (this.stage === 0) return;
                 this.stage = 4;
                 this.recoveryStartTime = Date.now();
-                const timeEl = document.getElementById('time-text');
-                if (timeEl) {
-                    timeEl.style.textShadow = '0 2px 10px rgba(0, 0, 0, 0.4), 0 0 20px rgba(255, 255, 255, 0.2)';
-                }
             },
             
-            // 중도 취소 / 정지 / 시간 증가 시 Fail-safe 복귀
             abort() {
                 if (this.stage !== 0 && this.stage !== 4) {
                     this.dismiss();
@@ -1444,11 +1473,11 @@
             },
             
             spawnMeteor() {
-                const len = Math.random() * 65 + 75; // 75 ~ 140px 길이
+                const len = Math.random() * 65 + 75;
                 const startX = Math.random() * (this.width * 1.2) - (this.width * 0.1);
                 const startY = Math.random() * (this.height * 0.6) - 80;
                 const speed = Math.random() * 9 + 13;
-                const angle = (Math.PI / 180) * (Math.random() * 15 + 35); // 35 ~ 50도 각도
+                const angle = (Math.PI / 180) * (Math.random() * 15 + 35);
                 
                 this.meteors.push({
                     x: startX,
@@ -1465,7 +1494,6 @@
                 this.ctx.clearRect(0, 0, this.width, this.height);
                 this.auroraPhase += 0.016;
                 
-                // [4단계: 복귀기 감속 애니메이션 3.5초]
                 if (this.stage === 4) {
                     const elapsed = Date.now() - this.recoveryStartTime;
                     const duration = 3500;
@@ -1476,45 +1504,42 @@
                         this.maxStars = 70;
                         this.meteors = [];
                     } else {
-                        const progress = elapsed / duration;
-                        const factor = 1 - progress;
+                        const factor = 1 - (elapsed / duration);
                         this.dimAlpha = 0.90 * factor;
                         this.nebulaAlpha = 0.90 * factor;
                         this.maxStars = Math.floor(70 + 230 * factor);
                     }
                 }
                 
-                // 1. 암전 레이어 드로잉
+                // 1. 암전 오버레이
                 if (this.dimAlpha > 0.005) {
                     this.ctx.save();
-                    if (this.mode === 'focus') {
-                        this.ctx.fillStyle = `rgba(4, 7, 16, ${this.dimAlpha})`;
-                    } else {
-                        this.ctx.fillStyle = `rgba(3, 16, 12, ${this.dimAlpha})`;
-                    }
+                    this.ctx.fillStyle = (this.mode === 'focus') 
+                        ? `rgba(4, 7, 16, ${this.dimAlpha})` 
+                        : `rgba(2, 11, 18, ${this.dimAlpha})`;
                     this.ctx.fillRect(0, 0, this.width, this.height);
                     this.ctx.restore();
                 }
                 
-                // 2. 모드별 대형 오브젝트 드로잉
+                // 2. 대형 우주 오브젝트 드로잉
                 if (this.nebulaAlpha > 0.005) {
                     if (this.mode === 'focus') {
-                        this.drawMilkyWay(this.nebulaAlpha);
+                        this.drawMilkyWayRealistic(this.nebulaAlpha);
                     } else {
-                        this.drawAurora(this.nebulaAlpha);
+                        this.drawAuroraRealistic(this.nebulaAlpha);
                     }
                 }
                 
-                // 3. 반짝이는 별 드로잉
+                // 3. 반짝이는 배경 별
                 this.drawStars();
                 
-                // 4. 별똥별 제어 및 드로잉
+                // 4. 별똥별
                 if (this.stage >= 1 && this.stage <= 3) {
                     if (now - this.meteorTimer > this.meteorInterval) {
                         this.meteorTimer = now;
                         this.spawnMeteor();
                         if (this.stage >= 2 && Math.random() < 0.4) {
-                            this.spawnMeteor(); // 절정기에는 동시 다발 유성 생성
+                            this.spawnMeteor();
                         }
                     }
                 }
@@ -1523,57 +1548,131 @@
                 requestAnimationFrame((t) => this.loop(t));
             },
             
-            // [Focus: 보랏빛 사선 은하수 성운]
-            drawMilkyWay(alpha) {
+            /* [Focus 모드: IMG_3930 & IMG_3931 정밀 모사 - 성간 먼지 구름과 다이아몬드 별빛] */
+            drawMilkyWayRealistic(alpha) {
                 this.ctx.save();
-                this.ctx.translate(this.width * 0.5, this.height * 0.48);
-                this.ctx.rotate((-32 * Math.PI) / 180);
                 
-                const gradWidth = Math.max(this.width, this.height) * 1.5;
-                const gradHeight = 320;
+                // (1) 궤적을 따라 부드러운 가스 성운 안개(Nebula Fog) 중첩 드로잉
+                const steps = 18;
+                for (let i = 0; i <= steps; i++) {
+                    const t = i / steps;
+                    const pt = this.getMilkyWayPoint(t);
+                    const rad = Math.min(this.width, this.height) * 0.45;
+                    
+                    const g = this.ctx.createRadialGradient(pt.x, pt.y, 10, pt.x, pt.y, rad);
+                    g.addColorStop(0, `rgba(243, 232, 255, ${alpha * 0.28})`);
+                    g.addColorStop(0.28, `rgba(168, 85, 247, ${alpha * 0.22})`);
+                    g.addColorStop(0.60, `rgba(99, 102, 241, ${alpha * 0.12})`);
+                    g.addColorStop(1, 'rgba(11, 20, 36, 0)');
+                    
+                    this.ctx.fillStyle = g;
+                    this.ctx.beginPath();
+                    this.ctx.arc(pt.x, pt.y, rad, 0, Math.PI * 2);
+                    this.ctx.fill();
+                }
                 
-                const g = this.ctx.createRadialGradient(0, 0, 40, 0, 0, gradWidth * 0.55);
-                g.addColorStop(0, `rgba(168, 85, 247, ${alpha * 0.42})`);
-                g.addColorStop(0.25, `rgba(106, 85, 201, ${alpha * 0.32})`);
-                g.addColorStop(0.55, `rgba(59, 130, 246, ${alpha * 0.18})`);
-                g.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                // (2) IMG_3930: 강줄기를 따라 촘촘하게 흩뿌려진 은하수 먼지 입자들 (Stardust Cluster)
+                this.stardust.forEach(sd => {
+                    sd.phase += sd.twinkle;
+                    const pt = this.getMilkyWayPoint(sd.t);
+                    
+                    // 곡선 접선 방향의 수직 벡터로 분산 오프셋 계산
+                    const px = pt.x + sd.spread;
+                    const py = pt.y - sd.spread * 0.35;
+                    
+                    const curAlpha = alpha * sd.alpha * (0.6 + Math.sin(sd.phase) * 0.4);
+                    this.ctx.fillStyle = sd.color;
+                    this.ctx.globalAlpha = Math.max(0, Math.min(1, curAlpha));
+                    this.ctx.beginPath();
+                    this.ctx.arc(px, py, sd.size, 0, Math.PI * 2);
+                    this.ctx.fill();
+                });
                 
-                this.ctx.fillStyle = g;
-                this.ctx.fillRect(-gradWidth * 0.5, -gradHeight * 0.5, gradWidth, gradHeight);
+                // (3) IMG_3931: 중심 척추선을 따라 보석처럼 빛나는 4-point 다이아몬드 별빛 (Hero Sparkles)
+                this.sparkles.forEach(sp => {
+                    sp.phase += sp.twinkleSpeed;
+                    const pt = this.getMilkyWayPoint(sp.t);
+                    const sx = pt.x + sp.spread;
+                    const sy = pt.y;
+                    
+                    const sparkleAlpha = alpha * (0.55 + Math.sin(sp.phase) * 0.45);
+                    const size = sp.size * (0.8 + Math.sin(sp.phase) * 0.3);
+                    
+                    // 소프트 원형 코어 글로우
+                    const haloGrad = this.ctx.createRadialGradient(sx, sy, 0, sx, sy, size * 2.8);
+                    haloGrad.addColorStop(0, `rgba(255, 255, 255, ${sparkleAlpha * 0.95})`);
+                    haloGrad.addColorStop(0.3, `rgba(224, 231, 255, ${sparkleAlpha * 0.5})`);
+                    haloGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+                    
+                    this.ctx.globalAlpha = 1;
+                    this.ctx.fillStyle = haloGrad;
+                    this.ctx.beginPath();
+                    this.ctx.arc(sx, sy, size * 2.8, 0, Math.PI * 2);
+                    this.ctx.fill();
+                    
+                    // 섬세한 4방향 십자 빛갈라짐(Cross Star Flare)
+                    this.ctx.save();
+                    this.ctx.strokeStyle = `rgba(255, 255, 255, ${sparkleAlpha * 0.9})`;
+                    this.ctx.lineWidth = 1.0;
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(sx - size * 2.2, sy);
+                    this.ctx.lineTo(sx + size * 2.2, sy);
+                    this.ctx.moveTo(sx, sy - size * 2.2);
+                    this.ctx.lineTo(sx, sy + size * 2.2);
+                    this.ctx.stroke();
+                    this.ctx.restore();
+                });
+                
                 this.ctx.restore();
             },
             
-            // [Break: 상단 커튼형 에메랄드 오로라 파형(Sine-wave)]
-            drawAurora(alpha) {
+            /* [Break 모드: IMG_3932 정밀 모사 - 수직 광선 주름 커튼 오로라] */
+            drawAuroraRealistic(alpha) {
                 this.ctx.save();
-                const colors = [
-                    { r: 52, g: 211, b: 153, a: 0.35, speed: 1.0, freq: 0.003, amp: 45, offset: 0 },
-                    { r: 45, g: 212, b: 191, a: 0.28, speed: 0.8, freq: 0.004, amp: 35, offset: 1.8 },
-                    { r: 16, g: 185, b: 129, a: 0.22, speed: 1.3, freq: 0.0025, amp: 55, offset: 3.4 }
+                
+                // 2개의 겹쳐진 주름 커튼 레이어 (배경 딥 바이올렛 + 전경 선명한 에메랄드/민트)
+                const layers = [
+                    { baseYRatio: 0.34, heightAmp: 160, speed: 0.6, pleatFreq: 0.045, colorMint: 'rgba(52, 211, 153, ', colorViolet: 'rgba(129, 140, 248, ' },
+                    { baseYRatio: 0.38, heightAmp: 190, speed: 0.9, pleatFreq: 0.065, colorMint: 'rgba(16, 185, 129, ', colorViolet: 'rgba(147, 51, 234, ' }
                 ];
                 
-                colors.forEach(col => {
-                    this.ctx.beginPath();
-                    this.ctx.moveTo(0, 0);
+                layers.forEach((ly, lIdx) => {
+                    const baseY = this.height * ly.baseYRatio;
+                    const step = 4; // 4px마다 수직 광선 주름 컬럼을 밀도 있게 드로잉
                     
-                    const baseY = this.height * 0.28;
-                    for (let x = 0; x <= this.width; x += 15) {
-                        const y = Math.sin(x * col.freq + this.auroraPhase * col.speed + col.offset) * col.amp +
-                                  Math.sin(x * col.freq * 2.1 - this.auroraPhase * 0.5) * (col.amp * 0.4) + baseY;
-                        this.ctx.lineTo(x, y);
+                    for (let x = -20; x <= this.width + 20; x += step) {
+                        // 굽이치는 하단 능선 높이
+                        const waveY = baseY + 
+                            Math.sin(x * 0.0035 + this.auroraPhase * ly.speed) * 45 +
+                            Math.sin(x * 0.008 - this.auroraPhase * 0.5) * 20;
+                        
+                        // IMG_3932 특유의 위로 뻗어나가는 빛의 높이
+                        const rayHeight = ly.heightAmp + 
+                            Math.sin(x * 0.005 + this.auroraPhase * 0.4) * 35;
+                        
+                        // IMG_3932의 핵심: 수직 주름(Pleats / Vertical Ray Streaks) 밝기 강도
+                        const pleat = 0.55 + 0.45 * Math.sin(x * ly.pleatFreq + this.auroraPhase * 0.7) * 
+                                                   Math.cos(x * 0.02 - this.auroraPhase * 0.3);
+                        
+                        const colAlpha = alpha * pleat * (lIdx === 1 ? 0.92 : 0.65);
+                        
+                        // 바닥에서부터 위로 수직으로 뻗는 빛의 선형 그라데이션
+                        const g = this.ctx.createLinearGradient(x, waveY, x, waveY - rayHeight);
+                        g.addColorStop(0, `${ly.colorMint}${colAlpha * 0.95})`);         // 바닥: 선명한 민트/에메랄드
+                        g.addColorStop(0.28, `${ly.colorMint}${colAlpha * 0.75})`);
+                        g.addColorStop(0.60, `${ly.colorViolet}${colAlpha * 0.55})`);     // 중간: 신비로운 바이올렛/인디고
+                        g.addColorStop(0.88, `rgba(168, 85, 247, ${colAlpha * 0.25})`);  // 상단: 연보랏빛 끝자락
+                        g.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                        
+                        this.ctx.strokeStyle = g;
+                        this.ctx.lineWidth = step + 1.2;
+                        this.ctx.beginPath();
+                        this.ctx.moveTo(x, waveY);
+                        this.ctx.lineTo(x, waveY - rayHeight);
+                        this.ctx.stroke();
                     }
-                    
-                    this.ctx.lineTo(this.width, 0);
-                    this.ctx.closePath();
-                    
-                    const g = this.ctx.createLinearGradient(0, 0, 0, baseY + 60);
-                    g.addColorStop(0, `rgba(${col.r}, ${col.g}, ${col.b}, ${alpha * col.a})`);
-                    g.addColorStop(0.65, `rgba(${col.r}, ${col.g}, ${col.b}, ${alpha * col.a * 0.6})`);
-                    g.addColorStop(1, `rgba(${col.r}, ${col.g}, ${col.b}, 0)`);
-                    
-                    this.ctx.fillStyle = g;
-                    this.ctx.fill();
                 });
+                
                 this.ctx.restore();
             },
             
@@ -1582,7 +1681,7 @@
                 for (let i = 0; i < count; i++) {
                     const s = this.stars[i];
                     s.phase += s.twinkleSpeed;
-                    const twinkle = (Math.sin(s.phase) + 1) * 0.5; // 0 ~ 1
+                    const twinkle = (Math.sin(s.phase) + 1) * 0.5;
                     const currentAlpha = s.baseAlpha * (0.4 + twinkle * 0.6);
                     
                     this.ctx.fillStyle = `rgba(255, 255, 255, ${currentAlpha})`;
@@ -1599,7 +1698,7 @@
                     m.y += m.vy;
                     
                     if (this.stage === 4) {
-                        m.alpha *= 0.94; // 복귀기 시 잔상 부드럽게 소멸
+                        m.alpha *= 0.94;
                     }
                     
                     const tailX = m.x - (m.vx / Math.hypot(m.vx, m.vy)) * m.len;
@@ -1620,7 +1719,6 @@
                     this.ctx.stroke();
                     this.ctx.restore();
                     
-                    // 화면 밖으로 나가거나 투명해지면 제거
                     if (m.x > this.width + 120 || m.y > this.height + 120 || m.alpha <= 0.02) {
                         this.meteors.splice(i, 1);
                     }
@@ -1708,7 +1806,7 @@
 
         let isTooltipPinned = false;
 
-        /* [음소거 로직: 100% 원본 복원] */
+        /* [음소거 로직: 원본 22px 규격 유지] */
         let isMuted = false; 
         try { isMuted = localStorage.getItem(`potato-muted-${userId}`) === 'true'; } catch (e) {}
 
@@ -2060,7 +2158,6 @@
             state.totalSeconds = state.isRunning ? (state.totalSeconds + delta) : state.timeRemaining;
             if (state.totalSeconds < state.timeRemaining) state.totalSeconds = state.timeRemaining;
             
-            // 15초 이상으로 늘어나면 우주 쇼 안전 복귀
             if (state.timeRemaining > 15) {
                 CosmicFX.abort();
             }
@@ -2121,7 +2218,6 @@
             if (curHour > prevHour && curHour >= 1) playHourlyAlert();
         }
 
-        /* [타이머 엔진 & 우주 쇼 타임라인 연동] */
         const TICK_MS = 50;
 
         function timerLoop() {
@@ -2190,7 +2286,6 @@
                 startBtn.textContent = 'START';
                 saveState();
                 
-                // 중도 정지 시 우주 쇼 즉시 4단계 복귀
                 CosmicFX.abort();
                 
                 if (!tabStates.focus.isRunning && !tabStates.short.isRunning && !tabStates.timer.isRunning) {
@@ -2219,7 +2314,6 @@
             let state = tabStates[currentMode];
             state.isRunning = false;
             
-            // 리셋 시 우주 쇼 즉시 복귀
             CosmicFX.abort();
             
             if (currentMode === 'timer') {
@@ -2286,7 +2380,7 @@
             setMode(mode);
         }
 
-        /* [타이머 0초 도달: 3단계 고요한 축하 모드 진입] */
+        /* [타이머 0초 완료 시: 3단계 고요한 축하 모드] */
         function stopTimerWithAlert(completedMode) {
             try { updateLastActive(); } catch (e) { console.warn('completion-activity', e); }
             tabStates[completedMode].isRunning = false;
@@ -2314,7 +2408,7 @@
             lastCompletedMode = completedMode;
             customAlert.classList.add('show');
             
-            // 3단계 유지기 확정 (팝업 뒤로 우주 쇼 계속 진행)
+            // 3단계 고요한 축하 (팝업 뒤로 성간 먼지 은하수 / 오로라 지속)
             CosmicFX.stage = 3;
             CosmicFX.dimAlpha = 0.90;
             CosmicFX.nebulaAlpha = 0.90;
@@ -2332,10 +2426,10 @@
             
             customAlert.classList.remove('show');
             
-            // 4단계 복귀기 가동 (3.5초간 서서히 암전/은하수 페이드아웃)
+            // 4단계 복귀기 (3.5초간 은하수/오로라 자연스럽게 소멸)
             CosmicFX.dismiss();
             
-            // Focus & Break 공통 0.8초 페이드아웃 실행
+            // Focus & Break 공통 0.8초 페이드아웃
             stopAudioEngine();
             try { updateLastActive(); } catch (e) {}
 
@@ -3123,20 +3217,17 @@
             isFullscreenActive = active;
             if (isStandaloneApp) {
                 if (active) {
-                    // 전체화면 (기본값): 여백 없이 액정 끝까지 밀착 (IMG_3921 / IMG_1452)
                     document.documentElement.classList.remove('pseudo-fullscreen');
                     document.body.classList.remove('pseudo-fullscreen');
-                    fsIcon.innerHTML = ICON_EXIT_FULLSCREEN; // 축소 아이콘 표시
+                    fsIcon.innerHTML = ICON_EXIT_FULLSCREEN; // 축소 아이콘
                     document.getElementById('fullscreen-toggle-btn').title = "화면 축소";
                 } else {
-                    // 전체화면 해제 (축소 모드): 남색 띠 형성 + 투두 상향 안착 (IMG_3922 / IMG_1451)
                     document.documentElement.classList.add('pseudo-fullscreen');
                     document.body.classList.add('pseudo-fullscreen');
-                    fsIcon.innerHTML = ICON_ENTER_FULLSCREEN; // 확대 아이콘 표시
+                    fsIcon.innerHTML = ICON_ENTER_FULLSCREEN; // 확대 아이콘
                     document.getElementById('fullscreen-toggle-btn').title = "전체화면";
                 }
             } else {
-                // 일반 브라우저: 기본 모드 유지
                 document.documentElement.classList.remove('pseudo-fullscreen');
                 document.body.classList.remove('pseudo-fullscreen');
                 fsIcon.innerHTML = ICON_ENTER_FULLSCREEN;
