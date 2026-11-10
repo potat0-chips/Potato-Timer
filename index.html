@@ -11,7 +11,7 @@
     <link rel="apple-touch-icon" href="./potato.png">
 
     <title>Potato Timer</title>
-    <meta name="potato-build" content="R26-20261110">
+    <meta name="potato-build" content="R27-20261110">
     
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -37,7 +37,6 @@
             overflow: hidden !important;
             width: 100%;
             height: 100%;
-            height: 100dvh;
             margin: 0;
             padding: 0;
             background-color: #0b1424;
@@ -54,10 +53,24 @@
             align-items: center;
             justify-content: center;
             min-height: 100vh;
-            min-height: 100dvh;
+            min-height: -webkit-fill-available;
             user-select: none;
             -webkit-user-select: none;
             position: relative;
+        }
+
+        /* [홈 화면 기본 전체화면: 기기 최하단 바닥에 투두 완벽 밀착 (IMG_3921, IMG_1452)] */
+        html.standalone:not(.pseudo-fullscreen), 
+        html.standalone:not(.pseudo-fullscreen) body {
+            height: 100% !important;
+            min-height: 100vh !important;
+            min-height: -webkit-fill-available !important;
+        }
+        html.standalone:not(.pseudo-fullscreen) .todo-toggle-btn {
+            bottom: 0px !important;
+        }
+        html.standalone:not(.pseudo-fullscreen) .todo-drawer.open {
+            bottom: 0px !important;
         }
 
         /* [축소 모드: 하단 여백 형성 (IMG_3922, IMG_1451)] */
@@ -449,7 +462,7 @@
             transform: translateX(16px);
         }
 
-        /* [기기 바닥에 완벽 밀착되는 투두 버튼: IMG_3921, IMG_1452] */
+        /* [투두 버튼 본래 규격] */
         .todo-toggle-btn {
             background-color: rgba(255, 255, 255, 0.25); 
             border: 1px solid rgba(255, 255, 255, 0.3); 
@@ -1277,6 +1290,13 @@
     </button>
 
     <script>
+        /* [중요] 홈 화면 PWA 감지 즉시 최상단 html에 standalone 클래스 부여 */
+        try {
+            if (window.navigator.standalone === true || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)) {
+                document.documentElement.classList.add('standalone');
+            }
+        } catch (e) {}
+
         const firebaseConfig = {
             apiKey: "AIzaSyDUQR8UdbWhyBZHUqegvd6ZSjfXuGiNYpI",
             authDomain: "potato-timer-402f8.firebaseapp.com",
@@ -1298,7 +1318,7 @@
         const userId = urlParams.get('user') || 'default_local_user';
         const isCloudSyncActive = !!db && urlParams.has('user');
 
-        /* [R8/R23 기반 오디오 시스템: 사파리 100% 호환 & Focus/Break 동일 처리] */
+        /* [R8/R23 기반 오디오 시스템: Focus/Break 100% 동일 처리] */
         const AUDIO_FILES = { focus: './focus.mp3', short: './break.mp3', alarm: './alarm.mp3' };
         const alarmPlayer = new Audio();
         alarmPlayer.preload = 'auto';
@@ -1359,7 +1379,7 @@
             if (fadeIn) fadeVolume(volume, 2000, generation);
         }
 
-        /* [수정: 정확히 요청하신 0.8초(800ms) 페이드아웃 적용 — Focus와 Break 동일] */
+        /* [요청하신 0.8초(800ms) 페이드아웃: Focus와 Break 동일 적용] */
         function stopAudioEngine() {
             if (soundRequest && soundRequest.loop && !isMuted) {
                 const generation = soundGeneration;
@@ -2113,7 +2133,7 @@
             customAlert.classList.add('show');
         }
 
-        /* [완료 확인 버튼: 부드러운 팝업 닫힘 + 정확히 0.8초 R8 오디오 페이드아웃] */
+        /* [완료 확인 버튼: 부드러운 팝업 닫힘 + 0.8초 R8 오디오 페이드아웃] */
         let isClosingAlert = false;
         function closeCustomAlert() {
             if (!customAlert.classList.contains('show') || isClosingAlert) return;
@@ -2121,7 +2141,7 @@
             
             customAlert.classList.remove('show');
             
-            // Focus & Break 공통 0.8초(800ms) 페이드아웃 실행
+            // Focus & Break 공통 0.8초 페이드아웃 실행
             stopAudioEngine();
             try { updateLastActive(); } catch (e) {}
 
@@ -2863,7 +2883,6 @@
             input.style.height = '38px';
             input.scrollTop = 0;
 
-            // 이미 포커스된 상태면 추가적인 .focus() 호출을 생략하여 모바일 화면 울렁거림 원천 차단
             if (document.activeElement !== input) {
                 input.focus({ preventScroll: true });
             }
@@ -2903,34 +2922,36 @@
 
         const isTouchDevice = (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) || (navigator.maxTouchPoints || 0) > 1;
         const isSafariBrowser = /Safari/i.test(navigator.userAgent) && !/CriOS|FxiOS|EdgiOS|OPiOS|Chrome|Chromium|Firefox|Edg\//i.test(navigator.userAgent);
-        const isStandaloneApp = window.navigator.standalone === true || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+        const isStandaloneApp = document.documentElement.classList.contains('standalone') || window.navigator.standalone === true || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
 
         let isFullView = isStandaloneApp ? true : false;
 
         function updateFullscreenDisplay(full) {
             isFullView = full;
             if (isStandaloneApp) {
+                // 홈 화면 PWA: full=true가 기본 꽉 찬 전체화면(IMG_3921, IMG_1452)
                 if (full) {
                     document.documentElement.classList.remove('pseudo-fullscreen');
                     document.body.classList.remove('pseudo-fullscreen');
-                    fsIcon.innerHTML = ICON_EXIT_FULLSCREEN;
+                    fsIcon.innerHTML = ICON_EXIT_FULLSCREEN; // 축소 아이콘
                     document.getElementById('fullscreen-toggle-btn').title = "화면 축소";
                 } else {
                     document.documentElement.classList.add('pseudo-fullscreen');
                     document.body.classList.add('pseudo-fullscreen');
-                    fsIcon.innerHTML = ICON_ENTER_FULLSCREEN;
+                    fsIcon.innerHTML = ICON_ENTER_FULLSCREEN; // 확대 아이콘
                     document.getElementById('fullscreen-toggle-btn').title = "전체화면";
                 }
             } else {
+                // 일반 브라우저: full=false가 기본 축소 화면, full=true가 전체화면
                 if (full) {
                     document.documentElement.classList.add('pseudo-fullscreen');
                     document.body.classList.add('pseudo-fullscreen');
-                    fsIcon.innerHTML = ICON_EXIT_FULLSCREEN;
+                    fsIcon.innerHTML = ICON_EXIT_FULLSCREEN; // 축소 아이콘
                     document.getElementById('fullscreen-toggle-btn').title = "전체화면 종료";
                 } else {
                     document.documentElement.classList.remove('pseudo-fullscreen');
                     document.body.classList.remove('pseudo-fullscreen');
-                    fsIcon.innerHTML = ICON_ENTER_FULLSCREEN;
+                    fsIcon.innerHTML = ICON_ENTER_FULLSCREEN; // 확대 아이콘
                     document.getElementById('fullscreen-toggle-btn').title = "전체화면";
                 }
             }
@@ -2956,7 +2977,7 @@
             if (isTouchDevice) e.preventDefault();
         }, { passive: false });
 
-        /* [초기 구동: PWA는 꽉 찬 화면(축소아이콘), 브라우저는 축소화면(확대아이콘)] */
+        /* [초기 구동: PWA는 기본 전체화면(IMG_3921, IMG_1452) 및 축소 아이콘으로 즉시 시작] */
         if (!activeDayKey) activeDayKey = getDateKey(new Date(lastActiveTime));
         lastSavedDate = getFormattedDate(keyToDate(activeDayKey));
         statsDateEl.textContent = lastSavedDate;
