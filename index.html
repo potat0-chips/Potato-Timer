@@ -10,8 +10,8 @@
     <link rel="icon" type="image/png" href="./potato.png">
     <link rel="apple-touch-icon" href="./potato.png">
 
-    <title>Potato Timer · R17</title>
-    <meta name="potato-build" content="R17-20261110">
+    <title>Potato Timer</title>
+    <meta name="potato-build" content="R21-20261110">
     
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -1177,7 +1177,7 @@
                     <div class="settings-inputs-wrapper">
                         <input type="number" inputmode="numeric" class="settings-num-input" id="input-focus-min" min="0" max="999" onblur="validateInput(this, 999)">
                         <span class="settings-unit-label">min</span>
-                        <input type="number" inputmode="numeric" class="settings-num-input" id="input-focus-sec" min="0" max="59" onblur="validateInput(this, 59)">
+                        <input type="number" inputmode="numeric" class="settings-num-input" id="input-focus-sec" min="0" max="59" oninput="validateInput(this, 59)" onblur="validateInput(this, 59)">
                         <span class="settings-unit-label">sec</span>
                     </div>
                 </div>
@@ -1187,7 +1187,7 @@
                     <div class="settings-inputs-wrapper">
                         <input type="number" inputmode="numeric" class="settings-num-input" id="input-short-min" min="0" max="999" onblur="validateInput(this, 999)">
                         <span class="settings-unit-label">min</span>
-                        <input type="number" inputmode="numeric" class="settings-num-input" id="input-short-sec" min="0" max="59" onblur="validateInput(this, 59)">
+                        <input type="number" inputmode="numeric" class="settings-num-input" id="input-short-sec" min="0" max="59" oninput="validateInput(this, 59)" onblur="validateInput(this, 59)">
                         <span class="settings-unit-label">sec</span>
                     </div>
                 </div>
@@ -1295,7 +1295,7 @@
         const userId = urlParams.get('user') || 'default_local_user';
         const isCloudSyncActive = !!db && urlParams.has('user');
 
-        /* [오디오 시스템] */
+        /* [R8 오디오 시스템: 정확한 구조 및 시간(1500ms) 복원, Focus/Break 100% 동일 적용] */
         const AUDIO_FILES = { focus: './focus.mp3', short: './break.mp3', alarm: './alarm.mp3' };
         const alarmPlayer = new Audio();
         alarmPlayer.preload = 'auto';
@@ -1309,76 +1309,67 @@
         function stopAllSound() {
             soundGeneration++;
             soundRequest = null;
-            if (fadeTimer) {
-                clearInterval(fadeTimer);
-                fadeTimer = null;
-            }
-            try { 
-                alarmPlayer.pause(); 
-                alarmPlayer.currentTime = 0;
-            } catch (e) {}
+            clearInterval(fadeTimer);
+            fadeTimer = null;
+            try { alarmPlayer.pause(); } catch (e) {}
             alarmPlayer.loop = false;
+            try { alarmPlayer.currentTime = 0; } catch (e) {}
+            alarmPlayer.volume = 1;
         }
 
-        /* [수정: 30ms 단위 정밀 볼륨 선형 보간] */
         function fadeVolume(target, ms, generation) {
-            if (fadeTimer) clearInterval(fadeTimer);
+            clearInterval(fadeTimer);
             const start = alarmPlayer.volume;
             const t0 = Date.now();
             fadeTimer = setInterval(() => {
-                if (generation !== soundGeneration) { 
-                    clearInterval(fadeTimer); 
-                    fadeTimer = null; 
-                    return; 
-                }
+                if (generation !== soundGeneration) { clearInterval(fadeTimer); fadeTimer = null; return; }
                 const p = Math.min(1, (Date.now() - t0) / ms);
-                alarmPlayer.volume = Math.max(0, Math.min(1, start + (target - start) * p));
-                if (p >= 1) { 
-                    clearInterval(fadeTimer); 
-                    fadeTimer = null; 
-                    if (target === 0 && generation === soundGeneration) {
-                        stopAllSound();
-                    }
-                }
-            }, 30);
+                alarmPlayer.volume = start + (target - start) * p;
+                if (p >= 1) { clearInterval(fadeTimer); fadeTimer = null; }
+            }, 50);
         }
 
         function playSound(key, loop, volume) {
             if (key === 'alarm' && soundRequest && soundRequest.loop) return;
             stopAllSound();
             if (isMuted) return;
-
             const generation = soundGeneration;
             soundRequest = { key, loop: !!loop };
-
             alarmPlayer.onended = () => {
-                if (generation === soundGeneration && !loop) {
-                    stopAllSound();
-                }
+                if (generation === soundGeneration && !loop) soundRequest = null;
             };
-
             alarmPlayer.src = AUDIO_FILES[key];
             alarmPlayer.muted = false;
             alarmPlayer.loop = !!loop;
-            
             const fadeIn = (key === 'focus');
             alarmPlayer.volume = fadeIn ? 0 : volume;
-
             try {
                 const p = alarmPlayer.play();
-                if (p && p.catch) {
-                    p.catch(() => {
-                        if (generation === soundGeneration) soundRequest = null;
-                    });
-                }
+                if (p && p.catch) p.catch(() => {
+                    if (generation === soundGeneration) soundRequest = null;
+                });
             } catch (e) {
                 if (generation === soundGeneration) soundRequest = null;
             }
-
-            if (fadeIn) {
-                fadeVolume(volume, 4000, generation);
-            }
+            if (fadeIn) fadeVolume(volume, 4000, generation);
         }
+
+        /* [R8 페이드아웃 원형 복원: Focus와 Break 둘 다 똑같이 1500ms 페이드아웃 보장] */
+        function stopAudioEngine() {
+            if (soundRequest && soundRequest.loop && !isMuted) {
+                const generation = soundGeneration;
+                fadeVolume(0, 1500, generation);
+                setTimeout(() => { if (generation === soundGeneration) stopAllSound(); }, 1500);
+            } else {
+                stopAllSound();
+            }
+            try { stabilizeSkySmoothly(); } catch (e) {}
+        }
+
+        function playEndAlert(mode) { playSound(mode === 'focus' ? 'focus' : 'short', true, 1); }
+        function playHourlyAlert() { playSound('alarm', false, 0.65); }
+
+        function unlockAudioEngine() {}
 
         const HARD_DEFAULTS = {
             focus: { min: 25, sec: 0 },
@@ -1762,19 +1753,6 @@
             starTimeoutId = setTimeout(triggerShootingStar, 5000);
         }
 
-        /* [수정: 루프 사운드 종료 시 0.5초(500ms) 페이드아웃] */
-        function stopAudioEngine() {
-            if (soundRequest && soundRequest.loop && !isMuted) {
-                const generation = soundGeneration;
-                fadeVolume(0, 500, generation);
-            } else {
-                stopAllSound();
-            }
-            try { stabilizeSkySmoothly(); } catch (e) {}
-        }
-        function playEndAlert(mode) { playSound(mode === 'focus' ? 'focus' : 'short', true, 1); }
-        function playHourlyAlert() { playSound('alarm', false, 0.65); }
-
         function getFormattedDate(d = new Date()) {
             const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
             const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -1835,7 +1813,7 @@
             if (statsCounterEl.textContent !== label) statsCounterEl.textContent = label;
         }
 
-        /* [수정: 게이지 비율 0~1 클램핑으로 Focus & Break 모두 부드럽게 감속] */
+        /* [Focus & Break 100% 동일한 화면 렌더링 동기화] */
         function updateDisplay() {
             let state = tabStates[currentMode];
             const displaySecs = currentMode === 'timer' ? Math.floor(state.timeRemaining) : Math.ceil(state.timeRemaining);
@@ -1859,9 +1837,8 @@
                     progressCircle.style.strokeDasharray = `${fillLen} ${totalLength}`;
                 }
             } else {
-                const progressRatio = Math.max(0, Math.min(1, state.timeRemaining / (state.totalSeconds || 1)));
-                const offset = totalLength - progressRatio * totalLength;
-                const offStr = offset.toFixed(2);
+                const offset = totalLength - (state.timeRemaining / (state.totalSeconds || 1)) * totalLength;
+                const offStr = (isNaN(offset) ? 0 : offset).toFixed(2);
                 if (progressCircle.__lastDash !== 'full') { progressCircle.style.strokeDasharray = `${totalLength} ${totalLength}`; progressCircle.__lastDash = 'full'; }
                 if (progressCircle.__lastOff !== offStr) { progressCircle.style.strokeDashoffset = offStr; progressCircle.__lastOff = offStr; }
             }
@@ -1945,16 +1922,19 @@
             if (curHour > prevHour && curHour >= 1) playHourlyAlert();
         }
 
+        /* [Break의 1초->0초 진입과 Focus의 연산을 100% 동일하게 통일] */
         const TICK_MS = 50;
 
-        /* [수정: Focus와 Short 모두 완벽히 동일한 델타 타임 클램핑으로 부드러운 진행 보장] */
         function timerLoop() {
             const now = Date.now();
             if (!lastTimestamp) lastTimestamp = now;
             let elapsedSeconds = (now - lastTimestamp) / 1000;
             lastTimestamp = now;
 
+            let anyRunning = false;
+
             if (tabStates.focus.isRunning) {
+                anyRunning = true;
                 const consumed = Math.min(Math.max(0, elapsedSeconds), tabStates.focus.timeRemaining);
                 tabStates.focus.timeRemaining = Math.max(0, tabStates.focus.timeRemaining - consumed);
                 addFocusSeconds(consumed, now);
@@ -1967,6 +1947,7 @@
             }
 
             if (tabStates.short.isRunning) {
+                anyRunning = true;
                 const consumed = Math.min(Math.max(0, elapsedSeconds), tabStates.short.timeRemaining);
                 tabStates.short.timeRemaining = Math.max(0, tabStates.short.timeRemaining - consumed);
 
@@ -1977,6 +1958,7 @@
             }
 
             if (tabStates.timer.isRunning) {
+                anyRunning = true;
                 advanceGeneralTimer(elapsedSeconds, now);
             }
             updateStatsDisplay();
@@ -2126,16 +2108,16 @@
             customAlert.classList.add('show');
         }
 
-        /* [완료 확인 버튼: 부드러운 페이드아웃 + 0.5초 오디오 페이드아웃] */
+        /* [완료 확인 버튼: 부드러운 팝업 닫힘 + R8 기준 1.5초 오디오 페이드아웃] */
         let isClosingAlert = false;
         function closeCustomAlert() {
             if (!customAlert.classList.contains('show') || isClosingAlert) return;
             isClosingAlert = true;
             
-            // 팝업 부드러운 페이드아웃
+            // 팝업 부드러운 페이드아웃 (0.25초)
             customAlert.classList.remove('show');
             
-            // 0.5초 오디오 페이드아웃 실행
+            // R8 방식 1500ms 페이드아웃 실행 (Focus & Break 동일 적용)
             stopAudioEngine();
             try { updateLastActive(); } catch (e) {}
 
@@ -2177,7 +2159,7 @@
                 }
             } catch (e) {}
 
-            setTimeout(() => { isClosingAlert = false; }, 300);
+            setTimeout(() => { isClosingAlert = false; }, 350);
         }
 
         function pauseFocusBreakForBackground() {
@@ -2897,7 +2879,7 @@
             renderTodos();
         }
 
-        /* [전체화면 제어: 홈 화면 PWA vs 일반 브라우저 상호 대응] */
+        /* [전체화면 제어: 홈 화면 PWA vs 일반 브라우저 아이콘 1:1 완벽 대응 보존] */
         const ICON_ENTER_FULLSCREEN = '<path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" stroke-linecap="round" stroke-linejoin="round"/>';
         const ICON_EXIT_FULLSCREEN = `
             <path d="M4 10h3.5a1.5 1.5 0 0 0 1.5-1.5V5" stroke-linecap="round" stroke-linejoin="round"/>
@@ -2915,29 +2897,27 @@
         function updateFullscreenDisplay(full) {
             isFullView = full;
             if (isStandaloneApp) {
-                // 홈 화면 PWA: full=true가 기본 꽉 찬 전체화면(IMG_3921, IMG_1452)
                 if (full) {
                     document.documentElement.classList.remove('pseudo-fullscreen');
                     document.body.classList.remove('pseudo-fullscreen');
-                    fsIcon.innerHTML = ICON_EXIT_FULLSCREEN; // 축소 아이콘
+                    fsIcon.innerHTML = ICON_EXIT_FULLSCREEN;
                     document.getElementById('fullscreen-toggle-btn').title = "화면 축소";
                 } else {
                     document.documentElement.classList.add('pseudo-fullscreen');
                     document.body.classList.add('pseudo-fullscreen');
-                    fsIcon.innerHTML = ICON_ENTER_FULLSCREEN; // 확대 아이콘
+                    fsIcon.innerHTML = ICON_ENTER_FULLSCREEN;
                     document.getElementById('fullscreen-toggle-btn').title = "전체화면";
                 }
             } else {
-                // 일반 브라우저: full=false가 기본 축소 화면, full=true가 전체화면
                 if (full) {
                     document.documentElement.classList.add('pseudo-fullscreen');
                     document.body.classList.add('pseudo-fullscreen');
-                    fsIcon.innerHTML = ICON_EXIT_FULLSCREEN; // 축소 아이콘
+                    fsIcon.innerHTML = ICON_EXIT_FULLSCREEN;
                     document.getElementById('fullscreen-toggle-btn').title = "전체화면 종료";
                 } else {
                     document.documentElement.classList.remove('pseudo-fullscreen');
                     document.body.classList.remove('pseudo-fullscreen');
-                    fsIcon.innerHTML = ICON_ENTER_FULLSCREEN; // 확대 아이콘
+                    fsIcon.innerHTML = ICON_ENTER_FULLSCREEN;
                     document.getElementById('fullscreen-toggle-btn').title = "전체화면";
                 }
             }
