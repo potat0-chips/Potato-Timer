@@ -10,8 +10,8 @@
     <link rel="icon" type="image/png" href="./potato.png">
     <link rel="apple-touch-icon" href="./potato.png">
 
-    <title>Potato Timer · R13</title>
-    <meta name="potato-build" content="R13-20261110">
+    <title>Potato Timer · R14</title>
+    <meta name="potato-build" content="R14-20261110">
     
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -60,27 +60,6 @@
             position: relative;
         }
 
-        /* 전체화면 의사 고정 */
-        html.pseudo-fullscreen, body.pseudo-fullscreen {
-            position: fixed !important;
-            top: 0 !important;
-            left: 0 !important;
-            right: 0 !important;
-            bottom: 0 !important;
-            width: auto !important;
-            height: auto !important;
-            min-height: 0 !important;
-            overflow: hidden !important;
-            z-index: 999999 !important;
-        }
-
-        /* 홈 화면 PWA 실행 시 배경을 하단 세이프 에어리어 끝까지 밀착 */
-        html.standalone, html.standalone body {
-            bottom: -env(safe-area-inset-bottom, 34px) !important;
-            height: calc(100% + env(safe-area-inset-bottom, 34px)) !important;
-            min-height: calc(100vh + env(safe-area-inset-bottom, 34px)) !important;
-        }
-
         button, input, textarea, div, span, p {
             font-family: 'IM_Hyemin', sans-serif !important;
             transform: translateZ(0);
@@ -98,12 +77,11 @@
                 radial-gradient(ellipse 55% 25% at 55% 55%, rgba(68, 114, 255, 0.22), transparent 75%),
                 radial-gradient(circle at 50% 50%, rgba(142, 121, 231, 0.18), transparent 60%);
             transform: rotate(-32deg) translateZ(0);
-            filter: blur(12px);
             opacity: 0;
             pointer-events: none;
             z-index: 1;
             mix-blend-mode: screen;
-            transition: opacity 3s cubic-bezier(0.25, 1, 0.5, 1);
+            transition: opacity 1.5s ease;
             will-change: opacity;
         }
         .milky-way-nebula.visible {
@@ -121,15 +99,15 @@
             background-color: #ffffff;
             border-radius: 50%;
             opacity: 0.15;
-            transition: opacity 3s cubic-bezier(0.25, 1, 0.5, 1), transform 3s ease;
+            transition: opacity 2s ease;
         }
         .milky-way-nebula.visible + .ambient-stars-container .ambient-star { 
             opacity: var(--target-opacity, 0.85);
             animation: pulseStar 2s infinite ease-in-out alternate; 
         }
         @keyframes pulseStar { 
-            from { transform: scale(0.7) translateZ(0); opacity: 0.2; filter: drop-shadow(0 0 1px #fff); } 
-            to { transform: scale(1.3) translateZ(0); opacity: var(--target-opacity, 0.85); filter: drop-shadow(0 0 4px #fff); } 
+            from { transform: scale(0.7) translateZ(0); opacity: 0.2; } 
+            to { transform: scale(1.3) translateZ(0); opacity: var(--target-opacity, 0.85); } 
         }
 
         /* 별똥별 */
@@ -164,10 +142,6 @@
             z-index: 5;
             transform: translateY(-4px); 
             transition: transform 0.2s ease;
-        }
-
-        html.standalone .viewport-scaler {
-            transform: translateY(0);
         }
 
         .main-wrapper { 
@@ -461,7 +435,7 @@
             transform: translateX(16px);
         }
 
-        /* [투두 버튼: 기본 설정] */
+        /* [IMG_1452 기준: 기기 바닥에 완벽 밀착되는 투두 버튼] */
         .todo-toggle-btn {
             background-color: rgba(255, 255, 255, 0.25); 
             border: 1px solid rgba(255, 255, 255, 0.3); 
@@ -519,34 +493,6 @@
             }
             .todo-toggle-btn.drawer-open {
                 bottom: 300px !important;
-            }
-        }
-
-        /* [홈 화면(PWA) 전용: iPad Pro 11 33pt 세이프 에어리어 보정 -> 기기 실제 최하단 밀착] */
-        html.standalone .todo-toggle-btn {
-            bottom: -34px !important;
-            padding-bottom: 42px !important;
-        }
-        html.standalone .todo-toggle-btn.drawer-open {
-            bottom: 256px !important;
-        }
-        html.standalone .todo-drawer {
-            bottom: -354px !important;
-        }
-        html.standalone .todo-drawer.open {
-            bottom: -34px !important;
-            padding-bottom: 54px !important;
-        }
-        @media (min-width: 601px) {
-            html.standalone .todo-toggle-btn.drawer-open {
-                bottom: 266px !important;
-            }
-            html.standalone .todo-drawer {
-                bottom: -364px !important;
-            }
-            html.standalone .todo-drawer.open {
-                bottom: -34px !important;
-                padding-bottom: 54px !important;
             }
         }
 
@@ -664,19 +610,18 @@
 
         .todo-item.completed .todo-actions .todo-drag-handle { display: none; }
 
-        /* [완료 모달] */
+        /* [완료 모달: 터치 즉시 즉각 반응] */
         .custom-alert-overlay {
             position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(6, 11, 23, 0.72);
-            display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; z-index: 2000;
+            display: none; align-items: center; justify-content: center; z-index: 2000;
         }
-        .custom-alert-overlay.show { opacity: 1; pointer-events: auto; }
+        .custom-alert-overlay.show { display: flex !important; }
         .custom-alert-box {
             background-color: rgba(15, 27, 49, 0.98); border: 1px solid rgba(255, 255, 255, 0.2); padding: 36px 24px; border-radius: 20px;
             display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; box-shadow: 0 15px 35px rgba(0,0,0,0.6);
-            max-width: 90%; width: 320px; transform: scale(0.92) translateY(12px); transition: transform 0.3s ease, width 0.3s ease;
+            max-width: 90%; width: 320px;
         }
         .custom-alert-box.wide { width: 360px; padding: 36px 28px; }
-        .custom-alert-overlay.show .custom-alert-box { transform: scale(1) translateY(0); }
         .custom-alert-text { font-size: 16px; font-weight: bold; margin: 0 0 26px 0; line-height: 1.4; white-space: nowrap; width: 100%; display: flex; align-items: center; justify-content: center; text-align: center; letter-spacing: -0.2px; }
         .custom-alert-btn { background-color: #6A55C9; color: white; border: none; padding: 11px 36px; font-size: 14px; font-weight: bold; border-radius: 16px; cursor: pointer; transition: background 0.1s; -webkit-tap-highlight-color: transparent; }
 
@@ -1097,8 +1042,6 @@
         html, body, button, input, textarea, div, span { touch-action: manipulation; }
         .todo-drag-handle { touch-action: none; }
         .todo-drawer, .todo-list { overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
-
-        #custom-alert .custom-alert-btn { position: relative; z-index: 3; touch-action: manipulation; min-height: 44px; }
     </style>
 </head>
 <body>
@@ -1182,7 +1125,7 @@
         <ul class="todo-list" id="todo-list"></ul>
     </div>
 
-    <!-- 완료 팝업: 중복 리스너 없이 단일 click 핸들러 바인딩 -->
+    <!-- 완료 팝업 -->
     <div class="custom-alert-overlay" id="custom-alert">
         <div class="custom-alert-box" id="custom-alert-box">
             <div class="custom-alert-text" id="custom-alert-msg">시간이 다 되었습니다! 고생하셨어요 🎉</div>
@@ -1349,11 +1292,6 @@
                 alarmPlayer.currentTime = 0;
             } catch (e) {}
             alarmPlayer.loop = false;
-            alarmPlayer.volume = 1;
-
-            if ('audioSession' in navigator) {
-                try { navigator.audioSession.type = 'auto'; } catch (e) {}
-            }
         }
 
         function fadeVolume(target, ms, generation) {
@@ -1382,10 +1320,6 @@
             if (key === 'alarm' && soundRequest && soundRequest.loop) return;
             stopAllSound();
             if (isMuted) return;
-
-            if ('audioSession' in navigator) {
-                try { navigator.audioSession.type = 'transient-solo'; } catch (e) {}
-            }
 
             const generation = soundGeneration;
             soundRequest = { key, loop: !!loop };
@@ -1418,14 +1352,6 @@
                 fadeVolume(volume, 4000, generation);
             }
         }
-
-        /* 홈 화면 웹 앱(standalone) 감지 */
-        try {
-            const standaloneMedia = window.matchMedia && window.matchMedia('(display-mode: standalone)').matches;
-            if (window.navigator.standalone === true || standaloneMedia) {
-                document.documentElement.classList.add('standalone');
-            }
-        } catch (e) {}
 
         const HARD_DEFAULTS = {
             focus: { min: 25, sec: 0 },
@@ -1630,23 +1556,13 @@
         setupAdjustButton('btn-adjust-minus', -1);
         setupAdjustButton('btn-adjust-plus', 1);
 
-        /* [홈 화면(PWA) 전용 비율 스케일러] */
         function adjustLayoutScale() {
             const baseW = 480;
             const baseH = 650;
             const winW = window.innerWidth;
             const winH = window.innerHeight;
-
-            const isStandalone = document.documentElement.classList.contains('standalone');
-            
-            if (isStandalone) {
-                const availableH = winH - 64;
-                const scaleFactor = Math.min(1.05, (winW - 24) / baseW, availableH / baseH);
-                mainContentBox.style.transform = `scale(${Math.max(0.72, scaleFactor)})`;
-            } else {
-                const scaleFactor = Math.min(1, (winW - 20) / baseW, (winH - 80) / baseH);
-                mainContentBox.style.transform = `scale(${Math.max(0.68, scaleFactor)})`;
-            }
+            const scaleFactor = Math.min(1, (winW - 20) / baseW, (winH - 80) / baseH);
+            mainContentBox.style.transform = `scale(${Math.max(0.68, scaleFactor)})`;
         }
         window.addEventListener('resize', adjustLayoutScale);
 
@@ -1771,7 +1687,6 @@
 
         let isCelebrationActive = false;
         let starTimeoutId = null;
-        let slowDownSteps = 0;
 
         function triggerShootingStar() {
             const screenW = window.innerWidth || 800;
@@ -1800,19 +1715,7 @@
             starTimeoutId = setTimeout(() => {
                 starElement.style.animation = 'none';
                 starElement.style.display = 'none';
-
-                let nextDelay;
-                if (isCelebrationActive) {
-                    nextDelay = Math.floor(Math.random() * 55) + 35;
-                } else if (slowDownSteps > 0) {
-                    if (slowDownSteps === 3) nextDelay = Math.floor(Math.random() * 300) + 400;
-                    else if (slowDownSteps === 2) nextDelay = Math.floor(Math.random() * 600) + 1200;
-                    else nextDelay = Math.floor(Math.random() * 1000) + 3000;
-                    slowDownSteps--;
-                } else {
-                    nextDelay = Math.floor(Math.random() * 6000) + 8000;
-                }
-
+                const nextDelay = isCelebrationActive ? 800 : (Math.floor(Math.random() * 6000) + 8000);
                 starTimeoutId = setTimeout(triggerShootingStar, nextDelay);
             }, duration * 1000 + 40);
         }
@@ -1820,20 +1723,18 @@
         function startCelebrationVFX() {
             if (isCelebrationActive) return;
             isCelebrationActive = true;
-            slowDownSteps = 0;
             milkyWayGlow.classList.add('visible');
             clearTimeout(starTimeoutId);
             triggerShootingStar();
         }
 
         function stabilizeSkySmoothly() {
-            if (!isCelebrationActive && slowDownSteps === 0) return;
             isCelebrationActive = false;
-            slowDownSteps = 3;
             milkyWayGlow.classList.remove('visible');
+            clearTimeout(starTimeoutId);
+            starTimeoutId = setTimeout(triggerShootingStar, 5000);
         }
 
-        /* [오디오 알람 제어: 팝업 닫기 시 즉각 중지되어 메인 스레드 프리징 차단] */
         function stopAudioEngine() {
             stopAllSound();
             try { stabilizeSkySmoothly(); } catch (e) {}
@@ -2179,29 +2080,17 @@
             }
 
             lastCompletedMode = completedMode;
-
-            showCompletionDialog();
-            setTimeout(() => {
-                if (customAlert.classList.contains('show')) {
-                    try { startCelebrationVFX(); } catch (e) { console.error(e); }
-                }
-            }, 100);
-        }
-
-        function showCompletionDialog() {
             customAlert.classList.add('show');
+            try { startCelebrationVFX(); } catch (e) {}
         }
 
-        /* [완료 확인 버튼 단일화 및 프리징 방지 락 (0ms 즉각 처리)] */
-        let isClosingAlert = false;
+        /* [완료 확인 버튼: 렉 없이 0ms 즉각 처리] */
         function closeCustomAlert() {
-            if (!customAlert.classList.contains('show') || isClosingAlert) return;
-            isClosingAlert = true;
             customAlert.classList.remove('show');
-            
-            try { stopAudioEngine(); } catch (e) {}
-            try { updateLastActive(); } catch (e) { console.warn('activity-save', e); }
-            
+            stopAllSound();
+            try { stabilizeSkySmoothly(); } catch (e) {}
+            try { updateLastActive(); } catch (e) {}
+
             try {
                 if (lastCompletedMode === 'focus') {
                     const starTarget = (focusSessionTarget !== null) ? focusSessionTarget : (modeSettings.focus.min * 60 + modeSettings.focus.sec);
@@ -2238,9 +2127,7 @@
                     }
                     updateDisplay();
                 }
-            } catch (e) { console.warn('completion-bookkeeping', e); }
-
-            setTimeout(() => { isClosingAlert = false; }, 200);
+            } catch (e) {}
         }
 
         function pauseFocusBreakForBackground() {
@@ -2973,37 +2860,21 @@
             adjustLayoutScale();
         }
 
-        const isStandaloneApp = document.documentElement.classList.contains('standalone');
         const isTouchDevice = (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) || (navigator.maxTouchPoints || 0) > 1;
-        const isSafariBrowser = !isStandaloneApp && /Safari/i.test(navigator.userAgent) && !/CriOS|FxiOS|EdgiOS|OPiOS|Chrome|Chromium|Firefox|Edg\//i.test(navigator.userAgent);
+        const isSafariBrowser = /Safari/i.test(navigator.userAgent) && !/CriOS|FxiOS|EdgiOS|OPiOS|Chrome|Chromium|Firefox|Edg\//i.test(navigator.userAgent);
+        
+        // 홈 화면(PWA) 및 일반 실행 시 기본적으로 전체화면 비활성화 상태(IMG_1452)로 고정
         let isFullscreenMode = false;
-
-        function applyPseudoFullscreen(on) {
-            document.documentElement.classList.toggle('pseudo-fullscreen', on);
-            document.body.classList.toggle('pseudo-fullscreen', on);
-        }
 
         function toggleFullScreen(e) {
             if (e) { e.preventDefault(); e.stopPropagation(); }
-            if (isSafariBrowser) return; 
+            if (isSafariBrowser && !window.navigator.standalone) return; 
             try { updateLastActive(); } catch (err) {}
             isFullscreenMode = !isFullscreenMode;
-            applyPseudoFullscreen(isFullscreenMode);
+            document.documentElement.classList.toggle('pseudo-fullscreen', isFullscreenMode);
+            document.body.classList.toggle('pseudo-fullscreen', isFullscreenMode);
             updateFullscreenIcon(isFullscreenMode);
         }
-
-        if (isStandaloneApp) {
-            isFullscreenMode = true;
-            applyPseudoFullscreen(true);
-            updateFullscreenIcon(true);
-        }
-
-        window.addEventListener('pageshow', () => {
-            if (!isStandaloneApp) return;
-            isFullscreenMode = true;
-            applyPseudoFullscreen(true);
-            updateFullscreenIcon(true);
-        });
 
         /* 핀치 및 더블탭 줌 방지 */
         ['gesturestart', 'gesturechange', 'gestureend'].forEach(evt => {
@@ -3016,7 +2887,7 @@
             if (isTouchDevice) e.preventDefault();
         }, { passive: false });
 
-        /* [초기 구동] */
+        /* [초기 구동: 무조건 IMG_1452 비율로 시작] */
         if (!activeDayKey) activeDayKey = getDateKey(new Date(lastActiveTime));
         lastSavedDate = getFormattedDate(keyToDate(activeDayKey));
         statsDateEl.textContent = lastSavedDate;
@@ -3027,7 +2898,7 @@
         adjustLayoutScale();
         updateMuteDisplay();
         renderPomoTracker();
-        setTimeout(triggerShootingStar, 1500);
+        setTimeout(triggerShootingStar, 3000);
     </script>
 </body>
 </html>
