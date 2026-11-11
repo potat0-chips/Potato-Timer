@@ -11,7 +11,7 @@
     <link rel="apple-touch-icon" href="./potato.png">
 
     <title>Potato Timer</title>
-    <meta name="potato-build" content="R45-FixedAudioAnd5sClimax-20261111">
+    <meta name="potato-build" content="R46-SmoothFadeAndPerfectAudio-20261111">
     
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -214,6 +214,7 @@
             transition: none; 
         }
         
+        /* [시계 숫자: 기본 상태 유지] */
         .time-display {
             position: absolute;
             font-size: 46px; 
@@ -997,9 +998,9 @@
             width: 22px !important; 
             height: 22px !important; 
             display: block !important; 
-            margin: auto !important;
-            flex-shrink: 0 !important;
-            stroke: #ffffff;
+            margin: auto !important; 
+            flex-shrink: 0 !important; 
+            stroke: #ffffff; 
         }
 
         .settings-btn { right: 20px; }
@@ -1252,64 +1253,69 @@
         const isCloudSyncActive = !!db && urlParams.has('user');
 
         /* ==============================================================
-           🎵 [오디오 시스템: R8/R23 순수 오디오 엔진 100% 완전 복원]
+           🎵 [오디오 시스템: 독립 객체 사전 승인 + 100% 소리 보장 엔진]
            ============================================================== */
         const AUDIO_FILES = { focus: './focus.mp3', short: './break.mp3', alarm: './alarm.mp3' };
-        const alarmPlayer = new Audio();
-        alarmPlayer.preload = 'auto';
-        alarmPlayer.playsInline = true;
-        alarmPlayer.setAttribute('playsinline', '');
+        
+        // src 변경으로 인한 iOS Safari의 권한 취소를 원천 방지하는 독립 플레이어 세트
+        const AUDIO_PLAYERS = {
+            focus: new Audio(AUDIO_FILES.focus),
+            short: new Audio(AUDIO_FILES.short),
+            alarm: new Audio(AUDIO_FILES.alarm)
+        };
 
-        // 사파리 iOS 전용 Pre-activation (첫 터치/클릭 시 오디오 잠금 해제)
+        Object.values(AUDIO_PLAYERS).forEach(player => {
+            player.preload = 'auto';
+            player.playsInline = true;
+            player.setAttribute('playsinline', '');
+        });
+
+        // 첫 터치/클릭 또는 START 터치 시 사파리 오디오 권한을 즉시 일괄 영구 획득
         let audioUnlocked = false;
         function unlockAudio() {
             if (audioUnlocked) return;
-            try {
-                if (!alarmPlayer.src) {
-                    alarmPlayer.src = AUDIO_FILES.focus;
+            audioUnlocked = true;
+            Object.values(AUDIO_PLAYERS).forEach(p => {
+                try {
+                    p.muted = true;
+                    const prom = p.play();
+                    if (prom !== undefined) {
+                        prom.then(() => {
+                            p.pause();
+                            p.currentTime = 0;
+                            p.muted = false;
+                        }).catch(() => {
+                            p.muted = false;
+                        });
+                    } else {
+                        p.muted = false;
+                    }
+                } catch (e) {
+                    p.muted = false;
                 }
-                const p = alarmPlayer.play();
-                if (p !== undefined) {
-                    p.then(() => {
-                        alarmPlayer.pause();
-                        alarmPlayer.currentTime = 0;
-                        audioUnlocked = true;
-                    }).catch(() => {});
-                }
-            } catch (e) {}
+            });
         }
-        ['pointerdown', 'touchstart', 'click'].forEach(evt => {
-            document.addEventListener(evt, unlockAudio, { once: true, passive: true });
+        ['pointerdown', 'touchstart', 'touchend', 'click'].forEach(evt => {
+            document.addEventListener(evt, unlockAudio, { passive: true });
         });
 
         let soundGeneration = 0;
         let soundRequest = null;
         let fadeTimer = null;
+        let currentActivePlayer = null;
 
         function stopAllSound() {
             soundGeneration++;
             soundRequest = null;
             clearInterval(fadeTimer);
             fadeTimer = null;
-            try { 
-                alarmPlayer.pause(); 
-                alarmPlayer.currentTime = 0;
-            } catch (e) {}
-            alarmPlayer.loop = false;
-            alarmPlayer.volume = 1;
-        }
-
-        // 0.8초(800ms) 부드러운 페이드아웃
-        function fadeVolume(target, ms, generation) {
-            clearInterval(fadeTimer);
-            const start = alarmPlayer.volume;
-            const t0 = Date.now();
-            fadeTimer = setInterval(() => {
-                if (generation !== soundGeneration) { clearInterval(fadeTimer); fadeTimer = null; return; }
-                const p = Math.min(1, (Date.now() - t0) / ms);
-                alarmPlayer.volume = Math.max(0, Math.min(1, start + (target - start) * p));
-                if (p >= 1) { clearInterval(fadeTimer); fadeTimer = null; }
-            }, 30);
+            Object.values(AUDIO_PLAYERS).forEach(p => {
+                try { p.pause(); p.currentTime = 0; } catch (e) {}
+                p.loop = false;
+                p.volume = 1;
+                p.muted = false;
+            });
+            currentActivePlayer = null;
         }
 
         function playSound(key, loop, volume) {
@@ -1317,34 +1323,64 @@
             stopAllSound();
             if (isMuted) return;
             
+            const player = AUDIO_PLAYERS[key];
+            if (!player) return;
+
             const generation = soundGeneration;
             soundRequest = { key, loop: !!loop };
-            alarmPlayer.onended = () => {
-                if (generation === soundGeneration && !loop) soundRequest = null;
+            currentActivePlayer = player;
+
+            player.onended = () => {
+                if (generation === soundGeneration && !loop) {
+                    soundRequest = null;
+                    currentActivePlayer = null;
+                }
             };
             
-            alarmPlayer.src = AUDIO_FILES[key];
-            alarmPlayer.muted = false;
-            alarmPlayer.loop = !!loop;
+            player.muted = false;
+            player.loop = !!loop;
+            player.volume = volume; // 0이 아닌 100% 정상 볼륨으로 시작하여 소리가 즉시 들림!
             
-            const fadeIn = !!loop;
-            alarmPlayer.volume = fadeIn ? 0 : volume;
             try {
-                const p = alarmPlayer.play();
+                const p = player.play();
                 if (p && p.catch) p.catch(() => {
-                    if (generation === soundGeneration) soundRequest = null;
+                    if (generation === soundGeneration) {
+                        soundRequest = null;
+                        currentActivePlayer = null;
+                    }
                 });
             } catch (e) {
-                if (generation === soundGeneration) soundRequest = null;
+                if (generation === soundGeneration) {
+                    soundRequest = null;
+                    currentActivePlayer = null;
+                }
             }
-            if (fadeIn) fadeVolume(volume, 2000, generation);
         }
 
+        // [0.8초 페이드아웃]
         function stopAudioEngine() {
-            if (soundRequest && soundRequest.loop && !isMuted) {
+            if (soundRequest && soundRequest.loop && !isMuted && currentActivePlayer) {
                 const generation = soundGeneration;
-                fadeVolume(0, 800, generation);
-                setTimeout(() => { if (generation === soundGeneration) stopAllSound(); }, 800);
+                const playerToFade = currentActivePlayer;
+                const startVol = playerToFade.volume;
+                const t0 = Date.now();
+                const duration = 800; // 0.8초
+                
+                clearInterval(fadeTimer);
+                fadeTimer = setInterval(() => {
+                    if (generation !== soundGeneration) {
+                        clearInterval(fadeTimer);
+                        fadeTimer = null;
+                        return;
+                    }
+                    const p = Math.min(1, (Date.now() - t0) / duration);
+                    playerToFade.volume = Math.max(0, startVol * (1 - p));
+                    if (p >= 1) {
+                        clearInterval(fadeTimer);
+                        fadeTimer = null;
+                        stopAllSound();
+                    }
+                }, 30);
             } else {
                 stopAllSound();
             }
@@ -1358,7 +1394,7 @@
         }
 
         /* ==============================================================
-           🌌 [COSMIC FX ENGINE: 5초~0초 절정 정점 & Break 탭 오로라 버그 수정]
+           🌌 [COSMIC FX ENGINE: 5초~0초 절정 정점 & 자연스러운 페이드아웃]
            ============================================================== */
         const CosmicFX = {
             canvas: null,
@@ -1367,11 +1403,14 @@
             height: 0,
             dpr: 1,
             
-            stage: 0,          // 0: 평상시(idle), 1: 15s~5s(빌드업), 2: 5s~0s(절정), 3: 완료 유지, 4: 복귀
-            mode: 'focus',     // 'focus' | 'short'
+            stage: 0,          // 0: 평상시(idle), 1: 15s~5s(빌드업), 2: 5s~0s(절정), 3: 완료 유지, 4: 복귀(fadeout)
+            mode: 'focus',
+            activeVisualMode: 'focus', // 페이드아웃 중 탭을 바꿔도 원래 모드 그래픽으로 부드럽게 소멸
             
             dimAlpha: 0,       // 0 -> 0.55
             nebulaAlpha: 0,    // 0 -> 0.55
+            recoveryStartDimAlpha: 0,
+            recoveryStartNebulaAlpha: 0,
             
             stars: [],
             maxStars: 60,
@@ -1451,66 +1490,60 @@
                 };
             },
             
-            // [요청 반영: 15초~5초 완만한 빌드업 ➔ 5초~0초가 진짜 절정기!]
+            // [15초~5초 은은한 빌드업 ➔ 5초~0초 진짜 절정 정점]
             updateState(timeRemaining, currentMode, isRunning) {
                 if (!isRunning || currentMode === 'timer') {
-                    if (this.stage !== 0 && this.stage !== 4) this.abort();
+                    if (this.stage !== 0 && this.stage !== 4) this.dismiss();
                     return;
                 }
                 
                 this.mode = currentMode;
                 
                 if (timeRemaining <= 15 && timeRemaining > 5) {
-                    // [1단계: 도입 및 빌드업 (15초 ~ 5초)]
+                    // [1단계: 15초 ~ 5초 (10초간 완만한 빌드업)]
                     if (this.stage !== 1) {
                         this.stage = 1;
+                        this.activeVisualMode = currentMode;
                         this.meteorTimer = performance.now();
                         this.spawnMeteor(false);
                     }
-                    const p1 = (15 - timeRemaining) / 10; // 0.0 -> 1.0 (10초간 완만히 증가)
-                    this.dimAlpha = p1 * 0.40;           // 0% -> 40%
-                    this.nebulaAlpha = p1 * 0.42;        // 0% -> 42%
-                    this.maxStars = Math.floor(60 + p1 * 50);
-                    this.meteorInterval = 3200 - p1 * 2000; // 3.2초 -> 1.2초
+                    const p1 = (15 - timeRemaining) / 10; // 0.0 -> 1.0
+                    this.dimAlpha = p1 * 0.38;           // 0% -> 38%
+                    this.nebulaAlpha = p1 * 0.40;        // 0% -> 40%
+                    this.maxStars = Math.floor(60 + p1 * 45);
+                    this.meteorInterval = 3500 - p1 * 2100; // 3.5초 -> 1.4초
                 } else if (timeRemaining <= 5 && timeRemaining > 0) {
-                    // [2단계: 절정기 (5초 ~ 0초)] - 딱 원하셨던 5초부터 진짜 절정 정점!
-                    this.stage = 2;
-                    const p2 = (5 - timeRemaining) / 5;   // 0.0 -> 1.0 (5초간 정점 도달)
-                    this.dimAlpha = 0.40 + p2 * 0.15;     // 40% -> 55%
-                    this.nebulaAlpha = 0.42 + p2 * 0.13;  // 42% -> 55%
-                    this.maxStars = Math.floor(110 + p2 * 70); // 110 -> 180개
-                    this.meteorInterval = Math.max(240, 1000 - p2 * 760); // 1.0초 -> 0.24초로 빗발치는 유성우!
+                    // [2단계: 5초 ~ 0초 (5초간 진짜 절정기!)]
+                    if (this.stage !== 2) {
+                        this.stage = 2;
+                        this.activeVisualMode = currentMode;
+                    }
+                    const p2 = (5 - timeRemaining) / 5;   // 0.0 -> 1.0
+                    this.dimAlpha = 0.38 + p2 * 0.17;     // 38% -> 55%
+                    this.nebulaAlpha = 0.40 + p2 * 0.15;  // 40% -> 55%
+                    this.maxStars = Math.floor(105 + p2 * 75); // 105 -> 180개
+                    this.meteorInterval = Math.max(220, 950 - p2 * 730); // 0.95초 -> 0.22초로 쏟아지는 유성우!
                 } else if (timeRemaining <= 0 && this.stage >= 1) {
                     // [3단계: 0초 완료 팝업 유지기]
                     this.stage = 3;
                     this.dimAlpha = 0.55;
                     this.nebulaAlpha = 0.55;
                     this.maxStars = 180;
-                    this.meteorInterval = 250;
+                    this.meteorInterval = 240;
                 }
             },
             
-            // [Break 탭 전환 및 리셋 시 오로라가 튀어나오지 않도록 0초 즉시 초기화]
-            forceInstantReset() {
-                this.stage = 0;
-                this.dimAlpha = 0;
-                this.nebulaAlpha = 0;
-                this.maxStars = 60;
-                this.meteors = [];
-                this.meteorTimer = performance.now();
-                this.meteorInterval = Math.random() * 3500 + 7500;
-            },
-            
+            // [어떤 버튼이나 탭을 눌러도 뚝 끊기지 않고 원래 떠 있던 밝기에서 부드럽게 소멸]
             dismiss() {
-                if (this.stage === 0) return;
+                if (this.stage === 0 || this.stage === 4) return;
                 this.stage = 4;
                 this.recoveryStartTime = Date.now();
+                this.recoveryStartDimAlpha = this.dimAlpha;
+                this.recoveryStartNebulaAlpha = this.nebulaAlpha;
             },
             
             abort() {
-                if (this.stage !== 0 && this.stage !== 4) {
-                    this.dismiss();
-                }
+                this.dismiss();
             },
             
             // [별똥별 생성: 90%는 좌상단 -> 우하향, 10%는 다방향]
@@ -1563,25 +1596,25 @@
                         this.meteorInterval = Math.random() * 3500 + 7500;
                     } else {
                         const factor = 1 - (elapsed / duration);
-                        this.dimAlpha = 0.55 * factor;
-                        this.nebulaAlpha = 0.55 * factor;
-                        this.maxStars = Math.floor(60 + 120 * factor);
+                        this.dimAlpha = this.recoveryStartDimAlpha * factor;
+                        this.nebulaAlpha = this.recoveryStartNebulaAlpha * factor;
+                        this.maxStars = Math.floor(60 + (180 - 60) * factor);
                     }
                 }
                 
                 // 1. 아늑한 암전 레이어
                 if (this.dimAlpha > 0.005) {
                     this.ctx.save();
-                    this.ctx.fillStyle = (this.mode === 'focus') 
+                    this.ctx.fillStyle = (this.activeVisualMode === 'focus') 
                         ? `rgba(6, 11, 23, ${this.dimAlpha})` 
                         : `rgba(4, 14, 24, ${this.dimAlpha})`;
                     this.ctx.fillRect(0, 0, this.width, this.height);
                     this.ctx.restore();
                 }
                 
-                // 2. 대형 우주 오브젝트 드로잉
+                // 2. 대형 우주 오브젝트 드로잉 (페이드아웃 중에도 원래 떠 있던 모드 유지)
                 if (this.nebulaAlpha > 0.005) {
-                    if (this.mode === 'focus') {
+                    if (this.activeVisualMode === 'focus') {
                         this.drawMilkyWaySubtle(this.nebulaAlpha);
                     } else {
                         this.drawAuroraSeamless(this.nebulaAlpha);
@@ -1636,7 +1669,7 @@
                     this.ctx.fill();
                 }
                 
-                // 은하수 성간 먼지 파티클
+                // 은하수 줄기를 따라 고요히 흐르는 미세 먼지 입자
                 this.stardust.forEach(sd => {
                     sd.phase += sd.twinkle;
                     const pt = this.getMilkyWayPoint(sd.t);
@@ -1827,7 +1860,7 @@
 
         let isTooltipPinned = false;
 
-        /* [음소거 로직: 음소거 락 해제 및 기본 사운드 출력 보장] */
+        /* [음소거 로직: 초기 진입 시 음소거 락 해제 및 기본 사운드 출력 보장] */
         let isMuted = false;
         try { localStorage.removeItem(`potato-muted-${userId}`); } catch (e) {}
 
@@ -1848,7 +1881,6 @@
             if (isMuted) stopAllSound();
             muteIcon.innerHTML = isMuted ? ICON_SOUND_MUTED : ICON_SOUND_ON;
             document.getElementById('mute-toggle-btn').title = isMuted ? "소리 켜기" : "소리 끄기 (음소거)";
-            alarmPlayer.muted = isMuted;
         }
 
         function toggleMute() {
@@ -2180,8 +2212,11 @@
             state.totalSeconds = state.isRunning ? (state.totalSeconds + delta) : state.timeRemaining;
             if (state.totalSeconds < state.timeRemaining) state.totalSeconds = state.timeRemaining;
             
+            // 15초 이상으로 늘어나면 효과가 서서히 사라지도록 처리
             if (state.timeRemaining > 15) {
-                CosmicFX.abort();
+                if (CosmicFX.stage > 0 && CosmicFX.stage !== 4) {
+                    CosmicFX.dismiss();
+                }
             }
             
             updateDisplay();
@@ -2300,7 +2335,7 @@
         }
 
         function toggleTimer() {
-            unlockAudio(); // START 클릭 시 오디오 권한 즉시 언락
+            unlockAudio(); // START 클릭 시 오디오 엔진 권한 즉각 일괄 승인
             updateLastActive();
             let state = tabStates[currentMode];
 
@@ -2309,7 +2344,10 @@
                 startBtn.textContent = 'START';
                 saveState();
                 
-                CosmicFX.abort();
+                // 중도 정지 시 효과가 급정지하지 않고 천천히 페이드아웃
+                if (CosmicFX.stage > 0 && CosmicFX.stage !== 4) {
+                    CosmicFX.dismiss();
+                }
                 
                 if (!tabStates.focus.isRunning && !tabStates.short.isRunning && !tabStates.timer.isRunning) {
                     if (timerAnimationId) clearTimeout(timerAnimationId);
@@ -2337,8 +2375,10 @@
             let state = tabStates[currentMode];
             state.isRunning = false;
             
-            // 리셋 시 3.5초 지연 없이 0초 즉각 완전 초기화
-            CosmicFX.forceInstantReset();
+            // 리셋 시 효과가 휙 꺼지지 않고 천천히 자연스럽게 페이드아웃
+            if (CosmicFX.stage > 0 && CosmicFX.stage !== 4) {
+                CosmicFX.dismiss();
+            }
             
             if (currentMode === 'timer') {
                 state.timeRemaining = 0;
@@ -2368,8 +2408,10 @@
                 tabStates[currentMode].isRunning = false;
             }
 
-            // [핵심: 탭 전환 시 오로라/은하수가 잔상으로 번쩍이지 않도록 0초 즉각 완전 초기화]
-            CosmicFX.forceInstantReset();
+            // [핵심: 탭 전환 시 효과가 휙 꺼지지 않고 기존 모드 그래픽 그대로 천천히 페이드아웃]
+            if (CosmicFX.stage > 0 && CosmicFX.stage !== 4) {
+                CosmicFX.dismiss();
+            }
 
             currentMode = mode;
             tabButtons.forEach(btn => btn.classList.remove('active'));
