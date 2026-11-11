@@ -2221,7 +2221,7 @@
                     if (pushHistory) lastMergePushMs = Date.now();
                     saveState();
                 }
-            }, (err) => { cloudReady = true; console.error("Firestore Listen Error:", err); }
+            }, (err) => { cloudReady = true; console.error("Firestore Listen Error:", err); });
         }
 
         function getFormattedDate(d = new Date()) {
