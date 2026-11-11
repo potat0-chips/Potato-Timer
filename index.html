@@ -9,10 +9,9 @@
     <meta name="apple-mobile-web-app-title" content="Potato Timer">
     <link rel="icon" type="image/png" href="./potato.png">
     <link rel="apple-touch-icon" href="./potato.png">
-    <link rel="manifest" href='data:application/manifest+json,{"name":"Potato%20Timer","short_name":"Potato%20Timer","start_url":"https://potat0-chips.github.io/Potato-Timer/","scope":"https://potat0-chips.github.io/Potato-Timer/","display":"standalone","background_color":"%230b1424","theme_color":"%230b1424","icons":[{"src":"https://potat0-chips.github.io/Potato-Timer/potato.png","sizes":"any","type":"image/png"}]}'>
 
     <title>Potato Timer</title>
-    <meta name="potato-build" content="R47-PerfectAudioAndAurora-20261111">
+    <meta name="potato-build" content="R48-RestoredAudioReliable-20261111">
     
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -54,7 +53,6 @@
             align-items: center;
             justify-content: center;
             min-height: 100vh;
-            min-height: -webkit-fill-available;
             user-select: none;
             -webkit-user-select: none;
             position: relative;
@@ -215,7 +213,6 @@
             transition: none; 
         }
         
-        /* [시계 숫자: 기본 상태 유지] */
         .time-display {
             position: absolute;
             font-size: 46px; 
@@ -566,7 +563,9 @@
             width: 16px !important; 
             height: 16px !important; 
             display: block !important;
-            margin: auto !important;
+            margin: auto !important; 
+            flex-shrink: 0 !important;
+            stroke: #ffffff;
         }
 
         .todo-item.completed .todo-actions .todo-drag-handle { display: none; }
@@ -1294,18 +1293,17 @@
             if (key === 'alarm' && soundRequest && soundRequest.loop) return;
             stopAllSound();
             if (isMuted) return;
-            
             const generation = soundGeneration;
             soundRequest = { key, loop: !!loop };
             alarmPlayer.onended = () => {
                 if (generation === soundGeneration && !loop) soundRequest = null;
             };
-            
             alarmPlayer.src = AUDIO_FILES[key];
             alarmPlayer.muted = false;
             alarmPlayer.loop = !!loop;
-            alarmPlayer.volume = volume; // 즉각 100% 볼륨 출력
             
+            // 즉시 100% 볼륨으로 재생 시작 (소리 누락 원천 방지)
+            alarmPlayer.volume = volume;
             try {
                 const p = alarmPlayer.play();
                 if (p && p.catch) p.catch(() => {
@@ -1316,7 +1314,6 @@
             }
         }
 
-        // [0.8초 페이드아웃]
         function stopAudioEngine() {
             if (soundRequest && soundRequest.loop && !isMuted) {
                 const generation = soundGeneration;
@@ -1445,6 +1442,7 @@
                     // [1단계: 15초 ~ 5초 (10초간 완만한 빌드업)]
                     if (this.stage !== 1) {
                         this.stage = 1;
+                        this.activeVisualMode = currentMode;
                         this.meteorTimer = performance.now();
                         this.spawnMeteor(false);
                     }
@@ -1457,6 +1455,7 @@
                     // [2단계: 5초 ~ 0초 (5초간 진짜 절정기!)]
                     if (this.stage !== 2) {
                         this.stage = 2;
+                        this.activeVisualMode = currentMode;
                     }
                     const p2 = (5 - timeRemaining) / 5;   // 0.0 -> 1.0
                     this.dimAlpha = 0.38 + p2 * 0.17;     // 38% -> 55%
@@ -1466,6 +1465,7 @@
                 } else if (timeRemaining <= 0 && this.stage >= 1) {
                     // [3단계: 0초 완료 팝업 유지기]
                     this.stage = 3;
+                    this.activeVisualMode = currentMode;
                     this.dimAlpha = 0.55;
                     this.nebulaAlpha = 0.55;
                     this.maxStars = 180;
@@ -1801,9 +1801,9 @@
 
         let isTooltipPinned = false;
 
-        /* [음소거 로직: 초기 진입 시 음소거 락 해제 및 기본 사운드 출력 보장] */
+        /* [음소거 로직: 초기 진입 시 음소거 락 완전 해제 및 기본 사운드 출력 보장] */
         let isMuted = false;
-        try { localStorage.removeItem(`potato-muted-${userId}`); } catch (e) {}
+        try { localStorage.setItem(`potato-muted-${userId}`, 'false'); } catch (e) {}
 
         const ICON_SOUND_ON = `
             <g transform="translate(1, 0)">
