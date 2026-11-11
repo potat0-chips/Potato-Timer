@@ -46,22 +46,21 @@
             font-family: 'IM_Hyemin', -apple-system, BlinkMacSystemFont, "NanumSquareRound", sans-serif;
             background-image: url('./night.png'), radial-gradient(circle at 50% 30%, #172554 0%, #0b1424 100%);
             background-size: cover;
-            background-position: center bottom !important; 
+            background-position: center bottom !important;
             background-repeat: no-repeat;
             color: #ffffff;
             display: flex;
             align-items: center;
             justify-content: center;
-            min-height: 100dvh;
+            min-height: 100vh;
+            min-height: -webkit-fill-available;
             user-select: none;
             -webkit-user-select: none;
             position: relative;
         }
 
-        @media (display-mode: standalone) {
-            body {
-                min-height: 100vh;
-            }
+        html.standalone body {
+            min-height: 100vh;
         }
 
         /* [전체화면 해제 / 축소 모드: 하단 여백 형성] */
