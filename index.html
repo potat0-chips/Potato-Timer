@@ -2062,11 +2062,43 @@
         const CLIENT_ID = Math.random().toString(36).slice(2) + Date.now().toString(36);
         let lastServerTs = parseInt(localStorage.getItem(`potato-server-ts-${userId}`), 10) || 0;
         const DAY_RESET_HOUR = 5;
-        const IDLE_RESET_MS = 2 * 60 * 60 * 1000;
+        const IDLE_RESET_MS = 1 * 60 * 60 * 1000;
         let isSyncingFromCloud = false;
+        let cloudReady = !isCloudSyncActive;
+        let lastMergePushMs = 0;
 
         let focusHistory = safeGetJSON(`potato-history-${userId}`, {});
 
+        function mergeFocusHistory(local, remote) {
+            const out = {};
+            const keys = new Set([...Object.keys(local || {}), ...Object.keys(remote || {})]);
+            keys.forEach(k => {
+                const a = (local && local[k]) || {};
+                const b = (remote && remote[k]) || {};
+                const ha = a.hourly || [];
+                const hb = b.hourly || [];
+                const hourly = new Array(24).fill(0);
+                let sum = 0;
+                for (let h = 0; h < 24; h++) {
+                    hourly[h] = Math.max(ha[h] || 0, hb[h] || 0);
+                    sum += hourly[h];
+                }
+                out[k] = { totalSeconds: Math.max(a.totalSeconds || 0, b.totalSeconds || 0, sum), hourly };
+            });
+            return out;
+        }
+        function isHistoryAhead(merged, remote) {
+            for (const k of Object.keys(merged)) {
+                const m = merged[k];
+                const r = (remote && remote[k]) || {};
+                if ((m.totalSeconds || 0) > (r.totalSeconds || 0)) return true;
+                const mh = m.hourly || [];
+                const rh = r.hourly || [];
+                for (let h = 0; h < 24; h++) if ((mh[h] || 0) > (rh[h] || 0)) return true;
+            }
+            return false;
+        }
+     
         function saveState() {
             localStorage.setItem(`potato-todos-${userId}`, JSON.stringify(todos));
             localStorage.setItem(`potato-focus-seconds-${userId}`, accumulatedFocusSeconds.toString());
@@ -2098,8 +2130,9 @@
             if (!isCloudSyncActive || !db) return;
 
             db.collection("users").doc(userId).onSnapshot((doc) => {
-                if (!doc.exists) return;
+                if (!doc.exists) { cloudReady = true; return; }
                 if (doc.metadata.hasPendingWrites) return;
+                cloudReady = true;
                 const data = doc.data();
                 const ts = (data.updatedAtServer && data.updatedAtServer.toMillis) ? data.updatedAtServer.toMillis() : 0;
                 if (ts) {
@@ -2111,13 +2144,42 @@
 
                 isSyncingFromCloud = true;
                 if (data.todos) todos = data.todos;
-                if (typeof data.accumulatedFocusSeconds === 'number') accumulatedFocusSeconds = data.accumulatedFocusSeconds;
-                if (data.lastSavedDate) lastSavedDate = data.lastSavedDate;
-                if (data.activeDayKey) activeDayKey = data.activeDayKey;
-                if (typeof data.pomoStars === 'number') pomoStars = data.pomoStars;
-                if (typeof data.pomoCycleCount === 'number') pomoCycleCount = data.pomoCycleCount;
+                let focusAhead = false;
+                const remoteKey = data.activeDayKey || '';
+                const pomoRank = (c, s) => c * 10 + (s === 4 ? 0 : (s === 0 ? -1 : s));
+                if (remoteKey && remoteKey < activeDayKey) {
+                    focusAhead = true;
+                } else {
+                    const sameDay = (!remoteKey || remoteKey === activeDayKey);
+                    if (typeof data.accumulatedFocusSeconds === 'number') {
+                        const sameDay = (!remoteKey || remoteKey === activeDayKey);
+                        if (sameDay && accumulatedFocusSeconds > data.accumulatedFocusSeconds) focusAhead = true;
+                        accumulatedFocusSeconds = sameDay
+                            ? Math.max(accumulatedFocusSeconds, data.accumulatedFocusSeconds)
+                            : data.accumulatedFocusSeconds;
+                    }
+                    if (typeof data.pomoStars === 'number' && typeof data.pomoCycleCount === 'number') {
+                        if (sameDay) {
+                            if (pomoRank(pomoCycleCount, pomoStars) > pomoRank(data.pomoCycleCount, data.pomoStars)) {
+                                focusAhead = true;
+                            } else {
+                                pomoStars = data.pomoStars;
+                                pomoCycleCount = data.pomoCycleCount;
+                            }
+                        } else {
+                            pomoStars = data.pomoStars;
+                            pomoCycleCount = data.pomoCycleCount;
+                        }
+                    }
+                    if (data.lastSavedDate) lastSavedDate = data.lastSavedDate;
+                    if (remoteKey) activeDayKey = remoteKey;
+                }
                 if (typeof data.targetCycleGoal === 'number') targetCycleGoal = data.targetCycleGoal;
-                if (data.focusHistory) focusHistory = data.focusHistory;
+                let historyAhead = false;
+                if (data.focusHistory) {
+                    focusHistory = mergeFocusHistory(focusHistory, data.focusHistory);
+                    historyAhead = isHistoryAhead(focusHistory, data.focusHistory);
+                }
                 if (data.modeSettings && data.modeSettings.focus && data.modeSettings.short) {
                     modeSettings = data.modeSettings;
                     ['focus', 'short'].forEach(m => {
@@ -2146,13 +2208,20 @@
                 localStorage.setItem(`potato-target-goal-${userId}`, targetCycleGoal.toString());
                 localStorage.setItem(`potato-history-${userId}`, JSON.stringify(focusHistory));
 
-                if (activeDayKey) statsDateEl.textContent = getFormattedDate(keyToDate(activeDayKey));
+                statsDateEl.textContent = getFormattedDate(new Date());
                 renderTodos();
                 updateStatsDisplay();
                 renderPomoTracker();
                 updateDisplay();
                 isSyncingFromCloud = false;
-            }, (err) => console.error("Firestore Listen Error:", err));
+                const cleaned = cleanupCompletedTodos();
+                const pushHistory = (historyAhead || focusAhead) && (Date.now() - lastMergePushMs > 15000);
+                if (cleaned) renderTodos();
+                if (cleaned || pushHistory) {
+                    if (pushHistory) lastMergePushMs = Date.now();
+                    saveState();
+                }
+            }, (err) => { cloudReady = true; console.error("Firestore Listen Error:", err); }
         }
 
         function getFormattedDate(d = new Date()) {
@@ -2179,7 +2248,6 @@
             activeDayKey = newKey;
             lastSavedDate = getFormattedDate(dateObj);
             statsDateEl.textContent = lastSavedDate;
-            todos = todos.filter(t => !t.completed);
             accumulatedFocusSeconds = 0;
             pomoStars = 0;
             pomoCycleCount = 0;
@@ -2200,6 +2268,24 @@
             if (forced || idleOk) performDayRollover(now);
         }
         setInterval(checkDayRollover, 1000);
+        function cleanupCompletedTodos() {
+            const d = new Date();
+            d.setHours(0, 0, 0, 0);
+            const startMs = d.getTime();
+            const before = todos.length;
+            todos = todos.filter(t => !(t.completed && (t.completedAt || 0) < startMs));
+            return todos.length !== before;
+        }
+        let midnightKey = '';
+        function checkMidnight() {
+            const todayKey = getDateKey(new Date());
+            if (midnightKey === todayKey) return;
+            statsDateEl.textContent = getFormattedDate(new Date());
+            if (!cloudReady) return;
+            midnightKey = todayKey;
+            if (cleanupCompletedTodos()) { saveState(); renderTodos(); }
+        }
+        setInterval(checkMidnight, 1000);
 
         let lastActivityMark = 0;
         ['pointerdown', 'keydown', 'touchstart', 'wheel', 'scroll'].forEach(evt => {
@@ -3409,7 +3495,7 @@
         CosmicFX.init();
         if (!activeDayKey) activeDayKey = getDateKey(new Date(lastActiveTime));
         lastSavedDate = getFormattedDate(keyToDate(activeDayKey));
-        statsDateEl.textContent = lastSavedDate;
+        statsDateEl.textContent = getFormattedDate(new Date());
         checkDayRollover();
         updateDisplay();
         renderTodos();
