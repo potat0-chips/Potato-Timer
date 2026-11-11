@@ -3259,9 +3259,34 @@
             if (e) { e.preventDefault(); e.stopPropagation(); }
             if (isSafariBrowser) return; 
             try { updateLastActive(); } catch (err) {}
+
+            if (!isStandaloneApp) {
+                const el = document.documentElement;
+                const req = el.requestFullscreen || el.webkitRequestFullscreen;
+                const exit = document.exitFullscreen || document.webkitExitFullscreen;
+                const nowFull = document.fullscreenElement || document.webkitFullscreenElement;
+                try {
+                    if (!nowFull && req) req.call(el);
+                    else if (nowFull && exit) exit.call(document);
+                } catch (err) {}
+                return;
+            }
+
             isFullscreenActive = !isFullscreenActive;
             setFullscreenState(isFullscreenActive);
         }
+        
+        function syncBrowserFullscreenIcon() {
+            if (isStandaloneApp) return;
+            const nowFull = !!(document.fullscreenElement || document.webkitFullscreenElement);
+            isFullscreenActive = nowFull;
+            fsIcon.innerHTML = nowFull ? ICON_EXIT_FULLSCREEN : ICON_ENTER_FULLSCREEN;
+            const btn = document.getElementById('fullscreen-toggle-btn');
+            if (btn) btn.title = nowFull ? "화면 축소" : "전체화면";
+            try { adjustLayoutScale(); } catch (err) {}
+        }
+        document.addEventListener('fullscreenchange', syncBrowserFullscreenIcon);
+        document.addEventListener('webkitfullscreenchange', syncBrowserFullscreenIcon);
 
         /* 핀치 및 더블탭 줌 방지 */
         ['gesturestart', 'gesturechange', 'gestureend'].forEach(evt => {
