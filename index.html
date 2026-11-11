@@ -11,11 +11,11 @@
     <link rel="apple-touch-icon" href="./potato.png">
 
     <title>Potato Timer</title>
-    <meta name="potato-build" content="R40-AudioFadeAutoResume-20261110">
+    <meta name="potato-build" content="R41-MeteorShowerRestore-20261110">
     
     <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <script src="[https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js](https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js)"></script>
+    <script src="[https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js](https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js)"></script>
 
     <style>
         @font-face {
@@ -59,7 +59,7 @@
             position: relative;
         }
 
-        /* [전체화면 해제 / 축소 모드: 하단 여백 형성 (IMG_3922, IMG_1451)] */
+        /* [전체화면 해제 / 축소 모드: 하단 여백 형성] */
         html.pseudo-fullscreen, body.pseudo-fullscreen {
             position: fixed !important;
             top: 0 !important;
@@ -214,6 +214,7 @@
             transition: none; 
         }
         
+        /* [시계 숫자: 기본 상태 유지] */
         .time-display {
             position: absolute;
             font-size: 46px; 
@@ -465,7 +466,6 @@
         }
         .todo-input::placeholder { line-height: 20px; color: #666666; vertical-align: middle; }
         
-        /* [모바일 추가 터치 시 자판 흔들림 방지] */
         .todo-add-btn { font-family: inherit; background-color: #6A55C9; color: white; border: none; height: 38px; padding: 0 16px; border-radius: 12px; font-size: 14px; font-weight: bold; cursor: pointer; transition: background 0.1s; -webkit-tap-highlight-color: transparent; }
         
         .todo-list { 
@@ -970,7 +970,7 @@
         .fullscreen-btn { left: 20px; }
         .stats-btn { right: 20px; }
 
-        /* [우측 상단 버튼 - 오디오/설정 22px 원본 규격] */
+        /* [우측 상단 버튼 - 22px 원본 규격] */
         .top-action-btn {
             position: fixed;
             top: max(20px, calc(env(safe-area-inset-top, 0px) + 12px));
@@ -1023,16 +1023,21 @@
     <!-- [우주 쇼 캔버스] -->
     <canvas id="cosmic-canvas"></canvas>
 
-    <!-- 우측 상단 음소거 버튼 -->
-    <button class="top-action-btn mute-btn" id="mute-toggle-btn" onclick="toggleMute()" title="음소거 켜기/끄기">
-        <svg id="mute-icon" viewBox="0 0 24 24"></svg>
+    <!-- [우측 상단 음소거 버튼: HTML에 정적 SVG 기본 탑재로 상시 가시성 보장] -->
+    <button class="top-action-btn mute-btn" id="mute-toggle-btn" onclick="toggleMute()" title="소리 끄기 (음소거)">
+        <svg id="mute-icon" viewBox="0 0 24 24">
+            <g transform="translate(1, 0)">
+                <path d="M11 5L6 9H3v6h3l5 4V5z" fill="#ffffff" stroke="#ffffff" stroke-width="1.5" stroke-linejoin="round"/>
+                <path d="M15.5 8.5c1 1 1 3.5 0 5M18.5 6c2.5 2.5 2.5 7.5 0 10" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
+            </g>
+        </svg>
     </button>
 
     <!-- 우측 상단 설정 버튼 -->
     <button class="top-action-btn settings-btn" id="settings-toggle-btn" onclick="openSettings()" title="설정">
         <svg viewBox="0 0 24 24" width="22" height="22" preserveAspectRatio="xMidYMid meet" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="3"></circle>
-            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
         </svg>
     </button>
 
@@ -1207,9 +1212,14 @@
     <!-- 차트 호버/터치 툴팁 -->
     <div class="chart-tooltip" id="chart-tooltip"></div>
 
-    <!-- 좌측 하단 전체화면 버튼 -->
-    <button class="bottom-action-btn fullscreen-btn" id="fullscreen-toggle-btn" onclick="toggleFullScreen(event)" title="전체화면 전환">
-        <svg id="fs-icon" viewBox="0 0 24 24"></svg>
+    <!-- [좌측 하단 전체화면 버튼: HTML에 정적 SVG 기본 탑재] -->
+    <button class="bottom-action-btn fullscreen-btn" id="fullscreen-toggle-btn" onclick="toggleFullScreen(event)" title="화면 축소">
+        <svg id="fs-icon" viewBox="0 0 24 24">
+            <path d="M4 10h3.5a1.5 1.5 0 0 0 1.5-1.5V5" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M20 10h-3.5a1.5 1.5 0 0 1-1.5-1.5V5" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M4 14h3.5a1.5 1.5 0 0 1 1.5 1.5V19" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M20 14h-3.5a1.5 1.5 0 0 0-1.5 1.5V19" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
     </button>
 
     <!-- 우측 하단 통계 대시보드 버튼 -->
@@ -1242,7 +1252,7 @@
         const isCloudSyncActive = !!db && urlParams.has('user');
 
         /* ==============================================================
-           🎵 [오디오 시스템: Web Audio 하드웨어 페이드아웃 + 외부 음악 자동 재개]
+           🎵 [오디오 시스템: 사파리 100% 호환 순수 오디오 엔진 복원]
            ============================================================== */
         const AUDIO_FILES = { focus: './focus.mp3', short: './break.mp3', alarm: './alarm.mp3' };
         const alarmPlayer = new Audio();
@@ -1250,81 +1260,30 @@
         alarmPlayer.playsInline = true;
         alarmPlayer.setAttribute('playsinline', '');
 
-        let audioCtx = null;
-        let gainNode = null;
-        let audioSourceNode = null;
-
-        // iOS에서도 진짜 물리 볼륨을 0으로 줄일 수 있는 Web Audio Gain 파이프라인
-        function initWebAudio() {
-            try {
-                const AudioCtxClass = window.AudioContext || window.webkitAudioContext;
-                if (!audioCtx && AudioCtxClass) {
-                    audioCtx = new AudioCtxClass();
-                    gainNode = audioCtx.createGain();
-                    gainNode.gain.value = 1;
-                    gainNode.connect(audioCtx.destination);
-                    audioSourceNode = audioCtx.createMediaElementSource(alarmPlayer);
-                    audioSourceNode.connect(gainNode);
-                }
-                if (audioCtx && audioCtx.state === 'suspended') {
-                    audioCtx.resume();
-                }
-            } catch (e) {}
-        }
-
-        // 화면 첫 터치 시 오디오 컨텍스트 사전 언락
-        ['pointerdown', 'touchstart', 'click'].forEach(evt => {
-            document.addEventListener(evt, () => initWebAudio(), { once: true, passive: true });
-        });
-
         let soundGeneration = 0;
         let soundRequest = null;
         let fadeTimer = null;
 
-        // 알람 종료 시 WebKit 오디오 세션을 완전 반환하여 스포티파이/애플뮤직 자동 재생 복원
         function stopAllSound() {
             soundGeneration++;
             soundRequest = null;
             clearInterval(fadeTimer);
             fadeTimer = null;
-            
-            try { 
-                alarmPlayer.pause(); 
-                alarmPlayer.currentTime = 0;
-                alarmPlayer.removeAttribute('src'); // 오디오 하드웨어 세션 즉시 해제
-                alarmPlayer.load();                 // iOS 외부 음악 자동 unpause 발동
-            } catch (e) {}
-            
+            try { alarmPlayer.pause(); } catch (e) {}
             alarmPlayer.loop = false;
-            try { alarmPlayer.volume = 1; } catch (e) {}
-            
-            if (gainNode && audioCtx) {
-                try {
-                    gainNode.gain.cancelScheduledValues(audioCtx.currentTime);
-                    gainNode.gain.setValueAtTime(1, audioCtx.currentTime);
-                } catch (e) {}
-            }
+            try { alarmPlayer.currentTime = 0; } catch (e) {}
+            alarmPlayer.volume = 1;
         }
 
-        // iOS(GainNode) 및 데스크톱/안드로이드(volume) 동시 지원 0.8초 진짜 페이드아웃
+        // 0.8초(800ms) 페이드아웃
         function fadeVolume(target, ms, generation) {
             clearInterval(fadeTimer);
-            const startVol = (gainNode && audioCtx) ? gainNode.gain.value : alarmPlayer.volume;
+            const start = alarmPlayer.volume;
             const t0 = Date.now();
-            
-            if (gainNode && audioCtx) {
-                try {
-                    const now = audioCtx.currentTime;
-                    gainNode.gain.cancelScheduledValues(now);
-                    gainNode.gain.setValueAtTime(gainNode.gain.value, now);
-                    gainNode.gain.linearRampToValueAtTime(target, now + ms / 1000);
-                } catch (e) {}
-            }
-            
             fadeTimer = setInterval(() => {
                 if (generation !== soundGeneration) { clearInterval(fadeTimer); fadeTimer = null; return; }
                 const p = Math.min(1, (Date.now() - t0) / ms);
-                try { alarmPlayer.volume = Math.max(0, Math.min(1, startVol + (target - startVol) * p)); } catch (e) {}
+                alarmPlayer.volume = Math.max(0, Math.min(1, start + (target - start) * p));
                 if (p >= 1) { clearInterval(fadeTimer); fadeTimer = null; }
             }, 30);
         }
@@ -1334,22 +1293,10 @@
             stopAllSound();
             if (isMuted) return;
             
-            initWebAudio();
-
-            // iOS 사파리 16.4+: 알람 울릴 땐 외부 음악 잠시 멈춤, 알람 끝나면 자동으로 음악 재생 재개
-            try {
-                if ('audioSession' in navigator) {
-                    navigator.audioSession.type = 'transient-solo';
-                }
-            } catch (e) {}
-
             const generation = soundGeneration;
             soundRequest = { key, loop: !!loop };
-            
             alarmPlayer.onended = () => {
-                if (generation === soundGeneration && !loop) {
-                    stopAllSound(); // 1시간 타이머 단발 알람 끝나면 즉시 외부 음악 복원
-                }
+                if (generation === soundGeneration && !loop) soundRequest = null;
             };
             
             alarmPlayer.src = AUDIO_FILES[key];
@@ -1357,16 +1304,7 @@
             alarmPlayer.loop = !!loop;
             
             const fadeIn = !!loop;
-            const initialVol = fadeIn ? 0 : volume;
-            try { alarmPlayer.volume = initialVol; } catch (e) {}
-            
-            if (gainNode && audioCtx) {
-                try {
-                    gainNode.gain.cancelScheduledValues(audioCtx.currentTime);
-                    gainNode.gain.setValueAtTime(initialVol, audioCtx.currentTime);
-                } catch (e) {}
-            }
-            
+            alarmPlayer.volume = fadeIn ? 0 : volume;
             try {
                 const p = alarmPlayer.play();
                 if (p && p.catch) p.catch(() => {
@@ -1375,11 +1313,9 @@
             } catch (e) {
                 if (generation === soundGeneration) soundRequest = null;
             }
-            
             if (fadeIn) fadeVolume(volume, 2000, generation);
         }
 
-        // [0.8초(800ms) 페이드아웃 후 완전 복원]
         function stopAudioEngine() {
             if (soundRequest && soundRequest.loop && !isMuted) {
                 const generation = soundGeneration;
@@ -1393,12 +1329,10 @@
         function playEndAlert(mode) { playSound(mode === 'focus' ? 'focus' : 'short', true, 1); }
         function playHourlyAlert() { playSound('alarm', false, 0.65); }
 
-        function unlockAudioEngine() {
-            initWebAudio();
-        }
+        function unlockAudioEngine() {}
 
         /* ==============================================================
-           🌌 [COSMIC FX ENGINE: 평상시 별똥별 & 좌상단->우하향 통일]
+           🌌 [COSMIC FX ENGINE: 0초 직전 별똥별 폭증 & 좌상단->우하향 통일]
            ============================================================== */
         const CosmicFX = {
             canvas: null,
@@ -1444,7 +1378,7 @@
                     });
                 }
                 
-                // 2. IMG_3931 모사: 보랏빛 은하수 성간 먼지 (은은한 라벤더/화이트 톤)[cite: 24]
+                // 2. IMG_3931 모사: 보랏빛 은하수 성간 먼지
                 this.stardust = [];
                 const dustPalette = ['#ffffff', '#ffffff', '#f3e8ff', '#e9d5ff', '#d8b4fe'];
                 for (let i = 0; i < 150; i++) {
@@ -1462,7 +1396,7 @@
                 }
                 
                 this.meteorTimer = performance.now();
-                this.meteorInterval = Math.random() * 3500 + 7500; // 첫 별똥별 7.5~11초 후
+                this.meteorInterval = Math.random() * 3500 + 7500;
                 
                 requestAnimationFrame((t) => this.loop(t));
             },
@@ -1507,13 +1441,15 @@
                     this.dimAlpha = p * 0.55;           // 0% -> 55%
                     this.nebulaAlpha = p * 0.55;        // 0% -> 55% (채도 살짝 보강)
                     this.maxStars = Math.floor(60 + p * 120); // 60 -> 180개
-                    this.meteorInterval = 4500 - p * 3700;     // 4.5초 -> 0.8초로 점진적 단축
+                    
+                    // [별똥별 빈도 대폭 강화: 4.5초에서 0초 시점 280ms로 빗발치듯 단축]
+                    this.meteorInterval = Math.max(280, 4200 - p * 3920);
                 } else if (timeRemaining <= 0 && this.stage >= 1) {
                     this.stage = 3;
                     this.dimAlpha = 0.55;
                     this.nebulaAlpha = 0.55;
                     this.maxStars = 180;
-                    this.meteorInterval = 800;
+                    this.meteorInterval = 280; // 0초 완료 시 다채로운 유성우 쏟아짐
                 }
             },
             
@@ -1531,7 +1467,7 @@
             
             // [별똥별 생성: 90%는 좌상단 -> 우하향, 10%는 다방향]
             spawnMeteor(forceNormal = false) {
-                const len = Math.random() * 55 + 65;
+                const len = Math.random() * 55 + 70;
                 const isDiverse = !forceNormal && (this.stage > 0) && (Math.random() < 0.10);
                 
                 let startX, startY, angle, speed;
@@ -1543,7 +1479,7 @@
                     angle = (Math.PI / 180) * (Math.random() * 11 + 35);
                     speed = Math.random() * 4.5 + 9.5;
                 } else {
-                    // 10% (종료 연출 시 다방향 사선)
+                    // 10% (다방향 사선)
                     startX = Math.random() * (this.width * 0.8) + (this.width * 0.3);
                     startY = Math.random() * (this.height * 0.35) - 40;
                     angle = (Math.PI / 180) * (Math.random() * 14 + 132);
@@ -1556,8 +1492,8 @@
                     vx: Math.cos(angle) * speed,
                     vy: Math.sin(angle) * speed,
                     len: len,
-                    alpha: 0.85,
-                    width: Math.random() * 0.5 + 1.15
+                    alpha: 0.9,
+                    width: Math.random() * 0.6 + 1.2
                 });
             },
             
@@ -1565,7 +1501,7 @@
                 this.ctx.clearRect(0, 0, this.width, this.height);
                 this.auroraPhase += 0.009;
                 
-                // [4단계: 복귀기 3.5초간 서서히 소멸 후 평상시 모드로 안착]
+                // [4단계: 복귀기 3.5초간 서서히 소멸]
                 if (this.stage === 4) {
                     const elapsed = Date.now() - this.recoveryStartTime;
                     const duration = 3500;
@@ -1607,7 +1543,7 @@
                 // 3. 평상시 및 연출 시 은은하게 반짝이는 별
                 this.drawStars();
                 
-                // 4. 별똥별 제어: 평상시에도 좌상단->우하향으로 드문드문 떨어짐
+                // 4. 별똥별 제어: 평상시 1줄기 vs 종료 임박 시 풍성한 유성우
                 if (this.stage === 0) {
                     // 평상시: 7.5 ~ 11초마다 1줄기씩 조용히 떨어짐
                     if (now - this.meteorTimer > this.meteorInterval) {
@@ -1616,12 +1552,13 @@
                         this.spawnMeteor(true);
                     }
                 } else if (this.stage >= 1 && this.stage <= 3) {
-                    // 15초 카운트다운 & 종료 유지기: 빈도 점진 증가
+                    // 종료 직전 및 유지기: 쏟아지는 유성우
                     if (now - this.meteorTimer > this.meteorInterval) {
                         this.meteorTimer = now;
                         this.spawnMeteor(false);
-                        if (this.dimAlpha >= 0.45 && Math.random() < 0.25) {
-                            setTimeout(() => this.spawnMeteor(false), 140);
+                        // 종료 임박 시 2~3줄기 동시 다발 출현
+                        if (this.dimAlpha >= 0.35 && Math.random() < 0.45) {
+                            setTimeout(() => this.spawnMeteor(false), 90);
                         }
                     }
                 }
@@ -1630,11 +1567,10 @@
                 requestAnimationFrame((t) => this.loop(t));
             },
             
-            /* [Focus 모드: 채도 알맞게 보강된 은하수 성간 먼지 강줄기] */
+            /* [Focus 모드: 은하수 성간 먼지 강줄기] */
             drawMilkyWaySubtle(alpha) {
                 this.ctx.save();
                 
-                // 부드러운 라벤더 가스 안개 (채도 알맞게 보강)
                 const steps = 15;
                 for (let i = 0; i <= steps; i++) {
                     const t = i / steps;
@@ -1653,7 +1589,6 @@
                     this.ctx.fill();
                 }
                 
-                // 고운 성간 먼지 파티클
                 this.stardust.forEach(sd => {
                     sd.phase += sd.twinkle;
                     const pt = this.getMilkyWayPoint(sd.t);
@@ -1843,9 +1778,22 @@
 
         let isTooltipPinned = false;
 
-        /* [음소거 로직] */
+        /* [음소거 로직: 원본 규격] */
         let isMuted = false; 
         try { isMuted = localStorage.getItem(`potato-muted-${userId}`) === 'true'; } catch (e) {}
+
+        const ICON_SOUND_ON = `
+            <g transform="translate(1, 0)">
+                <path d="M11 5L6 9H3v6h3l5 4V5z" fill="#ffffff" stroke="#ffffff" stroke-width="1.5" stroke-linejoin="round"/>
+                <path d="M15.5 8.5c1 1 1 3.5 0 5M18.5 6c2.5 2.5 2.5 7.5 0 10" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
+            </g>
+        `;
+        const ICON_SOUND_MUTED = `
+            <g transform="translate(4.5, 0)">
+                <path d="M11 5L6 9H3v6h3l5 4V5z" fill="#ffffff" stroke="#ffffff" stroke-width="1.5" stroke-linejoin="round"/>
+                <line x1="1" y1="5" x2="13.5" y2="19" stroke="#ffffff" stroke-width="2.3" stroke-linecap="round"/>
+            </g>
+        `;
 
         function updateMuteDisplay() {
             if (isMuted) stopAllSound();
@@ -1866,7 +1814,7 @@
             pomoStarsBox.innerHTML = '';
             for (let i = 0; i < 4; i++) {
                 const isFilled = i < pomoStars;
-                const starSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+                const starSvg = document.createElementNS("[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)", "svg");
                 starSvg.setAttribute("viewBox", "0 0 24 24");
                 starSvg.setAttribute("class", `pomo-star-icon ${isFilled ? 'filled' : ''}`);
 
@@ -2259,7 +2207,6 @@
                 addFocusSeconds(consumed, now);
                 actualFocusSecondsCompleted += consumed;
 
-                // 15초 카운트다운 연출 실시간 동기화
                 CosmicFX.updateState(tabStates.focus.timeRemaining, 'focus', true);
 
                 if (tabStates.focus.timeRemaining <= 0) {
@@ -2273,7 +2220,6 @@
                 const consumed = Math.min(Math.max(0, elapsedSeconds), tabStates.short.timeRemaining);
                 tabStates.short.timeRemaining = Math.max(0, tabStates.short.timeRemaining - consumed);
 
-                // 15초 카운트다운 연출 실시간 동기화
                 CosmicFX.updateState(tabStates.short.timeRemaining, 'short', true);
 
                 if (tabStates.short.timeRemaining <= 0) {
@@ -2404,6 +2350,7 @@
             setMode(mode);
         }
 
+        /* [타이머 0초 완료 시: 고요한 축하 모드] */
         function stopTimerWithAlert(completedMode) {
             try { updateLastActive(); } catch (e) { console.warn('completion-activity', e); }
             tabStates[completedMode].isRunning = false;
@@ -2440,7 +2387,7 @@
             customAlert.classList.add('show');
         }
 
-        /* [완료 확인 버튼: 부드러운 4단계 복귀 및 0.8초 페이드아웃] */
+        /* [완료 확인 버튼: 0.8초 오디오 페이드아웃] */
         let isClosingAlert = false;
         function closeCustomAlert() {
             if (!customAlert.classList.contains('show') || isClosingAlert) return;
@@ -2450,7 +2397,7 @@
             
             CosmicFX.dismiss();
             
-            // 0.8초 볼륨 페이드아웃 후 음악 자동 재개
+            // 0.8초 볼륨 페이드아웃
             stopAudioEngine();
             try { updateLastActive(); } catch (e) {}
 
@@ -2785,20 +2732,20 @@
                 return { x, y, item, sec };
             });
 
-            const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
-            const linearGrad = document.createElementNS("http://www.w3.org/2000/svg", "linearGradient");
+            const defs = document.createElementNS("[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)", "defs");
+            const linearGrad = document.createElementNS("[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)", "linearGradient");
             linearGrad.setAttribute("id", "lineAreaGrad");
             linearGrad.setAttribute("x1", "0%");
             linearGrad.setAttribute("y1", "0%");
             linearGrad.setAttribute("x2", "0%");
             linearGrad.setAttribute("y2", "100%");
 
-            const stop1 = document.createElementNS("http://www.w3.org/2000/svg", "stop");
+            const stop1 = document.createElementNS("[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)", "stop");
             stop1.setAttribute("offset", "0%");
             stop1.setAttribute("stop-color", "#6A55C9");
             stop1.setAttribute("stop-opacity", "0.38");
 
-            const stop2 = document.createElementNS("http://www.w3.org/2000/svg", "stop");
+            const stop2 = document.createElementNS("[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)", "stop");
             stop2.setAttribute("offset", "100%");
             stop2.setAttribute("stop-color", "#6A55C9");
             stop2.setAttribute("stop-opacity", "0.0");
@@ -2816,12 +2763,12 @@
             const bottomY = padTop + chartH;
             const areaD = `${lineD} L ${points[points.length - 1].x} ${bottomY} L ${points[0].x} ${bottomY} Z`;
 
-            const areaEl = document.createElementNS("http://www.w3.org/2000/svg", "path");
+            const areaEl = document.createElementNS("[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)", "path");
             areaEl.setAttribute("d", areaD);
             areaEl.setAttribute("fill", "url(#lineAreaGrad)");
             svg.appendChild(areaEl);
 
-            const pathEl = document.createElementNS("http://www.w3.org/2000/svg", "path");
+            const pathEl = document.createElementNS("[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)", "path");
             pathEl.setAttribute("d", lineD);
             pathEl.setAttribute("fill", "none");
             pathEl.setAttribute("stroke", "#6A55C9");
@@ -2830,7 +2777,7 @@
             svg.appendChild(pathEl);
 
             points.forEach(pt => {
-                const hitCircle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+                const hitCircle = document.createElementNS("[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)", "circle");
                 hitCircle.setAttribute("cx", pt.x);
                 hitCircle.setAttribute("cy", pt.y);
                 hitCircle.setAttribute("r", "12");
