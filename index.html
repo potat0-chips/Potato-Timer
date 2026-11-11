@@ -11,11 +11,11 @@
     <link rel="apple-touch-icon" href="./potato.png">
 
     <title>Potato Timer</title>
-    <meta name="potato-build" content="R41-MeteorShowerRestore-20261110">
+    <meta name="potato-build" content="R42-UnifiedAudioAndMeteors-20261111">
     
     <!-- Firebase SDK -->
-    <script src="[https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js](https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js)"></script>
-    <script src="[https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js](https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js)"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
     <style>
         @font-face {
@@ -214,7 +214,6 @@
             transition: none; 
         }
         
-        /* [시계 숫자: 기본 상태 유지] */
         .time-display {
             position: absolute;
             font-size: 46px; 
@@ -970,7 +969,7 @@
         .fullscreen-btn { left: 20px; }
         .stats-btn { right: 20px; }
 
-        /* [우측 상단 버튼 - 22px 원본 규격] */
+        /* [우측 상단 버튼 - 22px 규격] */
         .top-action-btn {
             position: fixed;
             top: max(20px, calc(env(safe-area-inset-top, 0px) + 12px));
@@ -1252,13 +1251,35 @@
         const isCloudSyncActive = !!db && urlParams.has('user');
 
         /* ==============================================================
-           🎵 [오디오 시스템: 사파리 100% 호환 순수 오디오 엔진 복원]
+           🎵 [오디오 시스템: 사파리 100% 호환 및 사전 권한 승인 복원]
            ============================================================== */
         const AUDIO_FILES = { focus: './focus.mp3', short: './break.mp3', alarm: './alarm.mp3' };
         const alarmPlayer = new Audio();
         alarmPlayer.preload = 'auto';
         alarmPlayer.playsInline = true;
         alarmPlayer.setAttribute('playsinline', '');
+
+        // 사파리 iOS의 무음 자동재생 차단을 뚫는 사전 활성화(Pre-arm)
+        let isAudioPreArmed = false;
+        function preArmAudio() {
+            if (isAudioPreArmed) return;
+            try {
+                alarmPlayer.src = AUDIO_FILES.focus;
+                alarmPlayer.muted = true;
+                const p = alarmPlayer.play();
+                if (p && p.then) {
+                    p.then(() => {
+                        alarmPlayer.pause();
+                        alarmPlayer.currentTime = 0;
+                        alarmPlayer.muted = false;
+                        isAudioPreArmed = true;
+                    }).catch(() => {});
+                }
+            } catch (e) {}
+        }
+        ['pointerdown', 'touchstart', 'click'].forEach(evt => {
+            document.addEventListener(evt, preArmAudio, { once: true, passive: true });
+        });
 
         let soundGeneration = 0;
         let soundRequest = null;
@@ -1269,13 +1290,15 @@
             soundRequest = null;
             clearInterval(fadeTimer);
             fadeTimer = null;
-            try { alarmPlayer.pause(); } catch (e) {}
+            try { 
+                alarmPlayer.pause(); 
+                alarmPlayer.currentTime = 0;
+            } catch (e) {}
             alarmPlayer.loop = false;
-            try { alarmPlayer.currentTime = 0; } catch (e) {}
             alarmPlayer.volume = 1;
         }
 
-        // 0.8초(800ms) 페이드아웃
+        // 0.8초(800ms) 부드러운 페이드아웃
         function fadeVolume(target, ms, generation) {
             clearInterval(fadeTimer);
             const start = alarmPlayer.volume;
@@ -1329,10 +1352,12 @@
         function playEndAlert(mode) { playSound(mode === 'focus' ? 'focus' : 'short', true, 1); }
         function playHourlyAlert() { playSound('alarm', false, 0.65); }
 
-        function unlockAudioEngine() {}
+        function unlockAudioEngine() {
+            preArmAudio();
+        }
 
         /* ==============================================================
-           🌌 [COSMIC FX ENGINE: 0초 직전 별똥별 폭증 & 좌상단->우하향 통일]
+           🌌 [COSMIC FX ENGINE: Focus와 Break 100% 동일 타이밍/수량 동기화]
            ============================================================== */
         const CosmicFX = {
             canvas: null,
@@ -1344,17 +1369,15 @@
             stage: 0,          // 0: 평상시(idle), 1: 15초 빌드업, 3: 0초 완료 유지, 4: 복귀
             mode: 'focus',     // 'focus' | 'short'
             
-            dimAlpha: 0,       // 0 -> 0.55 (0초 종료 시점 정점)
-            nebulaAlpha: 0,    // 0 -> 0.55 (알맞게 채도 보강된 은하수/오로라)
+            dimAlpha: 0,       // 0 -> 0.55
+            nebulaAlpha: 0,    // 0 -> 0.55
             
             stars: [],
             maxStars: 60,
             
-            stardust: [],      // 은하수 전용 미세 성간 먼지 입자
-            
             meteors: [],
             meteorTimer: 0,
-            meteorInterval: 8000, // 평상시에는 7.5~11초마다 1줄기씩
+            meteorInterval: 8000,
             
             auroraPhase: 0,
             recoveryStartTime: 0,
@@ -1365,7 +1388,7 @@
                 this.handleResize();
                 window.addEventListener('resize', () => this.handleResize());
                 
-                // 1. 평상시에도 은은하게 숨 쉬듯 반짝이는 배경 별 (60개 ~ 절정 시 180개)
+                // 평상시에도 은은하게 숨 쉬듯 반짝이는 배경 별 (Focus와 Break 완전 동일 사용)
                 this.stars = [];
                 for (let i = 0; i < 200; i++) {
                     this.stars.push({
@@ -1374,23 +1397,6 @@
                         size: Math.random() * 1.35 + 0.5,
                         baseAlpha: Math.random() * 0.45 + 0.2,
                         twinkleSpeed: Math.random() * 0.02 + 0.01,
-                        phase: Math.random() * Math.PI * 2
-                    });
-                }
-                
-                // 2. IMG_3931 모사: 보랏빛 은하수 성간 먼지
-                this.stardust = [];
-                const dustPalette = ['#ffffff', '#ffffff', '#f3e8ff', '#e9d5ff', '#d8b4fe'];
-                for (let i = 0; i < 150; i++) {
-                    const t = Math.random();
-                    const spread = (Math.random() - 0.5) * (Math.random() - 0.5) * 140;
-                    this.stardust.push({
-                        t: t,
-                        spread: spread,
-                        size: Math.random() * 1.15 + 0.45,
-                        color: dustPalette[Math.floor(Math.random() * dustPalette.length)],
-                        alpha: Math.random() * 0.45 + 0.2,
-                        twinkle: Math.random() * 0.02 + 0.008,
                         phase: Math.random() * Math.PI * 2
                     });
                 }
@@ -1426,7 +1432,7 @@
                 };
             },
             
-            // 15초 전부터 시작해 0초 시점에 딱 아늑한 절정에 도달하는 완만한 빌드업
+            // [Focus & Break 100% 동일한 별똥별 수량과 완만한 15초 타이밍]
             updateState(timeRemaining, currentMode, isRunning) {
                 if (!isRunning || currentMode === 'timer') {
                     if (this.stage === 1) this.abort();
@@ -1436,20 +1442,24 @@
                 this.mode = currentMode;
                 
                 if (timeRemaining <= 15 && timeRemaining > 0) {
-                    this.stage = 1;
+                    // 15초 진입 첫 순간 타이머 즉각 리셋하여 첫 별똥별 발사 타이밍 완벽 일치
+                    if (this.stage !== 1) {
+                        this.stage = 1;
+                        this.meteorTimer = performance.now();
+                        this.spawnMeteor(false);
+                    }
+                    
                     const p = (15 - timeRemaining) / 15; // 0.0 -> 1.0 (완만한 15초 빌드업)
                     this.dimAlpha = p * 0.55;           // 0% -> 55%
-                    this.nebulaAlpha = p * 0.55;        // 0% -> 55% (채도 살짝 보강)
+                    this.nebulaAlpha = p * 0.55;        // 0% -> 55%
                     this.maxStars = Math.floor(60 + p * 120); // 60 -> 180개
-                    
-                    // [별똥별 빈도 대폭 강화: 4.5초에서 0초 시점 280ms로 빗발치듯 단축]
-                    this.meteorInterval = Math.max(280, 4200 - p * 3920);
+                    this.meteorInterval = Math.max(280, 4200 - p * 3920); // 4.2초 -> 0.28초로 빗발침
                 } else if (timeRemaining <= 0 && this.stage >= 1) {
                     this.stage = 3;
                     this.dimAlpha = 0.55;
                     this.nebulaAlpha = 0.55;
                     this.maxStars = 180;
-                    this.meteorInterval = 280; // 0초 완료 시 다채로운 유성우 쏟아짐
+                    this.meteorInterval = 280;
                 }
             },
             
@@ -1543,20 +1553,17 @@
                 // 3. 평상시 및 연출 시 은은하게 반짝이는 별
                 this.drawStars();
                 
-                // 4. 별똥별 제어: 평상시 1줄기 vs 종료 임박 시 풍성한 유성우
+                // 4. 별똥별 제어: 평상시 1줄기 vs 종료 임박 시 풍성한 유성우 (Focus/Break 동일)
                 if (this.stage === 0) {
-                    // 평상시: 7.5 ~ 11초마다 1줄기씩 조용히 떨어짐
                     if (now - this.meteorTimer > this.meteorInterval) {
                         this.meteorTimer = now;
                         this.meteorInterval = Math.random() * 3500 + 7500;
                         this.spawnMeteor(true);
                     }
                 } else if (this.stage >= 1 && this.stage <= 3) {
-                    // 종료 직전 및 유지기: 쏟아지는 유성우
                     if (now - this.meteorTimer > this.meteorInterval) {
                         this.meteorTimer = now;
                         this.spawnMeteor(false);
-                        // 종료 임박 시 2~3줄기 동시 다발 출현
                         if (this.dimAlpha >= 0.35 && Math.random() < 0.45) {
                             setTimeout(() => this.spawnMeteor(false), 90);
                         }
@@ -1567,20 +1574,22 @@
                 requestAnimationFrame((t) => this.loop(t));
             },
             
-            /* [Focus 모드: 은하수 성간 먼지 강줄기] */
+            /* [Focus 모드: 산만하지 않고 맑은 은하수 성운 구름] */
             drawMilkyWaySubtle(alpha) {
                 this.ctx.save();
+                this.ctx.globalCompositeOperation = 'screen';
                 
-                const steps = 15;
+                // 잡다한 점 파티클을 걷어내고 부드러운 빛의 덩어리로 Break처럼 맑게 연출
+                const steps = 16;
                 for (let i = 0; i <= steps; i++) {
                     const t = i / steps;
                     const pt = this.getMilkyWayPoint(t);
-                    const rad = Math.min(this.width, this.height) * 0.42;
+                    const rad = Math.min(this.width, this.height) * 0.44;
                     
                     const g = this.ctx.createRadialGradient(pt.x, pt.y, 0, pt.x, pt.y, rad);
-                    g.addColorStop(0, `rgba(238, 215, 255, ${alpha * 0.22})`);
-                    g.addColorStop(0.35, `rgba(180, 140, 255, ${alpha * 0.16})`);
-                    g.addColorStop(0.70, `rgba(110, 105, 250, ${alpha * 0.08})`);
+                    g.addColorStop(0, `rgba(238, 215, 255, ${alpha * 0.24})`);
+                    g.addColorStop(0.35, `rgba(180, 140, 255, ${alpha * 0.18})`);
+                    g.addColorStop(0.70, `rgba(110, 105, 250, ${alpha * 0.09})`);
                     g.addColorStop(1, 'rgba(11, 20, 36, 0)');
                     
                     this.ctx.fillStyle = g;
@@ -1588,21 +1597,6 @@
                     this.ctx.arc(pt.x, pt.y, rad, 0, Math.PI * 2);
                     this.ctx.fill();
                 }
-                
-                this.stardust.forEach(sd => {
-                    sd.phase += sd.twinkle;
-                    const pt = this.getMilkyWayPoint(sd.t);
-                    const px = pt.x + sd.spread;
-                    const py = pt.y - sd.spread * 0.3;
-                    
-                    const curAlpha = alpha * sd.alpha * (0.65 + Math.sin(sd.phase) * 0.35);
-                    this.ctx.fillStyle = sd.color;
-                    this.ctx.globalAlpha = Math.max(0, Math.min(1, curAlpha));
-                    this.ctx.beginPath();
-                    this.ctx.arc(px, py, sd.size, 0, Math.PI * 2);
-                    this.ctx.fill();
-                });
-                
                 this.ctx.restore();
             },
             
@@ -1612,9 +1606,9 @@
                 this.ctx.globalCompositeOperation = 'screen';
                 
                 const ribbons = [
-                    { yFactor: 0.30, amp: 38, speed: 0.6, r: 56, g: 189, b: 248, a: 0.24 }, // 스카이블루
-                    { yFactor: 0.36, amp: 46, speed: 0.8, r: 45, g: 212, b: 191, a: 0.28 }, // 맑은 청록
-                    { yFactor: 0.42, amp: 40, speed: 0.5, r: 99, g: 102, b: 241, a: 0.18 }  // 딥 아쿠아
+                    { yFactor: 0.30, amp: 38, speed: 0.6, r: 56, g: 189, b: 248, a: 0.24 },
+                    { yFactor: 0.36, amp: 46, speed: 0.8, r: 45, g: 212, b: 191, a: 0.28 },
+                    { yFactor: 0.42, amp: 40, speed: 0.5, r: 99, g: 102, b: 241, a: 0.18 }
                 ];
                 
                 ribbons.forEach(rb => {
@@ -1778,7 +1772,7 @@
 
         let isTooltipPinned = false;
 
-        /* [음소거 로직: 원본 규격] */
+        /* [음소거 로직: 아이콘 100% 정상 표시 및 상태 연동] */
         let isMuted = false; 
         try { isMuted = localStorage.getItem(`potato-muted-${userId}`) === 'true'; } catch (e) {}
 
@@ -1803,6 +1797,7 @@
         }
 
         function toggleMute() {
+            preArmAudio();
             updateLastActive();
             isMuted = !isMuted;
             localStorage.setItem(`potato-muted-${userId}`, isMuted.toString());
@@ -1814,7 +1809,7 @@
             pomoStarsBox.innerHTML = '';
             for (let i = 0; i < 4; i++) {
                 const isFilled = i < pomoStars;
-                const starSvg = document.createElementNS("[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)", "svg");
+                const starSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
                 starSvg.setAttribute("viewBox", "0 0 24 24");
                 starSvg.setAttribute("class", `pomo-star-icon ${isFilled ? 'filled' : ''}`);
 
@@ -2207,6 +2202,7 @@
                 addFocusSeconds(consumed, now);
                 actualFocusSecondsCompleted += consumed;
 
+                // 15초 카운트다운 연출 실시간 동기화
                 CosmicFX.updateState(tabStates.focus.timeRemaining, 'focus', true);
 
                 if (tabStates.focus.timeRemaining <= 0) {
@@ -2220,6 +2216,7 @@
                 const consumed = Math.min(Math.max(0, elapsedSeconds), tabStates.short.timeRemaining);
                 tabStates.short.timeRemaining = Math.max(0, tabStates.short.timeRemaining - consumed);
 
+                // 15초 카운트다운 연출 실시간 동기화
                 CosmicFX.updateState(tabStates.short.timeRemaining, 'short', true);
 
                 if (tabStates.short.timeRemaining <= 0) {
@@ -2248,6 +2245,7 @@
         }
 
         function toggleTimer() {
+            preArmAudio(); // START 클릭 즉시 오디오 사전 잠금 해제
             updateLastActive();
             let state = tabStates[currentMode];
 
@@ -2309,6 +2307,7 @@
         }
 
         function setMode(mode) {
+            preArmAudio();
             if (currentMode === 'focus' || currentMode === 'short') {
                 tabStates[currentMode].isRunning = false;
             }
@@ -2350,7 +2349,7 @@
             setMode(mode);
         }
 
-        /* [타이머 0초 완료 시: 고요한 축하 모드] */
+        /* [타이머 0초 완료 시: 알람 즉시 실행 및 고요한 축하 모드] */
         function stopTimerWithAlert(completedMode) {
             try { updateLastActive(); } catch (e) { console.warn('completion-activity', e); }
             tabStates[completedMode].isRunning = false;
@@ -2387,7 +2386,7 @@
             customAlert.classList.add('show');
         }
 
-        /* [완료 확인 버튼: 0.8초 오디오 페이드아웃] */
+        /* [완료 확인 버튼: 부드러운 4단계 복귀 및 0.8초 페이드아웃] */
         let isClosingAlert = false;
         function closeCustomAlert() {
             if (!customAlert.classList.contains('show') || isClosingAlert) return;
@@ -2732,20 +2731,20 @@
                 return { x, y, item, sec };
             });
 
-            const defs = document.createElementNS("[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)", "defs");
-            const linearGrad = document.createElementNS("[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)", "linearGradient");
+            const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
+            const linearGrad = document.createElementNS("http://www.w3.org/2000/svg", "linearGradient");
             linearGrad.setAttribute("id", "lineAreaGrad");
             linearGrad.setAttribute("x1", "0%");
             linearGrad.setAttribute("y1", "0%");
             linearGrad.setAttribute("x2", "0%");
             linearGrad.setAttribute("y2", "100%");
 
-            const stop1 = document.createElementNS("[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)", "stop");
+            const stop1 = document.createElementNS("http://www.w3.org/2000/svg", "stop");
             stop1.setAttribute("offset", "0%");
             stop1.setAttribute("stop-color", "#6A55C9");
             stop1.setAttribute("stop-opacity", "0.38");
 
-            const stop2 = document.createElementNS("[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)", "stop");
+            const stop2 = document.createElementNS("http://www.w3.org/2000/svg", "stop");
             stop2.setAttribute("offset", "100%");
             stop2.setAttribute("stop-color", "#6A55C9");
             stop2.setAttribute("stop-opacity", "0.0");
@@ -2763,12 +2762,12 @@
             const bottomY = padTop + chartH;
             const areaD = `${lineD} L ${points[points.length - 1].x} ${bottomY} L ${points[0].x} ${bottomY} Z`;
 
-            const areaEl = document.createElementNS("[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)", "path");
+            const areaEl = document.createElementNS("http://www.w3.org/2000/svg", "path");
             areaEl.setAttribute("d", areaD);
             areaEl.setAttribute("fill", "url(#lineAreaGrad)");
             svg.appendChild(areaEl);
 
-            const pathEl = document.createElementNS("[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)", "path");
+            const pathEl = document.createElementNS("http://www.w3.org/2000/svg", "path");
             pathEl.setAttribute("d", lineD);
             pathEl.setAttribute("fill", "none");
             pathEl.setAttribute("stroke", "#6A55C9");
@@ -2777,7 +2776,7 @@
             svg.appendChild(pathEl);
 
             points.forEach(pt => {
-                const hitCircle = document.createElementNS("[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)", "circle");
+                const hitCircle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
                 hitCircle.setAttribute("cx", pt.x);
                 hitCircle.setAttribute("cy", pt.y);
                 hitCircle.setAttribute("r", "12");
