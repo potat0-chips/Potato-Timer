@@ -53,14 +53,16 @@
             align-items: center;
             justify-content: center;
             min-height: 100vh;
-            min-height: -webkit-fill-available;
             user-select: none;
             -webkit-user-select: none;
             position: relative;
         }
 
-        html.standalone body {
-            min-height: 100vh;
+        @media (display-mode: browser) {
+            body {
+                min-height: 100vh;
+                min-height: -webkit-fill-available;
+            }
         }
 
         /* [전체화면 해제 / 축소 모드: 하단 여백 형성] */
