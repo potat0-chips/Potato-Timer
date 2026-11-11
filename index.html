@@ -1031,6 +1031,9 @@
         .todo-drag-handle { touch-action: none; }
         .todo-drawer, .todo-list { overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
     </style>
+    <script>
+        if (window.navigator.standalone === true) document.documentElement.classList.add('standalone');
+        </script>
 </head>
 <body>
     <!-- [우주 쇼 캔버스] -->
