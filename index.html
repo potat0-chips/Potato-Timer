@@ -1260,68 +1260,105 @@
         const userId = urlParams.get('user') || 'default_local_user';
         const isCloudSyncActive = !!db && urlParams.has('user');
 
-        /* ==============================================================
-           🎵 [오디오 시스템: R8/R35 순수 오디오 엔진 100% 완전 복원]
-           ============================================================== */
         const AUDIO_FILES = { focus: './focus.mp3', short: './break.mp3', alarm: './alarm.mp3' };
-        const alarmPlayer = new Audio();
-        alarmPlayer.preload = 'auto';
-        alarmPlayer.playsInline = true;
-        alarmPlayer.setAttribute('playsinline', '');
-
+        const AudioCtxClass = window.AudioContext || window.webkitAudioContext;
+        let audioCtx = null;
+        const gains = {};
+        const players = {};
+        Object.keys(AUDIO_FILES).forEach(k => {
+        const a = new Audio();
+            a.preload = 'auto';
+            a.playsInline = true;
+            a.setAttribute('playsinline', '');
+            a.src = AUDIO_FILES[k];
+            players[k] = a;
+        });
+        // 기존 코드(updateMuteDisplay)가 alarmPlayer.muted 를 쓰므로 같은 이름을 유지
+        const alarmPlayer = {
+            set muted(v) { Object.keys(players).forEach(k => { players[k].muted = !!v; }); },
+            get muted() { return players.alarm.muted; }
+        };
         let soundGeneration = 0;
         let soundRequest = null;
-        let fadeTimer = null;
+        let audioUnlocked = {};
+        let alarmBuffer = null;
+        let alarmBufferLoading = false;
+        let pendingAlarm = null;
 
+        function ensureAudioCtx() {
+            if (audioCtx || !AudioCtxClass) return audioCtx;
+            try {
+                const c = new AudioCtxClass();
+                Object.keys(players).forEach(k => {
+                    const src = c.createMediaElementSource(players[k]);
+                    const g = c.createGain();
+                    g.gain.value = 1;
+                    src.connect(g);
+                    g.connect(c.destination);
+                    gains[k] = g;
+                });
+                audioCtx = c;
+            } catch (e) { audioCtx = null; }
+            return audioCtx;
+        }
+        // iOS는 audio.volume 을 무시하므로 GainNode 로 볼륨/페이드 처리
+        function setGain(k, value, ms) {
+            const g = gains[k];
+            if (!g || !audioCtx) { try { players[k].volume = value; } catch (e) {} return; }
+            const now = audioCtx.currentTime;
+            g.gain.cancelScheduledValues(now);
+            if (!ms) { g.gain.setValueAtTime(value, now); return; }
+            g.gain.setValueAtTime(g.gain.value, now);
+            g.gain.linearRampToValueAtTime(value, now + ms / 1000);
+        }
         function stopAllSound() {
             soundGeneration++;
             soundRequest = null;
-            clearInterval(fadeTimer);
-            fadeTimer = null;
-            try { alarmPlayer.pause(); } catch (e) {}
-            alarmPlayer.loop = false;
-            try { alarmPlayer.currentTime = 0; } catch (e) {}
-            alarmPlayer.volume = 1;
+            Object.keys(players).forEach(k => {
+                const p = players[k];
+                try { p.pause(); } catch (e) {}
+                p.loop = false;
+                try { p.currentTime = 0; } catch (e) {}
+                setGain(k, 1, 0);
+            });
         }
-
-        // 0.8초(800ms) 부드러운 페이드아웃
         function fadeVolume(target, ms, generation) {
-            clearInterval(fadeTimer);
-            const start = alarmPlayer.volume;
-            const t0 = Date.now();
-            fadeTimer = setInterval(() => {
-                if (generation !== soundGeneration) { clearInterval(fadeTimer); fadeTimer = null; return; }
-                const p = Math.min(1, (Date.now() - t0) / ms);
-                alarmPlayer.volume = Math.max(0, Math.min(1, start + (target - start) * p));
-                if (p >= 1) { clearInterval(fadeTimer); fadeTimer = null; }
-            }, 30);
+            if (generation !== soundGeneration || !soundRequest) return;
+            setGain(soundRequest.key, target, ms);
         }
-
-        function playSound(key, loop, volume) {
+        function playSound(key, loop, volume, fadeInMs) {
             if (key === 'alarm' && soundRequest && soundRequest.loop) return;
             stopAllSound();
             if (isMuted) return;
             const generation = soundGeneration;
+            const p = players[key];
             soundRequest = { key, loop: !!loop };
-            alarmPlayer.onended = () => {
+            p.onended = () => {
                 if (generation === soundGeneration && !loop) soundRequest = null;
             };
-            alarmPlayer.src = AUDIO_FILES[key];
-            alarmPlayer.muted = false;
-            alarmPlayer.loop = !!loop;
-            
-            // 즉시 100% 볼륨으로 재생 시작 (소리 누락 원천 방지)
-            alarmPlayer.volume = volume;
-            try {
-                const p = alarmPlayer.play();
-                if (p && p.catch) p.catch(() => {
+            p.muted = false;
+            p.loop = !!loop;
+            const start = () => {
+                if (generation !== soundGeneration) return;
+                setGain(key, fadeInMs > 0 ? 0 : volume, 0);
+                try {
+                    const pr = p.play();
+                    if (pr && pr.catch) pr.catch(() => {
+                        if (generation === soundGeneration) soundRequest = null;
+                    });
+                } catch (e) {
                     if (generation === soundGeneration) soundRequest = null;
-                });
-            } catch (e) {
-                if (generation === soundGeneration) soundRequest = null;
+                    return;
+                }
+                if (fadeInMs > 0) setGain(key, volume, fadeInMs);
+            };
+            const c = ensureAudioCtx();
+            if (c && c.state !== 'running') {
+                try { c.resume().then(start, start); } catch (e) { start(); }
+            } else {
+                start();
             }
         }
-
         function stopAudioEngine() {
             if (soundRequest && soundRequest.loop && !isMuted) {
                 const generation = soundGeneration;
@@ -1331,11 +1368,81 @@
                 stopAllSound();
             }
         }
-
-        function playEndAlert(mode) { playSound(mode === 'focus' ? 'focus' : 'short', true, 1); }
-        function playHourlyAlert() { playSound('alarm', false, 0.65); }
-
-        function unlockAudioEngine() {}
+        function playEndAlert(mode) {
+            if (mode === 'focus') playSound('focus', true, 1, 4000);
+            else playSound('short', true, 1, 0);
+        }
+        function cancelPendingAlarm() {
+            if (pendingAlarm) { try { pendingAlarm.src.stop(); } catch (e) {} pendingAlarm = null; }
+        }
+        function playHourlyAlert() {
+            if (pendingAlarm) {
+                const alreadyStarted = audioCtx && audioCtx.state === 'running' && audioCtx.currentTime >= pendingAlarm.at;
+                if (alreadyStarted) { pendingAlarm = null; return; }
+                cancelPendingAlarm();
+            }
+            playSound('alarm', false, 0.65, 0);
+        }
+        function loadAlarmBuffer() {
+            if (alarmBuffer || alarmBufferLoading || !audioCtx) return;
+            alarmBufferLoading = true;
+            fetch(AUDIO_FILES.alarm)
+                .then(r => r.arrayBuffer())
+                .then(ab => new Promise((res, rej) => audioCtx.decodeAudioData(ab, res, rej)))
+                .then(b => { alarmBuffer = b; })
+                .catch(() => {})
+                .then(() => { alarmBufferLoading = false; });
+        }
+        function unlockAudioEngine() {
+            const c = ensureAudioCtx();
+            try { if (c && c.state !== 'running') c.resume(); } catch (e) {}
+            loadAlarmBuffer();
+            Object.keys(players).forEach(k => {
+                if (audioUnlocked[k]) return;
+                if (soundRequest && soundRequest.key === k) return;
+                audioUnlocked[k] = true;
+                const p = players[k];
+                p.muted = true;
+                const restore = () => {
+                    if (!(soundRequest && soundRequest.key === k)) {
+                        try { p.pause(); p.currentTime = 0; } catch (e) {}
+                    }
+                    p.muted = !!isMuted;
+                };
+                try {
+                    const pr = p.play();
+                    if (pr && pr.then) pr.then(restore, () => { audioUnlocked[k] = false; p.muted = !!isMuted; });
+                    else restore();
+                } catch (e) { audioUnlocked[k] = false; p.muted = !!isMuted; }
+            });
+        }
+        ['pointerdown', 'touchend', 'click', 'keydown'].forEach(evt => {
+            document.addEventListener(evt, unlockAudioEngine, { passive: true });
+        });
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden && audioCtx && audioCtx.state !== 'running') {
+                try { audioCtx.resume(); } catch (e) {}
+            }
+        });
+        // Timer 가 도는 동안 다음 정각(1시간 단위) 알림을 오디오 시계에 미리 예약
+        setInterval(() => {
+            try {
+                const st = tabStates.timer;
+                const ok = audioCtx && audioCtx.state === 'running' && alarmBuffer && !isMuted && st && st.isRunning;
+                if (!ok) { cancelPendingAlarm(); return; }
+                const at = audioCtx.currentTime + (3600 - (st.timeRemaining % 3600));
+                if (pendingAlarm && Math.abs(pendingAlarm.at - at) < 0.5) return;
+                cancelPendingAlarm();
+                const src = audioCtx.createBufferSource();
+                src.buffer = alarmBuffer;
+                const g = audioCtx.createGain();
+                g.gain.value = 0.65;
+                src.connect(g);
+                g.connect(audioCtx.destination);
+                src.start(at);
+                pendingAlarm = { src, at };
+            } catch (e) {}
+        }, 1000);
 
         /* ==============================================================
            🌌 [COSMIC FX ENGINE: 5초 절정 / 부드러운 소멸 / 순수 에메랄드 오로라]
