@@ -11,12 +11,13 @@
     <link rel="apple-touch-icon" href="./potato.png">
 
     <title>Potato Timer</title>
-    <meta name="potato-build" content="R43-RestoredAudioAndSparkle-20261111">
+    <meta name="potato-build" content="R44-CleanAudioAndSubtleStars-20261111">
     
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
+    <style>
         @font-face {
             font-family: 'IM_Hyemin';
             src: url('./hyemin.ttf') format('truetype');
@@ -55,11 +56,7 @@
             min-height: -webkit-fill-available;
             user-select: none;
             -webkit-user-select: none;
-            position: fixed;
-            top: 0;
-            right: 0;
-            bottom: 0;
-            left: 0;
+            position: relative;
         }
 
         /* [전체화면 해제 / 축소 모드: 하단 여백 형성] */
@@ -80,7 +77,6 @@
             font-family: 'IM_Hyemin', sans-serif !important;
             transform: translateZ(0);
         }
-
 
         /* [우주 쇼 전용 고성능 Canvas] */
         #cosmic-canvas {
@@ -1042,7 +1038,7 @@
     <button class="top-action-btn settings-btn" id="settings-toggle-btn" onclick="openSettings()" title="설정">
         <svg viewBox="0 0 24 24" width="22" height="22" preserveAspectRatio="xMidYMid meet" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="3"></circle>
-            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
         </svg>
     </button>
 
@@ -1257,13 +1253,32 @@
         const isCloudSyncActive = !!db && urlParams.has('user');
 
         /* ==============================================================
-           🎵 [오디오 시스템: 사파리 100% 호환 순수 오디오 엔진 완전 복원]
+           🎵 [오디오 시스템: 사파리 100% 호환 순수 오디오 엔진 완전 복구]
            ============================================================== */
         const AUDIO_FILES = { focus: './focus.mp3', short: './break.mp3', alarm: './alarm.mp3' };
         const alarmPlayer = new Audio();
         alarmPlayer.preload = 'auto';
         alarmPlayer.playsInline = true;
         alarmPlayer.setAttribute('playsinline', '');
+
+        // 사파리 iOS의 백그라운드 재생 차단을 뚫는 사전 활성화(Pre-arm)
+        function preArmModeAudio(mode) {
+            try {
+                const targetSrc = AUDIO_FILES[mode === 'focus' ? 'focus' : 'short'];
+                if (alarmPlayer.src !== targetSrc) {
+                    alarmPlayer.src = targetSrc;
+                }
+                alarmPlayer.muted = true;
+                const p = alarmPlayer.play();
+                if (p && p.then) {
+                    p.then(() => {
+                        alarmPlayer.pause();
+                        alarmPlayer.currentTime = 0;
+                        alarmPlayer.muted = false;
+                    }).catch(() => {});
+                }
+            } catch (e) {}
+        }
 
         let soundGeneration = 0;
         let soundRequest = null;
@@ -1339,7 +1354,7 @@
         function unlockAudioEngine() {}
 
         /* ==============================================================
-           🌌 [COSMIC FX ENGINE: Focus와 Break 100% 동일 타이밍 동기화]
+           🌌 [COSMIC FX ENGINE: 조그맣고 은은한 자연미 별빛 & Break 타이밍 통일]
            ============================================================== */
         const CosmicFX = {
             canvas: null,
@@ -1372,30 +1387,30 @@
                 this.handleResize();
                 window.addEventListener('resize', () => this.handleResize());
                 
-                // 1. 또렷하게 빛나고 반짝이는 배경 별 (반지름 1.2px ~ 3.2px, 순백색 100% 도달)
+                // [수정: 커다란 원형 거대점 완전 삭제 -> 아주 작고 고운 핀포인트 별빛 (반지름 0.6px ~ 1.1px)]
                 this.stars = [];
-                for (let i = 0; i < 200; i++) {
+                for (let i = 0; i < 180; i++) {
                     this.stars.push({
                         x: Math.random(),
                         y: Math.random(),
-                        size: Math.random() * 1.5 + 1.2,
-                        twinkleSpeed: Math.random() * 0.03 + 0.012,
+                        size: Math.random() * 0.5 + 0.6, // 지름 1.2px ~ 2.2px의 작고 예쁜 점
+                        twinkleSpeed: Math.random() * 0.02 + 0.01,
                         phase: Math.random() * Math.PI * 2
                     });
                 }
                 
-                // 2. IMG_3931 모사: 보랏빛 은하수 성간 먼지 파티클 복원
+                // [은하수 성간 먼지 파티클 복원]
                 this.stardust = [];
                 const dustPalette = ['#ffffff', '#ffffff', '#f3e8ff', '#e9d5ff', '#d8b4fe'];
-                for (let i = 0; i < 150; i++) {
+                for (let i = 0; i < 140; i++) {
                     const t = Math.random();
                     const spread = (Math.random() - 0.5) * (Math.random() - 0.5) * 140;
                     this.stardust.push({
                         t: t,
                         spread: spread,
-                        size: Math.random() * 1.15 + 0.45,
+                        size: Math.random() * 0.7 + 0.4,
                         color: dustPalette[Math.floor(Math.random() * dustPalette.length)],
-                        alpha: Math.random() * 0.45 + 0.2,
+                        alpha: Math.random() * 0.4 + 0.15,
                         twinkle: Math.random() * 0.02 + 0.008,
                         phase: Math.random() * Math.PI * 2
                     });
@@ -1432,7 +1447,7 @@
                 };
             },
             
-            // [Focus & Break 100% 동일한 별똥별 수량과 빠른 10초 절정 타이밍]
+            // [Focus & Break 완전 동일한 빠른 10초 절정 유성우 타이밍]
             updateState(timeRemaining, currentMode, isRunning) {
                 if (!isRunning || currentMode === 'timer') {
                     if (this.stage !== 0 && this.stage !== 4) this.abort();
@@ -1442,32 +1457,32 @@
                 this.mode = currentMode;
                 
                 if (timeRemaining <= 15 && timeRemaining > 10) {
-                    // [1단계: 도입기 (15초 ~ 10초)]
+                    // [1단계: 도입기 (15초 ~ 10초)] - 15초 진입 즉시 1줄기 스쳐 지나감
                     if (this.stage !== 1) {
                         this.stage = 1;
                         this.meteorTimer = performance.now();
                         this.spawnMeteor(false);
                     }
                     const p = (15 - timeRemaining) / 5; // 0.0 -> 1.0
-                    this.dimAlpha = p * 0.40;          // 서서히 40%
-                    this.nebulaAlpha = p * 0.45;       // 서서히 45%
+                    this.dimAlpha = p * 0.40;          // 0% -> 40%
+                    this.nebulaAlpha = p * 0.45;       // 0% -> 45%
                     this.maxStars = Math.floor(70 + p * 40);
-                    this.meteorInterval = 3400 - p * 1400; // 3.4초 -> 2.0초
+                    this.meteorInterval = 2200 - p * 1200; // 2.2초 -> 1.0초
                 } else if (timeRemaining <= 10 && timeRemaining > 0) {
-                    // [2단계: 절정기 (10초 ~ 0초)] - 10초 시점부터 별똥별이 빠르게 쏟아짐!
+                    // [2단계: 절정기 (10초 ~ 0초)] - Break처럼 10초부터 빠르게 쏟아짐!
                     this.stage = 2;
                     const p = (10 - timeRemaining) / 10; // 0.0 -> 1.0
                     this.dimAlpha = 0.40 + p * 0.15;    // 40% -> 55%
                     this.nebulaAlpha = 0.45 + p * 0.10; // 45% -> 55%
                     this.maxStars = Math.floor(110 + p * 70); // 110 -> 180개
-                    this.meteorInterval = Math.max(300, 950 - p * 650); // 10초 0.9초 -> 0초 0.3초대로 급격히 단축
+                    this.meteorInterval = Math.max(250, 700 - p * 450); // 10초 0.7초 -> 0초 0.25초로 빗발침
                 } else if (timeRemaining <= 0 && this.stage >= 1) {
                     // [3단계: 0초 완료 팝업 유지기]
                     this.stage = 3;
                     this.dimAlpha = 0.55;
                     this.nebulaAlpha = 0.55;
                     this.maxStars = 180;
-                    this.meteorInterval = 320;
+                    this.meteorInterval = 280;
                 }
             },
             
@@ -1511,7 +1526,7 @@
                     vy: Math.sin(angle) * speed,
                     len: len,
                     alpha: 0.9,
-                    width: Math.random() * 0.6 + 1.2
+                    width: Math.random() * 0.5 + 1.15
                 });
             },
             
@@ -1558,10 +1573,10 @@
                     }
                 }
                 
-                // 3. 반짝이는 별 드로잉
+                // 3. 조그맣고 은은한 별 드로잉
                 this.drawStars();
                 
-                // 4. 별똥별 제어: 평상시 1줄기 vs 10초부터 빠른 유성우 (Focus/Break 동일)
+                // 4. 별똥별 제어: 평상시 1줄기 vs 10초부터 빠른 유성우 (Focus/Break 완전 통일)
                 if (this.stage === 0) {
                     if (now - this.meteorTimer > this.meteorInterval) {
                         this.meteorTimer = now;
@@ -1572,9 +1587,9 @@
                     if (now - this.meteorTimer > this.meteorInterval) {
                         this.meteorTimer = now;
                         this.spawnMeteor(false);
-                        // 10초 미만(절정기)에는 40% 확률로 2줄기 동시 출현
-                        if (this.stage >= 2 && Math.random() < 0.40) {
-                            setTimeout(() => this.spawnMeteor(false), 100);
+                        // 10초 미만(절정기)에는 45% 확률로 2줄기 동시 출현
+                        if (this.stage >= 2 && Math.random() < 0.45) {
+                            setTimeout(() => this.spawnMeteor(false), 80);
                         }
                     }
                 }
@@ -1583,7 +1598,7 @@
                 requestAnimationFrame((t) => this.loop(t));
             },
             
-            /* [Focus 모드: 은하수 성운 구름 & 성간 먼지 파티클 복원] */
+            /* [Focus 모드: 은하수 성운 구름 & 미세 성간 먼지 복원] */
             drawMilkyWaySubtle(alpha) {
                 this.ctx.save();
                 this.ctx.globalCompositeOperation = 'screen';
@@ -1606,7 +1621,7 @@
                     this.ctx.fill();
                 }
                 
-                // 성간 먼지 파티클 렌더링
+                // 은하수 줄기를 따라 고요히 흐르는 미세 먼지 입자
                 this.stardust.forEach(sd => {
                     sd.phase += sd.twinkle;
                     const pt = this.getMilkyWayPoint(sd.t);
@@ -1666,30 +1681,19 @@
                 this.ctx.restore();
             },
             
-            /* [배경 별 드로잉: Focus와 Break 모두에서 영롱하게 반짝이는 빛무리 효과 탑재] */
+            /* [배경 별: 거대 원형 없이 조그맣고 은은한 점(0.6~1.1px)으로만 반짝임] */
             drawStars() {
                 const count = Math.min(this.maxStars, this.stars.length);
                 for (let i = 0; i < count; i++) {
                     const s = this.stars[i];
                     s.phase += s.twinkleSpeed;
                     const twinkle = (Math.sin(s.phase) + 1) * 0.5; // 0 ~ 1
-                    const currentAlpha = 0.25 + twinkle * 0.75;  // 0.25 ~ 1.00 밝은 순백색
-                    const currentSize = s.size * (0.8 + twinkle * 0.4);
+                    const currentAlpha = 0.18 + twinkle * 0.65;   // 크기 변화 없이 투명도만 0.18 ~ 0.83 부드럽게 호흡
 
-                    // 1. 별 중심 코어
                     this.ctx.fillStyle = `rgba(255, 255, 255, ${currentAlpha})`;
                     this.ctx.beginPath();
-                    this.ctx.arc(s.x * this.width, s.y * this.height, currentSize, 0, Math.PI * 2);
+                    this.ctx.arc(s.x * this.width, s.y * this.height, s.size, 0, Math.PI * 2);
                     this.ctx.fill();
-
-                    // 2. 반짝임 정점 도달 시 영롱한 다이아몬드 빛무리(Halo Sparkle) 발광
-                    if (twinkle > 0.65) {
-                        const shineAlpha = (twinkle - 0.65) / 0.35 * 0.65;
-                        this.ctx.fillStyle = `rgba(255, 255, 255, ${shineAlpha})`;
-                        this.ctx.beginPath();
-                        this.ctx.arc(s.x * this.width, s.y * this.height, currentSize * 2.3, 0, Math.PI * 2);
-                        this.ctx.fill();
-                    }
                 }
             },
             
@@ -1808,9 +1812,9 @@
 
         let isTooltipPinned = false;
 
-        /* [음소거 로직] */
-        let isMuted = false; 
-        try { isMuted = localStorage.getItem(`potato-muted-${userId}`) === 'true'; } catch (e) {}
+        /* [음소거 로직: 초기 진입 시 음소거 락 강제 해제하여 소리 100% 보장] */
+        let isMuted = false;
+        try { localStorage.removeItem(`potato-muted-${userId}`); } catch (e) {}
 
         const ICON_SOUND_ON = `
             <g transform="translate(1, 0)">
@@ -1833,9 +1837,10 @@
         }
 
         function toggleMute() {
+            preArmModeAudio(currentMode);
             updateLastActive();
             isMuted = !isMuted;
-            localStorage.setItem(`potato-muted-${userId}`, isMuted.toString());
+            try { localStorage.setItem(`potato-muted-${userId}`, isMuted.toString()); } catch (e) {}
             updateMuteDisplay();
         }
 
@@ -2280,6 +2285,7 @@
         }
 
         function toggleTimer() {
+            preArmModeAudio(currentMode); // START 클릭 시 오디오 엔진 권한 즉각 승인
             updateLastActive();
             let state = tabStates[currentMode];
 
@@ -2341,6 +2347,7 @@
         }
 
         function setMode(mode) {
+            preArmModeAudio(mode);
             if (currentMode === 'focus' || currentMode === 'short') {
                 tabStates[currentMode].isRunning = false;
             }
@@ -2382,7 +2389,7 @@
             setMode(mode);
         }
 
-        /* [타이머 0초 완료 시: 고요한 축하 모드] */
+        /* [타이머 0초 완료 시: 알람 즉시 실행 및 고요한 축하 모드] */
         function stopTimerWithAlert(completedMode) {
             try { updateLastActive(); } catch (e) { console.warn('completion-activity', e); }
             tabStates[completedMode].isRunning = false;
@@ -2429,7 +2436,7 @@
             
             CosmicFX.dismiss();
             
-            // Focus & Break 공통 0.8초 페이드아웃
+            // 0.8초 볼륨 페이드아웃
             stopAudioEngine();
             try { updateLastActive(); } catch (e) {}
 
@@ -3219,12 +3226,12 @@
                 if (active) {
                     document.documentElement.classList.remove('pseudo-fullscreen');
                     document.body.classList.remove('pseudo-fullscreen');
-                    fsIcon.innerHTML = ICON_EXIT_FULLSCREEN; // 축소 아이콘
+                    fsIcon.innerHTML = ICON_EXIT_FULLSCREEN;
                     document.getElementById('fullscreen-toggle-btn').title = "화면 축소";
                 } else {
                     document.documentElement.classList.add('pseudo-fullscreen');
                     document.body.classList.add('pseudo-fullscreen');
-                    fsIcon.innerHTML = ICON_ENTER_FULLSCREEN; // 확대 아이콘
+                    fsIcon.innerHTML = ICON_ENTER_FULLSCREEN;
                     document.getElementById('fullscreen-toggle-btn').title = "전체화면";
                 }
             } else {
