@@ -17,7 +17,6 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
-    <style>
         @font-face {
             font-family: 'IM_Hyemin';
             src: url('./hyemin.ttf') format('truetype');
@@ -56,7 +55,11 @@
             min-height: -webkit-fill-available;
             user-select: none;
             -webkit-user-select: none;
-            position: relative;
+            position: fixed;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            left: 0;
         }
 
         /* [전체화면 해제 / 축소 모드: 하단 여백 형성] */
@@ -77,6 +80,7 @@
             font-family: 'IM_Hyemin', sans-serif !important;
             transform: translateZ(0);
         }
+
 
         /* [우주 쇼 전용 고성능 Canvas] */
         #cosmic-canvas {
