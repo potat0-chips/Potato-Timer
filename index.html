@@ -1862,6 +1862,15 @@
 
         let modeSettings = getInitialModeSettings();
         let targetCycleGoal = 3; 
+        try {
+            const fixKey = `potato-goal-fix-v1-${userId}`;
+            if (!localStorage.getItem(fixKey)) {
+                if (localStorage.getItem(`potato-target-goal-${userId}`) === '10') {
+                    localStorage.removeItem(`potato-target-goal-${userId}`);
+                }
+                localStorage.setItem(fixKey, '1');
+            }
+        } catch (e) {}
         try { targetCycleGoal = parseInt(localStorage.getItem(`potato-target-goal-${userId}`), 10) || 3; } catch (e) {}
 
         let tabStates = {
@@ -2177,7 +2186,31 @@
                     if (data.lastSavedDate) lastSavedDate = data.lastSavedDate;
                     if (remoteKey) activeDayKey = remoteKey;
                 }
-                if (typeof data.targetCycleGoal === 'number') targetCycleGoal = data.targetCycleGoal;
+                if (typeof data.targetCycleGoal === 'number') {
+                    const fixKey = `potato-goal-cloud-fix-v1-${userId}`;
+                    let cloudGoal = data.targetCycleGoal;
+                    let needPush = false;
+                    if (!localStorage.getItem(fixKey)) {
+                        if (cloudGoal === 10) { cloudGoal = 3; needPush = true; }
+                        try { localStorage.setItem(fixKey, '1'); } catch (e) {}
+                    }
+                    targetCycleGoal = cloudGoal;
+                    try { localStorage.setItem(`potato-target-goal-${userId}`, String(targetCycleGoal)); } catch (e) {}
+                    renderPomoTracker();
+                    if (needPush) setTimeout(() => { try { saveState(); } catch (e) {} }, 0);
+                }
+
+                    // 처음 한 번만, 예전에 저장된 10은 기본값 3으로 되돌리고 클라우드에도 반영
+                    if (!localStorage.getItem(fixKey)) {
+                        if (cloudGoal === 10) { cloudGoal = 3; needPush = true; }
+                        try { localStorage.setItem(fixKey, '1'); } catch (e) {}
+                    }
+
+                    targetCycleGoal = cloudGoal;
+                    try { localStorage.setItem(`potato-target-goal-${userId}`, String(cloudGoal)); } catch (e) {}
+                    renderPomoTracker();
+                    if (needPush) saveState();
+                }
                 let historyAhead = false;
                 if (data.focusHistory) {
                     focusHistory = mergeFocusHistory(focusHistory, data.focusHistory);
