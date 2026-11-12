@@ -1092,7 +1092,7 @@
             <!-- 뽀모도로 게이지 바 -->
             <div class="pomo-tracker-bar">
                 <div class="pomo-stars-group" id="pomo-stars-box"></div>
-                <div class="pomo-count-text" id="pomo-cycle-counter">0/10</div>
+                <div class="pomo-count-text" id="pomo-cycle-counter">0/3</div>
                 <div class="pomo-auto-toggle-wrap" onclick="toggleAutoPomo()" title="연속 자동 실행">
                     <div class="pomo-toggle-switch" id="pomo-auto-switch">
                         <div class="pomo-toggle-knob"></div>
@@ -1297,6 +1297,11 @@
                     g.connect(c.destination);
                     gains[k] = g;
                 });
+                c.onstatechange = () => {
+                    if (c.state === 'suspended' || c.state === 'interrupted') {
+                        try { c.resume(); } catch (e) {}
+                    }
+                };
                 audioCtx = c;
             } catch (e) { audioCtx = null; }
             return audioCtx;
@@ -1353,7 +1358,10 @@
             };
             const c = ensureAudioCtx();
             if (c && c.state !== 'running') {
-                try { c.resume().then(start, start); } catch (e) { start(); }
+                let started = false;
+                const go = () => { if (started) return; started = true; start(); };
+                try { c.resume().then(go, go); } catch (e) { go(); }
+                setTimeout(go, 300);
             } else {
                 start();
             }
@@ -1423,9 +1431,13 @@
                 try { audioCtx.resume(); } catch (e) {}
             }
         });
+        
         // Timer 가 도는 동안 다음 정각(1시간 단위) 알림을 오디오 시계에 미리 예약
         setInterval(() => {
             try {
+                  if (audioCtx && audioCtx.state !== 'running' && !document.hidden) {
+                    try { audioCtx.resume(); } catch (e) {}
+                }
                 const st = tabStates.timer;
                 const ok = audioCtx && audioCtx.state === 'running' && alarmBuffer && !isMuted && st && st.isRunning;
                 if (!ok) { cancelPendingAlarm(); return; }
@@ -1857,7 +1869,7 @@
 
         let modeSettings = getInitialModeSettings();
         let targetCycleGoal = 3; 
-        try { targetCycleGoal = parseInt(localStorage.getItem(`potato-target-goal-${userId}`), 3) || 3; } catch (e) {}
+        try { targetCycleGoal = parseInt(localStorage.getItem(`potato-target-goal-${userId}`), 10) || 3; } catch (e) {}
 
         let tabStates = {
             focus: { timeRemaining: modeSettings.focus.min * 60 + modeSettings.focus.sec, totalSeconds: modeSettings.focus.min * 60 + modeSettings.focus.sec, isRunning: false },
@@ -1917,7 +1929,7 @@
 
         /* [음소거 로직: 초기 진입 시 음소거 락 완전 해제 및 기본 사운드 출력 보장] */
         let isMuted = false;
-        try { localStorage.setItem(`potato-muted-${userId}`, 'false'); } catch (e) {}
+        try { isMuted = localStorage.getItem(`potato-muted-${userId}`) === 'true'; } catch (e) {}
 
         const ICON_SOUND_ON = `
             <g transform="translate(1, 0)">
@@ -2116,7 +2128,6 @@
                     pomoCycleCount: pomoCycleCount,
                     targetCycleGoal: targetCycleGoal,
                     modeSettings: modeSettings,
-                    isMuted: isMuted,
                     isAutoPomo: isAutoPomo,
                     focusHistory: focusHistory,
                     writerId: CLIENT_ID,
@@ -2152,7 +2163,6 @@
                 } else {
                     const sameDay = (!remoteKey || remoteKey === activeDayKey);
                     if (typeof data.accumulatedFocusSeconds === 'number') {
-                        const sameDay = (!remoteKey || remoteKey === activeDayKey);
                         if (sameDay && accumulatedFocusSeconds > data.accumulatedFocusSeconds) focusAhead = true;
                         accumulatedFocusSeconds = sameDay
                             ? Math.max(accumulatedFocusSeconds, data.accumulatedFocusSeconds)
@@ -2188,11 +2198,6 @@
                             tabStates[m].timeRemaining = tabStates[m].totalSeconds;
                         }
                     });
-                }
-                if (typeof data.isMuted === 'boolean') {
-                    isMuted = data.isMuted;
-                    localStorage.setItem(`potato-muted-${userId}`, isMuted.toString());
-                    updateMuteDisplay();
                 }
                 if (typeof data.isAutoPomo === 'boolean') {
                     isAutoPomo = data.isAutoPomo;
@@ -2365,7 +2370,8 @@
 
         let lastFocusSaveTime = 0;
 
-        function recordFocusTime(seconds, atMs) {
+        function recordFocusTime(seconds, 
+                                 atMs) {
             const dateKey = activeDayKey || getDateKey();
             const hour = new Date(atMs || Date.now()).getHours();
 
@@ -2411,7 +2417,7 @@
                 if (currentMode === 'timer') startBtn.textContent = 'START';
             }
             st.timeRemaining += eff;
-            addFocusSeconds(eff, endMs);
+            if (!tabStates.focus.isRunning) addFocusSeconds(eff, endMs);
             const curHour = Math.floor(st.timeRemaining / 3600);
             if (curHour > prevHour && curHour >= 1) playHourlyAlert();
         }
@@ -2500,6 +2506,13 @@
                 if (currentMode === 'focus' && focusSessionTarget === null) {
                     focusSessionTarget = modeSettings.focus.min * 60 + modeSettings.focus.sec;
                 }
+                if (currentMode === 'focus' || currentMode === 'short') {
+                    const other = currentMode === 'focus' ? 'short' : 'focus';
+                    if (tabStates[other].isRunning) {
+                        // 다른 쪽이 돌고 있으면 시작하지 않음 (먼저 그쪽을 멈춰야 함)
+                        return;
+                    }
+                }
                 state.isRunning = true;
                 startBtn.textContent = 'STOP';
                 
@@ -2543,15 +2556,8 @@
         }
 
         function setMode(mode) {
-            if (currentMode === 'focus' || currentMode === 'short') {
-                tabStates[currentMode].isRunning = false;
-            }
 
             // [핵심: 탭 전환 시 효과가 휙 꺼지지 않고 원래 모드 그래픽 그대로 천천히 페이드아웃]
-            if (CosmicFX.stage > 0 && CosmicFX.stage !== 4) {
-                CosmicFX.dismiss();
-            }
-
             currentMode = mode;
             if (CosmicFX.stage === 0) {
                 CosmicFX.mode = mode;
@@ -2626,10 +2632,6 @@
             CosmicFX.nebulaAlpha = 0.55;
         }
 
-        function showCompletionDialog() {
-            customAlert.classList.add('show');
-        }
-
         /* [완료 확인 버튼: 부드러운 4단계 복귀 및 0.8초 페이드아웃] */
         let isClosingAlert = false;
         function closeCustomAlert() {
@@ -2685,61 +2687,17 @@
             setTimeout(() => { isClosingAlert = false; }, 350);
         }
 
-        function pauseFocusBreakForBackground() {
-            const now = Date.now();
-            ['focus', 'short'].forEach(m => {
-                const st = tabStates[m];
-                if (!st.isRunning) return;
-                if (lastTimestamp) {
-                    const e = Math.min(1, Math.max(0, (now - lastTimestamp) / 1000));
-                    if (e > 0) {
-                        st.timeRemaining = Math.max(0.001, st.timeRemaining - e);
-                        if (m === 'focus') {
-                            addFocusSeconds(e, now);
-                            actualFocusSecondsCompleted += e;
-                        }
-                    }
-                }
-                st.isRunning = false;
-            });
-            if (currentMode === 'focus' || currentMode === 'short') startBtn.textContent = 'START';
-            if (!tabStates.focus.isRunning && !tabStates.short.isRunning && !tabStates.timer.isRunning) {
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) return;
+            if (Object.values(tabStates).some(st => st.isRunning)) {
                 if (timerAnimationId) clearTimeout(timerAnimationId);
-                timerAnimationId = null;
-                lastTimestamp = null;
+                timerLoop(); // 밀린 시간을 즉시 한 번에 반영
             }
             updateDisplay();
             updateStatsDisplay();
-            saveState();
-        }
-
-        document.addEventListener('visibilitychange', () => {
-            if (document.hidden) {
-                bgTimestamp = Date.now();
-                pauseFocusBreakForBackground();
-            } else {
-                if (bgTimestamp) {
-                    const bgElapsed = (Date.now() - bgTimestamp) / 1000;
-                    bgTimestamp = null;
-                    lastTimestamp = Date.now();
-                    if (tabStates.timer.isRunning) {
-                        advanceGeneralTimer(bgElapsed, Date.now());
-                        if (!isSafariBrowser) {
-                            const crossed = Math.floor(tabStates.timer.timeRemaining / 3600) - Math.floor((tabStates.timer.timeRemaining - bgElapsed) / 3600);
-                            for (let i = 0; i < crossed; i++) playHourlyAlert();
-                        }
-                    }
-                    updateDisplay();
-                    updateStatsDisplay();
-                    saveState();
-                }
-                checkDayRollover();
-            }
+            checkDayRollover();
         });
-        window.addEventListener('pagehide', () => {
-            if (!bgTimestamp) bgTimestamp = Date.now();
-            pauseFocusBreakForBackground();
-        });
+        window.addEventListener('pagehide', () => { saveState(); });
 
         /* [sec 및 min 입력값 1자리 입력 시 자동으로 0 채움 통일] */
         let settingsSnapshot = null;
@@ -2788,7 +2746,7 @@
                 }
             };
 
-            const newTargetGoal = Math.min(99, Math.max(1, parseInt(document.getElementById('input-target-cycles').value, 10) || 10));
+            const newTargetGoal = Math.min(99, Math.max(1, parseInt(document.getElementById('input-target-cycles').value, 10) || 3));
             const isSaveDefault = document.getElementById('chk-save-default').checked;
             localStorage.setItem(`potato-save-default-${userId}`, isSaveDefault.toString());
 
