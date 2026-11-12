@@ -1274,6 +1274,19 @@
         function setAudioSession(type) {
             try { if (navigator.audioSession) navigator.audioSession.type = type; } catch (e) {}
         }
+        function idleAudioSession() {
+            setAudioSession(audioCtx ? 'ambient' : 'auto');
+        }
+
+        // 타이머가 모두 멈췄고 소리도 안 나는 상태면 컨텍스트를 닫아 오디오 세션을 완전히 놓음
+        function releaseAudioIfIdle() {
+            if (soundRequest) return;
+            if (Object.values(tabStates).some(s => s.isRunning)) return;
+            cancelPendingAlarm();
+            if (audioCtx) { try { audioCtx.close(); } catch (e) {} audioCtx = null; }
+            Object.keys(buffers).forEach(k => delete buffers[k]);
+            setAudioSession('auto');
+        }
 
         // 파일은 미리 받아만 두고, 디코딩은 컨텍스트가 만들어질 때 함
         Object.keys(AUDIO_FILES).forEach(k => {
@@ -1294,6 +1307,7 @@
 
         function createFreshAudioCtx() {
             if (!AudioCtxClass) return null;
+            setAudioSession('ambient');   // ← 추가: 컨텍스트가 살아 있어도 다른 앱 음악을 끊지 않음
             cancelPendingAlarm();
             if (audioCtx) { try { audioCtx.close(); } catch (e) {} }
             try {
@@ -1320,9 +1334,9 @@
             if (soundRequest) {
                 try { soundRequest.src.stop(); } catch (e) {}
                 try { soundRequest.src.disconnect(); } catch (e) {}
+                soundRequest = null;
+                idleAudioSession();   // 소리가 실제로 나고 있었을 때만 세션 변경
             }
-            soundRequest = null;
-            setAudioSession('auto');   // 오디오 세션을 놓아 다른 앱 음악이 이어지게 함
         }
 
         function playSound(key, loop, volume, fadeInMs) {
@@ -1348,11 +1362,13 @@
                 g.gain.setValueAtTime(fadeInMs > 0 ? 0 : volume, now);
                 if (fadeInMs > 0) g.gain.linearRampToValueAtTime(volume, now + fadeInMs / 1000);
                 src.connect(g);
-                g.connect(c.destination);
+                const comp = c.createDynamicsCompressor();
+                g.connect(comp);
+                comp.connect(c.destination);
                 src.onended = () => {
                     if (soundRequest && soundRequest.src === src) {
                         soundRequest = null;
-                        setAudioSession('auto');
+                        idleAudioSession();
                     }
                 };
                 setAudioSession('playback');   // 알림이 울리는 동안 다른 앱 음악 중단
@@ -1389,7 +1405,7 @@
         }
 
         function playEndAlert(mode) {
-            if (mode === 'focus') playSound('focus', true, 1, 4000);
+            if (mode === 'focus') playSound('focus', true, 3.0, 4000);
             else playSound('short', true, 1, 0);
         }
         function cancelPendingAlarm() {
@@ -1857,7 +1873,6 @@
         let currentMode = 'focus'; 
         let timerAnimationId = null;
         let lastTimestamp = null;
-        let bgTimestamp = null;
         
         const totalLength = 345.57; 
 
@@ -2476,6 +2491,7 @@
                 if (!tabStates.focus.isRunning && !tabStates.short.isRunning && !tabStates.timer.isRunning) {
                     if (timerAnimationId) clearTimeout(timerAnimationId);
                     timerAnimationId = null;
+                    releaseAudioIfIdle();
                 }
             } else {
                 if (currentMode !== 'timer' && state.timeRemaining <= 0) return;
@@ -2530,6 +2546,7 @@
                 timerAnimationId = null;
                 lastTimestamp = null;
                 stopAudioEngine();
+                releaseAudioIfIdle();
             }
             updateDisplay();
         }
@@ -2664,6 +2681,7 @@
             } catch (e) {}
 
             setTimeout(() => { isClosingAlert = false; }, 350);
+            setTimeout(releaseAudioIfIdle, 1100);
         }
 
         document.addEventListener('visibilitychange', () => {
@@ -2736,7 +2754,8 @@
             });
 
             const hasChanged = (newSnapshot !== settingsSnapshot);
-
+            localStorage.setItem(`potato-target-goal-${userId}`, newTargetGoal.toString());
+            
             if (isSaveDefault) {
                 localStorage.setItem(`potato-timer-presets-${userId}`, JSON.stringify(newSettings));
                 localStorage.setItem(`potato-target-goal-${userId}`, newTargetGoal.toString());
