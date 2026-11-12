@@ -1856,8 +1856,8 @@
         }
 
         let modeSettings = getInitialModeSettings();
-        let targetCycleGoal = 10; 
-        try { targetCycleGoal = parseInt(localStorage.getItem(`potato-target-goal-${userId}`), 10) || 10; } catch (e) {}
+        let targetCycleGoal = 3; 
+        try { targetCycleGoal = parseInt(localStorage.getItem(`potato-target-goal-${userId}`), 3) || 3; } catch (e) {}
 
         let tabStates = {
             focus: { timeRemaining: modeSettings.focus.min * 60 + modeSettings.focus.sec, totalSeconds: modeSettings.focus.min * 60 + modeSettings.focus.sec, isRunning: false },
