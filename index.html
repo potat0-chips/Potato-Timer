@@ -1405,7 +1405,7 @@
         }
 
         function playEndAlert(mode) {
-            if (mode === 'focus') playSound('focus', true, 4.0, 4000);
+            if (mode === 'focus') playSound('focus', true, 5.0, 4000);
             else playSound('short', true, 1, 0);
         }
         function cancelPendingAlarm() {
@@ -1445,7 +1445,7 @@
             if (document.hidden || !missedAlert) return;
             const key = missedAlert;
             missedAlert = null;
-            playSound(key, true, 1, key === 'focus' ? 4000 : 0);
+            playSound(key, true, 1, key === 'focus' ? 5.0 : 1, key === 'focus' ? 4000 : 0);
         });
 
         /* ==============================================================
