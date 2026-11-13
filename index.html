@@ -419,7 +419,7 @@
             -webkit-tap-highlight-color: transparent;
         }
         .todo-toggle-btn.drawer-open { 
-            bottom: 290px !important; 
+            bottom: calc(290px + var(--kb-h, 0px)) !important;
         }
 
         .todo-drawer {
@@ -443,7 +443,7 @@
             overscroll-behavior: contain !important;
         }
         .todo-drawer.open { 
-            bottom: 0px !important; 
+            bottom: var(--kb-h, 0px) !important;
         }
 
         @media (min-width: 601px) {
@@ -453,7 +453,7 @@
                 bottom: -330px !important;
             }
             .todo-toggle-btn.drawer-open {
-                bottom: 300px !important;
+                bottom: calc(300px + var(--kb-h, 0px)) !important;
             }
         }
 
@@ -1108,7 +1108,7 @@
     <div class="todo-drawer" id="todo-drawer">
         <div class="todo-form">
             <textarea class="todo-input" id="todo-input" placeholder="오늘의 할 일은 무엇인가요?" rows="1" onkeydown="handleTodoKeyDown(event)" oninput="autoResizeTextarea(this)"></textarea>
-            <button type="button" class="todo-add-btn" onpointerdown="event.preventDefault()" onclick="addTodo()">추가</button>
+            <button type="button" class="todo-add-btn" onpointerdown="event.preventDefault()" onmousedown="event.preventDefault()" onclick="addTodo()">추가</button>
         </div>
         <ul class="todo-list" id="todo-list"></ul>
     </div>
@@ -3205,6 +3205,15 @@
                 e.stopPropagation();
             }, { passive: true });
         });
+        /* [안드로이드 크롬: 키보드 높이만큼 투두 서랍 올리기] */
+            if ('virtualKeyboard' in navigator) {
+                navigator.virtualKeyboard.overlaysContent = true;
+                navigator.virtualKeyboard.addEventListener('geometrychange', () => {
+                    const inputFocused = document.activeElement && document.activeElement.id === 'todo-input';
+                    const h = inputFocused ? navigator.virtualKeyboard.boundingRect.height : 0;
+                    document.documentElement.style.setProperty('--kb-h', h + 'px');
+                });
+            }
 
         /* [서랍 밖 터치 시 blur 처리] */
         document.addEventListener('click', (event) => {
@@ -3461,6 +3470,10 @@
         updateMuteDisplay();
         renderPomoTracker();
         setFullscreenState(isFullscreenActive);
+        
+        if (navigator.storage && navigator.storage.persist) {
+            navigator.storage.persist().catch(() => {});
+        }
     </script>
 </body>
 </html>
